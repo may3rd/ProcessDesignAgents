@@ -36,7 +36,7 @@ def build_graph():
     graph.add_node("process_simulator", process_simulator)
     graph.add_node("optimizer", optimizer)
     graph.add_node("safety_risk_analyst", safety_risk_analyst)
-    # graph.add_node("project_manager", project_manager)
+    graph.add_node("project_manager", project_manager)
     
     # Set entry point
     graph.set_entry_point("process_requirements_analyst")
@@ -52,8 +52,7 @@ def build_graph():
     graph.add_edge("designer_agent", "process_simulator")
     graph.add_edge("process_simulator", "optimizer")
     graph.add_edge("optimizer", "safety_risk_analyst")
-    # graph.add_edge("safety_risk_analyst", "project_manager")
-    # graph.add_edge("project_manager", END)
-    graph.add_edge("safety_risk_analyst", END)
+    graph.add_edge("safety_risk_analyst", "project_manager")
+    graph.add_edge("project_manager", END)
     
     return graph.compile()
