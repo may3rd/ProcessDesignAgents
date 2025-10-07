@@ -1,0 +1,9 @@
+langgraph
+langchain-openai
+openai
+scipy
+numpy
+pulp
+sympy
+graphviz
+python-dotenv
