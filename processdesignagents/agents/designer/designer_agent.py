@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from processdesignagents.agents.utils.chat_openrouter import ChatOpenRouter  # Assuming resolved wrapper
+from processdesignagents.agents.utils.json_utils import extract_json_from_response
 from processdesignagents.default_config import load_config
 import json
 
@@ -23,7 +24,8 @@ Focus on key unit operations (e.g., reactor, separator) with basic specification
     
     response = llm.invoke(prompt)
     try:
-        flowsheet_data = json.loads(response.content)["flowsheet"]
+        clean_json = extract_json_from_response(response.content)
+        flowsheet_data = json.loads(clean_json)["flowsheet"]
     except (json.JSONDecodeError, KeyError):
         # Fallback: Static example for ethane cracking
         flowsheet_data = {

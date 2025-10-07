@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from processdesignagents.agents.utils.chat_openrouter import ChatOpenRouter  # Assuming resolved wrapper
+from processdesignagents.agents.utils.json_utils import extract_json_from_response
 from processdesignagents.default_config import load_config
 import json
 import numpy as np  # For type handling
@@ -50,7 +51,8 @@ def project_manager(state: DesignState) -> DesignState:
     
     response = llm.invoke(prompt)
     try:
-        approval_data = json.loads(response.content)
+        clean_json = extract_json_from_response(response.content)
+        approval_data = json.loads(clean_json)
     except json.JSONDecodeError:
         # Fallback: Conditional approval for plasma cracking
         approval_data = {

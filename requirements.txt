@@ -10,4 +10,4 @@ python-dotenv
 pubchempy
 scipy
 pandas
-graphviz
+tabulate

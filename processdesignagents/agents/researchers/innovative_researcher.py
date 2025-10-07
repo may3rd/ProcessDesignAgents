@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from processdesignagents.agents.utils.chat_openrouter import ChatOpenRouter  # Assuming wrapper from prior resolution
+from processdesignagents.agents.utils.json_utils import extract_json_from_response
 from processdesignagents.default_config import load_config
 import json
 
@@ -22,7 +23,8 @@ def innovative_researcher(state: DesignState) -> DesignState:
     
     response = llm.invoke(prompt)
     try:
-        research_concepts = json.loads(response.content)
+        clean_json = extract_json_from_response(response.content)
+        research_concepts = json.loads(clean_json)
     except json.JSONDecodeError:
         research_concepts = {"concepts": [{"name": "Plasma Cracking", "description": "High-temperature plasma reactor for ethane", "units": ["Plasma Reactor"], "benefits": ["Higher yield"]}]}
     

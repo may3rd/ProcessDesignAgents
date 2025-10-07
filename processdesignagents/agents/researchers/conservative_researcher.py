@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from processdesignagents.agents.utils.chat_openrouter import ChatOpenRouter
+from processdesignagents.agents.utils.json_utils import extract_json_from_response
 from processdesignagents.default_config import load_config
 import json
 
@@ -18,13 +19,14 @@ def conservative_researcher(state: DesignState) -> DesignState:
     Requirements/Constraints: {state.get('requirements', {})}
     
     For each concept, add: risks [str], feasibility_score (1-10), recommendations [str].
-    Output as updated JSON array under 'concepts'.
+    Output as JSON: {{"concepts": [{{"name": str, "description": str, "units": [str], "benefits": [str], "risks": [str], "feasibility_score": int, "recommendations": [str] }}]}}
     """
     
     response = llm.invoke(prompt)
     try:
-        updated_concepts = json.loads(response.content)
-        state["research_concepts"]["concepts"] = updated_concepts
+        clean_json = extract_json_from_response(response.content)
+        updated_concepts = json.loads(clean_json)
+        state["research_concepts"] = updated_concepts
     except json.JSONDecodeError:
         # Fallback: Add simple critiques
         for concept in concepts:
