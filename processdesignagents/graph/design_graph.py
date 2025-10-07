@@ -1,88 +1,59 @@
 from langgraph.graph import StateGraph, END
 from typing import TypedDict, Dict, Any
-from langchain_openai import ChatOpenAI
-from processdesignagents.default_config import load_config
-import os
-import json
-from dotenv import load_dotenv
-import pubchempy as pcp
 
-# Load environment variables (e.g., for API keys)
-load_dotenv()
+# Import agents
+from processdesignagents.agents.analysts.process_requirements_analyst import process_requirements_analyst
+from processdesignagents.agents.analysts.literature_data_analyst import literature_data_analyst
+# Placeholder imports for expansion
+from processdesignagents.agents.researchers.innovative_researcher import innovative_researcher
+from processdesignagents.agents.researchers.conservative_researcher import conservative_researcher
+from processdesignagents.agents.designer.designer_agent import designer_agent
+from processdesignagents.agents.validation.process_simulator import process_simulator
+from processdesignagents.agents.validation.optimizer import optimizer
+from processdesignagents.agents.validation.safety_risk_analyst import safety_risk_analyst
+from processdesignagents.agents.project_manager.project_manager import project_manager
 
 class DesignState(TypedDict):
     problem_statement: str
-    requirements: Dict[str, Any]  # New field for analyst outputs
+    requirements: Dict[str, Any]
     literature_data: Dict[str, Any]
+    research_concepts: Dict[str, Any]
     flowsheet: Dict[str, Any]
     validation_results: Dict[str, Any]
-
-def analyst_node(state: DesignState) -> DesignState:
-    """Process Requirements Analyst: Extracts key design requirements using LLM."""
-    config = load_config()
-    llm = ChatOpenAI(
-        model=config["quick_think_llm"],
-        openai_api_key=os.getenv("OPENROUTER_API_KEY"),
-        openai_api_base="https://openrouter.ai/api/v1",
-    )
-    
-    prompt = f"""
-    Analyze the following chemical process design problem and extract structured requirements.
-    Problem: {state['problem_statement']}
-    
-    Output a JSON object with keys: throughput (kg/h), purity (%), yield_target (%), constraints (list of strings).
-    Focus on chemical engineering aspects; infer reasonable defaults if unspecified.
-    """
-    
-    response = llm.invoke(prompt)
-    # Parse response as JSON (in production, add robust parsing)
-    try:
-        requirements = json.loads(response.content)
-        # requirements = val(response.content)  # Simplified; use json.loads in full implementation
-    except:
-        requirements = {"throughput": 1000, "purity": 99, "yield_target": 95, "constraints": ["Environmental compliance"]}
-    
-    
-    state["requirements"] = requirements
-    print(f"Extracted requirements: {requirements}")
-    return state
-
-def literature_analyst_node(state: DesignState) -> DesignState:
-    """Literature and Data Analyst: Fetches background data from PubChem based on requirements."""
-    # Infer primary compound from problem statement (LLM-assisted in full version)
-    primary_compound = "ethane"  # Placeholder; use LLM to extract dynamically (e.g., from state['problem_statement'])
-    
-    try:
-        compounds = pcp.get_compounds(primary_compound, 'name')
-        if compounds:
-            compound = compounds[0]
-            literature_data = {
-                "compound_name": compound.iupac_name,
-                "molecular_weight": compound.molecular_weight,
-                "boiling_point": compound.boiling_point if hasattr(compound, 'boiling_point') else None,
-                "sources": ["PubChem"]
-            }
-            print(f"Fetched literature data for {primary_compound}: {literature_data}")
-        else:
-            literature_data = {"error": f"No data found for {primary_compound}"}
-    except Exception as e:
-        literature_data = {"error": f"PubChem query failed: {str(e)}"}
-    
-    state["literature_data"] = literature_data
-    return state
+    approval: Dict[str, Any]
 
 def build_graph():
     graph = StateGraph(DesignState)
     
-    # Add nodes
-    graph.add_node("analyst", analyst_node)
-    graph.add_node("literature_analyst", literature_analyst_node)
+    # Add implemented nodes (expand as agents are developed)
+    graph.add_node("process_requirements_analyst", process_requirements_analyst)
+    graph.add_node("literature_data_analyst", literature_data_analyst)
+    
+    # Placeholder nodes (comment out until implemented)
+    graph.add_node("innovative_researcher", innovative_researcher)
+    graph.add_node("conservative_researcher", conservative_researcher)
+    # graph.add_node("designer_agent", designer_agent)
+    # graph.add_node("process_simulator", process_simulator)
+    # graph.add_node("optimizer", optimizer)
+    # graph.add_node("safety_risk_analyst", safety_risk_analyst)
+    # graph.add_node("project_manager", project_manager)
     
     # Set entry point
-    graph.set_entry_point("analyst")
+    graph.set_entry_point("process_requirements_analyst")
     
-    # Define edges: Analyst -> Literature Analyst -> END
-    graph.add_edge("analyst", "literature_analyst")
-    graph.add_edge("literature_analyst", END)
+    # Define edges for current flow
+    graph.add_edge("process_requirements_analyst", "literature_data_analyst")
+    #graph.add_edge("literature_data_analyst", END)
+    
+    # Placeholder edges (uncomment as needed)
+    graph.add_edge("literature_data_analyst", "innovative_researcher")
+    graph.add_edge("innovative_researcher", "conservative_researcher")
+    graph.add_edge("conservative_researcher", END)
+    # graph.add_edge("conservative_researcher", "designer_agent")
+    # graph.add_edge("designer_agent", "process_simulator")
+    # graph.add_edge("process_simulator", "optimizer")
+    # graph.add_edge("optimizer", "safety_risk_analyst")
+    # graph.add_edge("safety_risk_analyst", "project_manager")
+    # graph.add_edge("project_manager", END)
     
     return graph.compile()
