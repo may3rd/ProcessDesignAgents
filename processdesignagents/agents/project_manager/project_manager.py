@@ -69,4 +69,9 @@ def project_manager(state: DesignState) -> DesignState:
     
     state["approval"] = approval_data
     print(f"Project review: Status {approval_data['approval_status']}, CAPEX ${approval_data['capex_estimate']}M")
+    
+    # Add report saving
+    from processdesignagents.utils.report_saver import save_agent_report
+    save_agent_report("project_manager", approval_data, f"Final approval: {approval_data['approval_status']} with implementation plan.")
+    
     return state

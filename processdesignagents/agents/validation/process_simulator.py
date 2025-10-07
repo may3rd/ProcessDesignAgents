@@ -28,4 +28,9 @@ def process_simulator(state: DesignState) -> DesignState:
     
     state["validation_results"] = validation_results
     print(f"Simulation results: Yield {validation_results['simulated_yield']:.1f}%, Meets target: {validation_results['meets_yield_target']}")
+    
+    # Add report saving
+    from processdesignagents.utils.report_saver import save_agent_report
+    save_agent_report("process_simulator", {"validation_results": validation_results}, "Steady-state simulation completed with yield assessment.")
+    
     return state

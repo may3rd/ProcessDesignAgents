@@ -68,4 +68,9 @@ def safety_risk_analyst(state: DesignState) -> DesignState:
         "overall_risk_level": risk_data["overall_risk_level"]
     })
     print(f"Risk assessment: Overall level {risk_data['overall_risk_level']}, Key risks identified: {len(risk_data['risk_matrix'])}")
+    
+    # Add report saving
+    from processdesignagents.utils.report_saver import save_agent_report
+    save_agent_report("safety_risk_analyst", {"risk_assessment": risk_data}, f"HAZOP assessment: {risk_data['overall_risk_level']} risk level with {len(risk_data['risk_matrix'])} hazards.")
+    
     return state

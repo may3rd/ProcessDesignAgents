@@ -52,4 +52,9 @@ def optimizer(state: DesignState) -> DesignState:
     # Update existing validation results
     state["validation_results"].update(optimized_results)
     print(f"Optimization results: Yield {optimized_results['optimized_yield']:.1f}%, Status: {optimized_results['optimization_status']}")
+    
+    # Add report saving
+    from processdesignagents.utils.report_saver import save_agent_report
+    save_agent_report("optimizer", optimized_results, "Parameters refined for yield maximization under constraints.")
+    
     return state
