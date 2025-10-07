@@ -19,10 +19,13 @@ def process_simulator(state: DesignState) -> DesignState:
     simulated_yield = 1 - np.exp(-k * temp)
     simulated_yield = min(simulated_yield, 0.95)  # Cap at target
     
+    requirements_yield = float(requirements.get("yield_target", 95)["value"]) / 100.0
+    
+    # Validation
     validation_results = {
         "simulated_yield": simulated_yield * 100,  # As percentage
         "energy_consumption_kwh": temp * 1.5,  # Placeholder: Proportional to temp
-        "meets_yield_target": simulated_yield >= (requirements.get("yield_target", 95) / 100),
+        "meets_yield_target": simulated_yield >= requirements_yield,
         "notes": f"Simulation assumes ideal conditions for {len(units)} units."
     }
     

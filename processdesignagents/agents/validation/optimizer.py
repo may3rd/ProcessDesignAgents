@@ -41,11 +41,13 @@ def optimizer(state: DesignState) -> DesignState:
         T_val = 1000  # Default
         S_val = 20
     
+    requirements_yield = requirements.get("yield_target", 95)["value"]
+    
     optimized_results = {
         "optimized_yield": optimized_yield,
         "optimized_params": {"temperature": T_val, "stages": S_val},
         "energy_consumption_kwh": energy,
-        "meets_yield_target": optimized_yield >= requirements.get("yield_target", 95),
+        "meets_yield_target": optimized_yield >= requirements_yield,
         "optimization_status": "Optimal" if prob.status == 1 else "Feasible but suboptimal"
     }
     

@@ -4,9 +4,19 @@ from processdesignagents.default_config import load_config
 from processdesignagents.utils.report_saver import save_final_report
 from processdesignagents.utils.design_outputs import generate_hmb, generate_pfd, generate_equipment_list
 
+DEFAULT_PROBLEM = """
+design compressed air unit with capacity 300 Nm3/h for plant air and instrument air.
+"""
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run ProcessDesignAgents workflow with a problem statement.")
-    parser.add_argument("problem", type=str, help="The chemical process design problem statement.")
+    parser.add_argument(
+        "-p", "--problem", dest="problem",
+        metavar="PROBLEM_STATEMENT",
+        type=str,
+        help="The chemical process design problem statement.", 
+        default=DEFAULT_PROBLEM
+        )
     args = parser.parse_args()
     
     config = load_config()

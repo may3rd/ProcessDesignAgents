@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from processdesignagents.agents.utils.chat_openrouter import ChatOpenRouter  # Assuming resolved wrapper
+from processdesignagents.agents.utils.json_utils import extract_json_from_response
 from processdesignagents.default_config import load_config
 import json
 import numpy as np  # Add for type checking
@@ -50,7 +51,8 @@ def safety_risk_analyst(state: DesignState) -> DesignState:
     
     response = llm.invoke(prompt)
     try:
-        risk_data = json.loads(response.content)
+        clean_json = extract_json_from_response(response.content)
+        risk_data = json.loads(clean_json)
     except json.JSONDecodeError:
         # Fallback: Static example for plasma cracking
         risk_data = {
