@@ -23,6 +23,7 @@ def create_process_requiruments_analyst(quick_think_llm: str):
 
       state["requirements"] = requirements
       print(f"Extracted requirements: {requirements}")
+      
       return state
   return process_requirements_analyst
 
@@ -36,36 +37,37 @@ Your goal is to act as a Process Requirement Analyst. You must read the provided
 
 # INSTRUCTIONS:
 1.  **Analyze Carefully:** Read the entire 'PROBLEM STATEMENT' below. Identify all specified and implied process requirements.
-2.  **Think Step-by-Step:** First, identify the main chemical reaction or separation process. Second, list all chemical components and their roles (e.g., reactant, product, solvent). Third, extract quantitative data like throughput, purity, and yield targets. Fourth, identify all operational constraints.
+2.  **Think Step-by-Step:** 
+    1. Identify the main process objective.
+    2. List all chemical components involve in the process.
+    3. Extract quantitative data like throughput, purity.
+    4. Identify all operational constraints.
 3.  **Handle Missing Information:**
     * If a parameter (e.g., 'yield_target') is not mentioned at all, its value in the JSON MUST be `null`.
     * If a reasonable default can be inferred from standard chemical engineering principles (e.g., assuming atmospheric pressure if not specified), you may use it. However, you MUST add a note about this assumption in the 'constraints' list.
 4.  **Format Output:** Your final output MUST be a single, valid JSON object. Do not include any text or explanations before or after the JSON block.
 
 # NEGATIVES:
-    * **throughput** MUST have value. Default units is kg/h, if not stated in the problem statement.
+    * **capacity** MUST have value. Default units is kg/h, if not stated in the problem statement.
     * **yield_target.value** CANNOT be None. Give value = 80.0 and basis = `default` as default.
 
 # JSON SCHEMA:
 Your JSON output must conform to this exact structure and data types:
 {{
-  "throughput": {{
+  "objective": "string",
+  "capacity": {{
     "value": float,
-    "units": "kg/h"
+    "units": "kg/h",
+    "basis": "string"
   }},
   "components": [
     {{
-      "name": "string",
-      "role": "string (e.g., Reactant, Product, Catalyst, Solvent, Inert)"
+      "name": "string"
     }}
   ],
   "purity": {{
     "component": "string (name of the target component)",
     "value": "float (e.g., 99.5 for 99.5%)"
-  }},
-  "yield_target": {{
-    "value": "float (e.g., 95.0 for 95%)",
-    "basis": "string (e.g., Based on limiting reactant 'Methanol')"
   }},
   "constraints": [
     "string"
@@ -78,45 +80,41 @@ Your JSON output must conform to this exact structure and data types:
 
 **EXPECTED JSON OUTPUT:**
 {{
-  "throughput": {{
+  "objective": "Production of Ethyl Acetate from Ethanol from the esterification of Ethanol and Acetic Acid using Sulfuric Acid as a catalyst",
+  "capacity": {{
     "value": 1500.0,
-    "units": "kg/h"
+    "units": "kg/h",
+    "basis": "Based on total Ethyl Acetate product go to storage tank"
   }},
   "components": [
     {{
-      "name": "Ethanol",
-      "role": "Reactant"
+      "name": "Ethanol"
     }},
     {{
-      "name": "Acetic Acid",
-      "role": "Reactant"
+      "name": "Acetic Acid"
     }},
     {{
-      "name": "Ethyl Acetate",
-      "role": "Product"
+      "name": "Ethyl Acetate"
     }},
     {{
-      "name": "Water",
-      "role": "Product"
+      "name": "Water"
     }},
     {{
-      "name": "Sulfuric Acid",
-      "role": "Catalyst"
+      "name": "Sulfuric Acid"
     }}
   ],
   "purity": {{
     "component": "Ethyl Acetate",
     "value": 99.8
   }},
-  "yield_target": {{
-    "value": 92.0,
-    "basis": "Based on limiting reactant 'Acetic Acid'"
-  }},
   "constraints": [
     "Reactor operating temperature must be below 100°C."
   ]
 }}
 ---
+# NEGATIVES:
+
+* ENSURE the the capacity UOM conversion is done correctly.
 
 # PROBLEM STATEMENT TO ANALYZE:
 {problem_statement}

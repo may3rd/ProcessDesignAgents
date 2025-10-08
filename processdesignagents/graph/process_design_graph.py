@@ -1,3 +1,6 @@
+from pathlib import Path
+import json
+
 from langgraph.graph import StateGraph, END
 from typing import TypedDict, Dict, Any
 
@@ -8,8 +11,6 @@ import os
 from dotenv import load_dotenv
 
 from processdesignagents.default_config import DEFAULT_CONNFIG
-from processdesignagents.agents.utils.agent_states import DesignState
-
 from .setup import GraphSetup
 from .propagator import Propagator
 
@@ -50,6 +51,8 @@ class ProcessDesignGraph:
         )
         
         self.propagator = Propagator()
+        self.problem_statement = None
+        self.log_state_dict = {}
         
         # Set up the graph
         self.graph = self.graph_setup.setup_graph()
@@ -61,8 +64,36 @@ class ProcessDesignGraph:
 
         args = self.propagator.get_graph_args()
         
+        # Run the graph
         final_state = self.graph.invoke(init_agent_state, **args)
         
+        # Store current state for reflection
         self.curr_state = final_state
         
+        # Log state
+        self._log_state(final_state)
+        
+        # Return
         return final_state
+    
+    def _log_state(self, final_state):
+        """Log the final state to a JSON file."""
+        self.log_state_dict = {
+            "problem_statement": final_state["problem_statement"],
+            "requirements": final_state["requirements"],
+            "literature_data": final_state["literature_data"],
+            "research_concepts": final_state["research_concepts"],
+            "flowsheet": final_state["flowsheet"],
+            "validation_results": final_state["validation_results"],
+            "approval": final_state["approval"],
+        }
+        
+        # Save to file
+        directory = Path(f"eval_results/ProcessDesignAgents_logs/")
+        directory.mkdir(parents=True, exist_ok=True)
+        
+        with open(
+            f"eval_results/ProcessDesignAgents_logs/full_states_log.json", "w"
+        ) as f:
+            json.dump(self.log_state_dict, f, indent=4)
+        

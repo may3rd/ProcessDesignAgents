@@ -1,0 +1,751 @@
+{
+    "problem_statement": "design MWCNT production, CVD of Methane in Fludized Bed Reactor, feed stock is LNG with 93% mole Methane, the H2 generated will be collected to be blue hydrogen. Target capacity is 37 kg/h of CNT production.",
+    "requirements": {
+        "objective": "Design of MWCNT production via CVD of Methane in a Fluidized Bed Reactor, with blue hydrogen co-production.",
+        "capacity": {
+            "value": 37.0,
+            "units": "kg/h",
+            "basis": "MWCNT production"
+        },
+        "components": [
+            {
+                "name": "Methane"
+            },
+            {
+                "name": "LNG"
+            },
+            {
+                "name": "Hydrogen"
+            },
+            {
+                "name": "MWCNT"
+            }
+        ],
+        "purity": {
+            "component": null,
+            "value": null
+        },
+        "constraints": [
+            "Feedstock is LNG with 93% mole Methane.",
+            "H2 generated will be collected as blue hydrogen."
+        ]
+    },
+    "literature_data": {
+        "MWCNT": {
+            "error": "No data found for MWCNT"
+        },
+        "Methane": {
+            "compound_name": "methane",
+            "molecular_weight": 16.043,
+            "boiling_point": null,
+            "sources": [
+                "PubChem"
+            ]
+        },
+        "Hydrogen": {
+            "compound_name": "molecular hydrogen",
+            "molecular_weight": 2.016,
+            "boiling_point": null,
+            "sources": [
+                "PubChem"
+            ]
+        }
+    },
+    "research_concepts": {
+        "concepts": [
+            {
+                "name": "Conventional Fluidized Bed CVD with Integrated Blue H2 Recovery",
+                "description": "This process utilizes a standard fluidized bed reactor for Chemical Vapor Deposition (CVD) of methane to produce MWCNTs. The key innovation lies in the meticulous design of the gas separation and purification train to efficiently collect the co-produced hydrogen as 'blue hydrogen', implying CO2 capture if any, though the primary reaction (CH4 -> C + 2H2) itself is carbon neutral for H2 production. The LNG feedstock is vaporized and preheated before entering the reactor, where methane decomposes over a supported catalyst to form MWCNTs and hydrogen. Strict temperature control is crucial for MWCNT quality and selectivity.",
+                "units": [
+                    "LNG Vaporization Unit",
+                    "Methane Preheater",
+                    "Fluidized Bed Reactor (CVD)",
+                    "Cyclones (for MWCNT separation)",
+                    "Bag Filter/Filter Press (for fine MWCNT separation)",
+                    "Gas Quench/Cooler",
+                    "Pressure Swing Adsorption (PSA) or Membrane Separation (for H2 purification)",
+                    "MWCNT Collection and Packaging Unit"
+                ],
+                "benefits": [
+                    "Proven technology for CVD in fluidized beds",
+                    "High throughput potential for MWCNT production",
+                    "Simultaneous production of valuable blue hydrogen",
+                    "Relatively simpler scale-up compared to more novel reactor designs"
+                ],
+                "risks": [
+                    "Technical Risk: Maintaining precise temperature control in the fluidized bed to ensure consistent MWCNT quality and prevent agglomeration or inconsistent growth.",
+                    "Economic Risk: High energy consumption for preheating and sustaining high reaction temperatures (~800-1000\u00b0C), leading to elevated operating expenses despite H2 co-production.",
+                    "Safety/EHS Risk: Handling of combustible hydrogen gas and potential for dust explosions from fine MWCNT particles during separation and collection."
+                ],
+                "feasibility_score": 7,
+                "recommendations": [
+                    "Feasibility Score Justification: Technical Readiness (7/10) due to mature fluidized bed technology but moderate challenges in catalyst performance for methane pyrolysis; Economic Viability (6/10) supported by H2 revenue offset but pressured by energy costs for 37 kg/h capacity; Safety & Simplicity (7/10) as operations are standard but involve high temperatures. Weighted score: 6.6 rounded to 7.",
+                    "Recommendation: Recommend for preliminary techno-economic analysis, focusing on energy optimization and H2 purification integration to validate scalability for the target throughput."
+                ]
+            },
+            {
+                "name": "Catalytic Methane Pyrolysis in a Circulating Fluidized Bed with In-situ Decoking/Regeneration",
+                "description": "This advanced concept employs a circulating fluidized bed reactor (CFBR) system, similar to FCC units in refineries, for methane pyrolysis. Methane decomposes to MWCNTs and hydrogen in a riser or dense-phase reactor section over a catalyst. Catalyst deactivation due to carbon deposition (MWCNT formation) is inherent. The spent catalyst, now laden with MWCNTs, is continuously withdrawn and separated. A portion of the catalyst can be regenerated (decoked) in a separate regenerator by burning off excess carbon if not all carbon is desired as product, or by a different in-situ method. The MWCNTs are separated from the catalyst particles. This design allows for continuous operation and potentially better temperature control at scale.",
+                "units": [
+                    "LNG Vaporization Unit",
+                    "Methane Preheater",
+                    "Circulating Fluidized Bed Reactor (Riser/Dense Bed)",
+                    "Catalyst Separator (e.g., high-efficiency cyclone)",
+                    "MWCNT-Catalyst Separation Unit (e.g., difference in density, magnetic separation, or selective washing)",
+                    "Catalyst Regeneration Unit (if required for catalyst activity)",
+                    "Hydrogen Purification (PSA/Membrane)",
+                    "MWCNT Post-processing and Packaging"
+                ],
+                "benefits": [
+                    "Enhanced catalyst activity and longevity through continuous regeneration",
+                    "Improved temperature control and heat transfer characteristics for high capacity",
+                    "Potentially higher MWCNT yield and quality due to optimized residence time distribution",
+                    "Continuous and robust operation"
+                ],
+                "risks": [
+                    "Technical Risk: Effective separation of MWCNTs from catalyst particles without contamination or yield loss, given the similar particle sizes and densities.",
+                    "Economic Risk: Elevated capital expenditure for the complex circulating system and ongoing catalyst replenishment/regeneration costs at 37 kg/h scale.",
+                    "Safety/EHS Risk: Potential for thermal runaway or combustion hazards during catalyst decoking in the regenerator, especially with CO2 emissions requiring capture for blue H2 compliance."
+                ],
+                "feasibility_score": 5,
+                "recommendations": [
+                    "Feasibility Score Justification: Technical Readiness (5/10) as the CFBR design draws from proven refinery tech but requires validation for MWCNT-specific separations; Economic Viability (5/10) due to high upfront costs offset partially by continuous operation; Safety & Simplicity (6/10) with added complexity from regeneration. Weighted score: 5.2 rounded to 5.",
+                    "Recommendation: Suggest lab-scale pilot to de-risk catalyst-MWCNT separation and regeneration efficiency before advancing to larger-scale evaluation for the required capacity."
+                ]
+            },
+            {
+                "name": "Plasma-Assisted Fluidized Bed CVD for MWCNT and Blue H2",
+                "description": "This innovative process integrates non-thermal plasma technology with a fluidized bed reactor. Instead of relying solely on thermal energy for methane decomposition, plasma (e.g., dielectric barrier discharge or gliding arc plasma) is used to activate methane molecules at lower bulk temperatures. This can lead to faster reaction kinetics, reduce the overall energy input for heating the entire bed, and potentially offer more control over MWCNT morphology and purity. The fluidized bed still ensures good gas-solid contact and heat distribution. The co-produced hydrogen is then separated and purified.",
+                "units": [
+                    "LNG Vaporization Unit",
+                    "Plasma Generator (e.g., DBD, Gliding Arc)",
+                    "Fluidized Bed Reactor with Integrated Plasma Zone",
+                    "Catalyst/MWCNT Separator (e.g., cyclone, bag filter)",
+                    "Gas Quench/Cooler",
+                    "Hydrogen Purification (e.g., PSA)",
+                    "MWCNT Post-treatment (e.g., purification, functionalization) and Packaging"
+                ],
+                "benefits": [
+                    "Lower overall operating temperatures, reducing energy consumption for heating",
+                    "Potentially higher MWCNT yield and improved quality via controlled plasma chemistry",
+                    "Reduced catalyst deactivation rate due to milder thermal conditions",
+                    "Enhanced reaction kinetics and lower activation energy for methane decomposition",
+                    "Opportunity for tuning MWCNT properties by adjusting plasma parameters"
+                ],
+                "risks": [
+                    "Technical Risk: Scalability and uniform integration of plasma technology within the fluidized bed, potentially leading to inconsistent MWCNT morphology and purity at 37 kg/h throughput.",
+                    "Economic Risk: High capital and electricity costs for plasma generation equipment, which may not be fully offset by energy savings in H2 co-production.",
+                    "Safety/EHS Risk: Electrical hazards from high-voltage plasma systems and potential generation of reactive byproducts like radicals or ozone during operation."
+                ],
+                "feasibility_score": 4,
+                "recommendations": [
+                    "Feasibility Score Justification: Technical Readiness (4/10) reflecting early-stage plasma integration with limited industrial precedents; Economic Viability (4/10) due to innovative energy benefits but high initial investment; Safety & Simplicity (5/10) complicated by electrical and plasma-specific hazards. Weighted score: 4.2 rounded to 4.",
+                    "Recommendation: Not recommended for immediate scale-up; pursue R&D for plasma-bed integration at bench scale to demonstrate yield and safety for LNG feedstock before investment consideration."
+                ]
+            }
+        ]
+    },
+    "flowsheet": {
+        "units": [
+            {
+                "id": "TK-101",
+                "name": "LNG Storage Tank",
+                "type": "Cryogenic Storage Tank",
+                "specs": {
+                    "description": "Stores Liquefied Natural Gas (LNG) at cryogenic temperatures to maintain its liquid state."
+                }
+            },
+            {
+                "id": "P-101",
+                "name": "LNG Transfer Pump",
+                "type": "Cryogenic Pump",
+                "specs": {
+                    "description": "Pumps LNG from storage to the vaporization unit, increasing its pressure."
+                }
+            },
+            {
+                "id": "VAP-101",
+                "name": "LNG Vaporization Unit",
+                "type": "Vaporizer",
+                "specs": {
+                    "description": "Converts liquid LNG into gaseous methane by increasing its temperature."
+                }
+            },
+            {
+                "id": "H-101",
+                "name": "Methane Preheater",
+                "type": "Heat Exchanger",
+                "specs": {
+                    "description": "Heats the gaseous methane feedstock to a high temperature (e.g., 400-600\u00b0C) before entering the reactor."
+                }
+            },
+            {
+                "id": "R-101",
+                "name": "Fluidized Bed Reactor (CVD)",
+                "type": "Fluidized Bed Reactor",
+                "specs": {
+                    "description": "Catalytically decomposes methane (CH4) into Multi-Walled Carbon Nanotubes (MWCNT) and hydrogen (H2) at high temperatures (e.g., 800-1000\u00b0C)."
+                }
+            },
+            {
+                "id": "CYC-101",
+                "name": "Primary Cyclones",
+                "type": "Cyclonic Separator",
+                "specs": {
+                    "description": "Separates the majority of the larger MWCNT particles from the gas stream due to centrifugal forces."
+                }
+            },
+            {
+                "id": "FIL-101",
+                "name": "Bag Filter/Fine Separator",
+                "type": "Bag Filter / Filter Press",
+                "specs": {
+                    "description": "Removes fine MWCNT particles from the gas stream as a secondary separation step to prevent downstream fouling."
+                }
+            },
+            {
+                "id": "C-101",
+                "name": "Gas Quench/Cooler",
+                "type": "Heat Exchanger / Quench Tower",
+                "specs": {
+                    "description": "Cools down the hot gas stream (mainly H2 and unreacted CH4) coming from the MWCNT separation units."
+                }
+            },
+            {
+                "id": "COMP-101",
+                "name": "Hydrogen Compressor",
+                "type": "Compressor",
+                "specs": {
+                    "description": "Compresses the cooled gas stream to the required pressure for efficient separation in the PSA/Membrane unit."
+                }
+            },
+            {
+                "id": "PSA-101",
+                "name": "Hydrogen Purification Unit",
+                "type": "PSA or Membrane System",
+                "specs": {
+                    "description": "Purifies the hydrogen by separating it from unreacted methane and other impurities, producing high-purity blue hydrogen."
+                }
+            },
+            {
+                "id": "TK-102",
+                "name": "Blue Hydrogen Storage",
+                "type": "Storage Tank",
+                "specs": {
+                    "description": "Stores the purified blue hydrogen product under pressure."
+                }
+            },
+            {
+                "id": "U-101",
+                "name": "MWCNT Collection and Packaging",
+                "type": "Packaging Unit",
+                "specs": {
+                    "description": "Collects the separated MWCNTs from the cyclones and bag filter, and prepares them for packaging."
+                }
+            }
+        ],
+        "connections": [
+            {
+                "id": "101",
+                "description": "LNG Feed from Storage",
+                "from": "TK-101",
+                "to": "P-101",
+                "notes": "Cryogenic liquid at storage pressure."
+            },
+            {
+                "id": "102",
+                "description": "Pressurized LNG",
+                "from": "P-101",
+                "to": "VAP-101",
+                "notes": "Increased pressure to facilitate vaporization."
+            },
+            {
+                "id": "103",
+                "description": "Gaseous Methane",
+                "from": "VAP-101",
+                "to": "H-101",
+                "notes": "Methane gas at ambient or slightly elevated temperature."
+            },
+            {
+                "id": "104",
+                "description": "Preheated Methane Feed",
+                "from": "H-101",
+                "to": "R-101",
+                "notes": "Methane gas heated to approximately 400-600\u00b0C at reaction pressure."
+            },
+            {
+                "id": "105",
+                "description": "Reactor Effluent (MWCNT + H2/CH4)",
+                "from": "R-101",
+                "to": "CYC-101",
+                "notes": "Hot gas stream containing MWCNTs, hydrogen, and unreacted methane at reaction temperature."
+            },
+            {
+                "id": "106",
+                "description": "Coarse MWCNT Product",
+                "from": "CYC-101",
+                "to": "U-101",
+                "notes": "Bulk of MWCNT collected from cyclone."
+            },
+            {
+                "id": "107",
+                "description": "Gas Stream to Fine Separation",
+                "from": "CYC-101",
+                "to": "FIL-101",
+                "notes": "Gas stream still containing fine MWCNT particles."
+            },
+            {
+                "id": "108",
+                "description": "Fine MWCNT Product",
+                "from": "FIL-101",
+                "to": "U-101",
+                "notes": "Fine MWCNT particles collected."
+            },
+            {
+                "id": "109",
+                "description": "Cleaned Process Gas",
+                "from": "FIL-101",
+                "to": "C-101",
+                "notes": "Hot gas stream (mainly H2 and CH4) free of most MWCNT particles."
+            },
+            {
+                "id": "110",
+                "description": "Cooled Process Gas",
+                "from": "C-101",
+                "to": "COMP-101",
+                "notes": "Process gas cooled significantly for downstream processing."
+            },
+            {
+                "id": "111",
+                "description": "Compressed Process Gas",
+                "from": "COMP-101",
+                "to": "PSA-101",
+                "notes": "Process gas compressed to optimize H2 separation efficiency."
+            },
+            {
+                "id": "112",
+                "description": "Purified Blue Hydrogen Product",
+                "from": "PSA-101",
+                "to": "TK-102",
+                "notes": "High purity hydrogen product."
+            },
+            {
+                "id": "113",
+                "description": "Unreacted Methane/Off-gas",
+                "from": "PSA-101",
+                "to": "H-101",
+                "notes": "Unreacted methane (and other minor impurities) can be recycled to the preheater or used as fuel."
+            }
+        ],
+        "overall_description": "Liquefied Natural Gas (LNG) is first pumped from storage and then vaporized into gaseous methane. The methane is preheated to reaction temperature before entering a fluidized bed reactor where it decomposes into Multi-Walled Carbon Nanotubes (MWCNT) and hydrogen. The reactor effluent, a mixture of MWCNTs, hydrogen, and unreacted methane, then passes through primary cyclones and a bag filter to separate the MWCNTs. The collected MWCNTs are sent for collection and packaging. The remaining gas stream, primarily hydrogen and methane, is quenched, cooled, and compressed before entering a Pressure Swing Adsorption (PSA) or Membrane separation unit. Here, high-purity 'blue hydrogen' is separated and sent to storage. Unreacted methane can be recycled to the preheater for process optimization."
+    },
+    "validation_results": {
+        "hmb": [
+            {
+                "id": "101",
+                "description": "LNG Feed from Storage",
+                "from": "TK-101",
+                "to": "P-101",
+                "notes": "Cryogenic liquid at storage pressure.",
+                "temperature": {
+                    "value": -162.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 1.1,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 49.3,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 1.0,
+                        "Hydrogen": 0.0,
+                        "MWCNT": 0.0
+                    },
+                    "basis": "mass_fraction"
+                }
+            },
+            {
+                "id": "102",
+                "description": "Pressurized LNG",
+                "from": "P-101",
+                "to": "VAP-101",
+                "notes": "Increased pressure to facilitate vaporization.",
+                "temperature": {
+                    "value": -162.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 6.0,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 49.3,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 1.0,
+                        "Hydrogen": 0.0,
+                        "MWCNT": 0.0
+                    },
+                    "basis": "mass_fraction"
+                }
+            },
+            {
+                "id": "103",
+                "description": "Gaseous Methane",
+                "from": "VAP-101",
+                "to": "H-101",
+                "notes": "Methane gas at ambient or slightly elevated temperature.",
+                "temperature": {
+                    "value": 30.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 5.5,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 49.3,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 1.0,
+                        "Hydrogen": 0.0,
+                        "MWCNT": 0.0
+                    },
+                    "basis": "mass_fraction"
+                }
+            },
+            {
+                "id": "104",
+                "description": "Preheated Methane Feed",
+                "from": "H-101",
+                "to": "R-101",
+                "notes": "Methane gas heated to approximately 400-600\u00b0C at reaction pressure.",
+                "temperature": {
+                    "value": 500.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 5.0,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 70.5,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 1.0,
+                        "Hydrogen": 0.0,
+                        "MWCNT": 0.0
+                    },
+                    "basis": "mass_fraction"
+                }
+            },
+            {
+                "id": "105",
+                "description": "Reactor Effluent (MWCNT + H2/CH4)",
+                "from": "R-101",
+                "to": "CYC-101",
+                "notes": "Hot gas stream containing MWCNTs, hydrogen, and unreacted methane at reaction temperature.",
+                "temperature": {
+                    "value": 900.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 4.5,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 70.5,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 0.3,
+                        "Hydrogen": 0.175,
+                        "MWCNT": 0.525
+                    },
+                    "basis": "mass_fraction"
+                }
+            },
+            {
+                "id": "106",
+                "description": "Coarse MWCNT Product",
+                "from": "CYC-101",
+                "to": "U-101",
+                "notes": "Bulk of MWCNT collected from cyclone.",
+                "temperature": {
+                    "value": 850.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 4.4,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 29.6,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 0.0,
+                        "Hydrogen": 0.0,
+                        "MWCNT": 1.0
+                    },
+                    "basis": "mass_fraction"
+                }
+            },
+            {
+                "id": "107",
+                "description": "Gas Stream to Fine Separation",
+                "from": "CYC-101",
+                "to": "FIL-101",
+                "notes": "Gas stream still containing fine MWCNT particles.",
+                "temperature": {
+                    "value": 850.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 4.4,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 40.9,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 0.517,
+                        "Hydrogen": 0.302,
+                        "MWCNT": 0.181
+                    },
+                    "basis": "mass_fraction"
+                }
+            },
+            {
+                "id": "108",
+                "description": "Fine MWCNT Product",
+                "from": "FIL-101",
+                "to": "U-101",
+                "notes": "Fine MWCNT particles collected.",
+                "temperature": {
+                    "value": 850.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 4.3,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 7.4,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 0.0,
+                        "Hydrogen": 0.0,
+                        "MWCNT": 1.0
+                    },
+                    "basis": "mass_fraction"
+                }
+            },
+            {
+                "id": "109",
+                "description": "Cleaned Process Gas",
+                "from": "FIL-101",
+                "to": "C-101",
+                "notes": "Hot gas stream (mainly H2 and CH4) free of most MWCNT particles.",
+                "temperature": {
+                    "value": 850.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 4.2,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 33.5,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 0.632,
+                        "Hydrogen": 0.368,
+                        "MWCNT": 0.0
+                    },
+                    "basis": "mass_fraction"
+                }
+            },
+            {
+                "id": "110",
+                "description": "Cooled Process Gas",
+                "from": "C-101",
+                "to": "COMP-101",
+                "notes": "Process gas cooled significantly for downstream processing.",
+                "temperature": {
+                    "value": 35.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 4.0,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 33.5,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 0.632,
+                        "Hydrogen": 0.368,
+                        "MWCNT": 0.0
+                    },
+                    "basis": "mass_fraction"
+                }
+            },
+            {
+                "id": "111",
+                "description": "Compressed Process Gas",
+                "from": "COMP-101",
+                "to": "PSA-101",
+                "notes": "Process gas compressed to optimize H2 separation efficiency.",
+                "temperature": {
+                    "value": 120.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 20.0,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 33.5,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 0.632,
+                        "Hydrogen": 0.368,
+                        "MWCNT": 0.0
+                    },
+                    "basis": "mass_fraction"
+                }
+            },
+            {
+                "id": "112",
+                "description": "Purified Blue Hydrogen Product",
+                "from": "PSA-101",
+                "to": "TK-102",
+                "notes": "High purity hydrogen product.",
+                "temperature": {
+                    "value": 35.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 20.0,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 12.3,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 0.0,
+                        "Hydrogen": 1.0,
+                        "MWCNT": 0.0
+                    },
+                    "basis": "mass_fraction"
+                }
+            },
+            {
+                "id": "113",
+                "description": "Unreacted Methane/Off-gas",
+                "from": "PSA-101",
+                "to": "H-101",
+                "notes": "Unreacted methane (and other minor impurities) can be recycled to the preheater or used as fuel.",
+                "temperature": {
+                    "value": 35.0,
+                    "units": "C"
+                },
+                "pressure": {
+                    "value": 4.0,
+                    "units": "bar"
+                },
+                "mass_flow": {
+                    "value": 21.2,
+                    "units": "kg/h"
+                },
+                "composition": {
+                    "components": {
+                        "Methane": 1.0,
+                        "Hydrogen": 0.0,
+                        "MWCNT": 0.0
+                    },
+                    "basis": "mass_fraction"
+                }
+            }
+        ],
+        "mass_balance_met": true,
+        "notes": "LLM-generated H&MB estimate.",
+        "risk_assessment": {
+            "risk_matrix": [
+                {
+                    "hazard": "Cryogenic release from LNG storage tank (TK-101) or pump (P-101), leading to asphyxiation, cold burns, or vapor cloud explosion.",
+                    "severity": 4,
+                    "likelihood": 2,
+                    "risk_score": 8,
+                    "mitigations": [
+                        "Install double-walled cryogenic tanks with vacuum insulation and leak detection systems.",
+                        "Implement area ventilation and oxygen deficiency alarms around storage and pump areas.",
+                        "Conduct regular integrity checks on cryogenic seals and provide PPE training for operators."
+                    ]
+                },
+                {
+                    "hazard": "High temperature excursion in fluidized bed reactor (R-101), causing runaway methane decomposition, thermal runaway, or fire.",
+                    "severity": 5,
+                    "likelihood": 2,
+                    "risk_score": 10,
+                    "mitigations": [
+                        "Install high-temperature alarms and interlocks to reduce feed flow if temperature exceeds 950\u00b0C.",
+                        "Use refractory-lined reactor with temperature monitoring at multiple points.",
+                        "Ensure inert gas purging capability for startup/shutdown to prevent hotspots."
+                    ]
+                },
+                {
+                    "hazard": "Flammable gas leak of hydrogen or methane mixture in compressor (COMP-101) or PSA (PSA-101) area, leading to explosion or fire.",
+                    "severity": 5,
+                    "likelihood": 3,
+                    "risk_score": 15,
+                    "mitigations": [
+                        "Install pressure relief valves on compressor set at 22 bar and flame arrestors on vents.",
+                        "Deploy combustible gas detectors with automatic shutdown interlocks.",
+                        "Conduct leak detection surveys and ensure explosion-proof electrical equipment in hazardous areas."
+                    ]
+                },
+                {
+                    "hazard": "MWCNT dust accumulation in cyclones (CYC-101) or bag filter (FIL-101), leading to combustible dust explosion.",
+                    "severity": 4,
+                    "likelihood": 3,
+                    "risk_score": 12,
+                    "mitigations": [
+                        "Implement pulse-jet cleaning systems on bag filters to prevent dust buildup.",
+                        "Install explosion suppression systems and deflagration vents on separators.",
+                        "Establish housekeeping procedures and grounding to mitigate static electricity ignition sources."
+                    ]
+                }
+            ],
+            "overall_risk_level": "High",
+            "compliance_notes": "Mitigations including relief systems, alarms, interlocks, and dust control measures align with OSHA PSM elements such as mechanical integrity, process hazard analysis, and emergency planning. Gas detection and ventilation support EPA RMP requirements for preventing accidental releases of flammable substances in chemical processes."
+        },
+        "overall_risk_level": "High"
+    },
+    "approval": ""
+}

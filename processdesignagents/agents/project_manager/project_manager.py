@@ -29,7 +29,6 @@ def project_manager(state: DesignState) -> DesignState:
     """Project Manager: Reviews design for approval and generates implementation plan."""
     config = load_config()
     llm = ChatOpenRouter(model=config["deep_think_llm"])  # Use deep_think for strategic review
-    
     requirements = state.get("requirements", {})
     validation_results = state.get("validation_results", {})
     flowsheet = state.get("flowsheet", {})

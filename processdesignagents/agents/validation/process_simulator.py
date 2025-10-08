@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 import numpy as np
 import pandas as pd
 
@@ -7,30 +7,49 @@ from processdesignagents.agents.utils.json_utils import extract_json_from_respon
 from processdesignagents.agents.utils.agent_states import DesignState
 from dotenv import load_dotenv
 import json
+import copy
 
 load_dotenv()
 
-def create_process_simulator(quick_think_llm: str):
+def create_process_simulator(deep_think_llm: str):
     def process_simulator(state: DesignState) -> DesignState:
         """Process Simulator: Generates preliminary Heat and Material Balance (H&MB) from flowsheet."""
+        print("\n=========================== Create Prelim H&MB ===========================\n")
         flowsheet = state.get("flowsheet", {})
         units = flowsheet.get("units", [])
+        connections_list = flowsheet.get("connections", [])
         requirements = state.get("requirements", {})
         literature_data = state.get("literature_data", {})  # For potential enthalpy lookups
         
+        streams_table = copy.deepcopy(connections_list)
+        
+        properties_to_add = {
+            "temperature": {"value": None, "units": "C"},
+            "pressure": {"value": None, "units": "bar"},
+            "mass_flow": {"value": None, "units": "kg/h"},
+            "composition": {"components": {"Nitrogen": None, "Oxygen": None, "Water": None}, "basis": "mass_fraction"}
+        }
+        
+        for stream in streams_table:
+            stream.update(properties_to_add)
+        
+        final_steams_json = json.dumps({"streams": streams_table}, indent=4)
+        
         llm = ChatOpenRouter()
-        
-        print("\n=========================== Create Prelim H&MB ===========================\n")
-        
+    
         # Step 1: LLM generate initial H&MB
-        prompt = system_prompt(flowsheet, requirements, literature_data)
+        prompt = system_prompt(flowsheet, final_steams_json, requirements, literature_data)
         
-        response = llm.invoke(prompt, model=quick_think_llm)
+        response = llm.invoke(prompt, model=deep_think_llm)
         try:
-            hmb_json = json.loads(extract_json_from_response(response.content))
-            hmb_df = pd.DataFrame(hmb_json["balance_summary"]["streams"])
+            clean_json = extract_json_from_response(response.content)
+            hmb_json = json.loads(clean_json)
+            hmb_df = pd.DataFrame(hmb_json["streams"])
             notes = hmb_json.get("notes", "LLM-generated H&MB estimate.")
         except json.JSONDecodeError:
+            print(response.content)
+            raise ValueError("Process Simulation return not JSON")
+        
             # Fallback default H&MB
             hmb_data = {
                 'stream_id': ['Inlet Feed', 'After Unit 1', 'Product', 'Byproducts'],
@@ -61,133 +80,127 @@ def create_process_simulator(quick_think_llm: str):
         return state
     return process_simulator
 
-def system_prompt(flowsheet: Dict[str, Any], requirements: Dict[str, Any], literature: Dict[str, Any]) -> str:
+def system_prompt(flowsheet: Dict[str, Any], stream_table_json: str, requirements: Dict[str, Any], literature: Dict[str, Any]) -> str:
+    # Helper to format dictionaries into JSON strings for the prompt
+    def to_json(data):
+        return json.dumps(data, default=str)
+
     return f"""
 # ROLE
-You are a Senior Process Simulation Engineer. Your task is to generate a preliminary, steady-state Heat and Material Balance (H&MB) table based on a conceptual process flowsheet, its requirements, and supporting literature data.
+You are a Senior Process Simulation Engineer. Your task is to complete a preliminary, steady-state Heat and Material Balance (H&MB) by filling in the missing data in a provided stream table.
 
 # TASK
-Analyze the provided 'FLOWSHEET', 'REQUIREMENTS', and 'LITERATURE' data. Create a JSON object representing the H&MB for the 4-6 most critical streams. Use the provided literature data (e.g., molecular weights) to ensure calculations are accurate. Clearly state all assumptions made.
+Your primary goal is to take the 'STREAM_TABLE_JSON', which contains `null` values, and fill in every `null` with a reasonable engineering estimate based on the 'FLOWSHEET', 'REQUIREMENTS', and 'LITERATURE' data. The final output must be the fully populated JSON object.
 
 # JSON SCHEMA
-Your output MUST be a single JSON object conforming to this exact structure. The 'stream_id' should correspond to the connection IDs in the flowsheet.
+Your output MUST be a single JSON object that is an updated version of the input 'STREAM_TABLE_JSON'. It must conform to this exact structure:
 {{
-    "balance_summary": {{
-        "streams": [
-            {{
-                "stream_id": "string",
-                "description": "string",
-                "source_unit": "string",
-                "dest_unit": "string",
-                "temperature_C": "float",
-                "pressure_bar": "float",
-                "total_mass_flow_kg_h": "float",
-                "component_flows_kg_h": {{
-                    "component_name_1": "float",
-                    "component_name_2": "float"
-                }}
+    "streams": [
+        {{
+            "id": "string",
+            "from": "string",
+            "to": "string",
+            "description": "string",
+            "temperature": {{
+                "value": "float",
+                "units": "C"
+            }},
+            "pressure": {{
+                "value": "float",
+                "units": "bar"
+            }},
+            "mass_flow": {{
+                "value": "float",
+                "units": "kg/h"
+            }},
+            "composition": {{
+                "components": {{
+                    "component_1": "float",
+                    "component_2": "float"
+                }},
+                "basis": "mass_fraction"
             }}
-        ],
-        "notes": [
-            "string (list of key assumptions made, e.g., reaction conversion, separation efficiency)"
-        ]
-    }}
+        }}
+    ]
 }}
 
 # INSTRUCTIONS
-1.  **Analyze Inputs:** Review the 'FLOWSHEET', 'REQUIREMENTS', and 'LITERATURE' data to understand the complete process context.
-2.  **Identify Key Streams:** From the 'FLOWSHEET', select 4-6 critical streams (e.g., main feed, reactor outlet, final product).
+1.  **Analyze Context:** Review the 'FLOWSHEET', 'REQUIREMENTS', and 'LITERATURE' to build a complete understanding of the process.
+2.  **Process Each Stream:** Go through every stream object provided in the 'STREAM_TABLE_JSON'.
 3.  **Perform Mass Balance:**
-    * Start with the inlet feed stream from 'REQUIREMENTS'.
-    * **Use molecular weights from the 'LITERATURE' data for all stoichiometric calculations to ensure accuracy.**
-    * Calculate component mass flows for each subsequent stream, ensuring mass is conserved across units.
-    * Make and state reasonable assumptions for reaction conversions or separation efficiencies.
+    * Start with the inlet stream(s). Use the throughput from 'REQUIREMENTS' to establish the initial mass flow.
+    * Ensure that sum of compositions is 1.0.
+    * For the 'composition' of air, use standard values (approx. 0.79 Nitrogen, 0.21 Oxygen by mass) and estimate the initial humidity (Water).
+    * Proceed stream by stream, conserving mass across each unit operation. Make logical assumptions about moisture removal in dryers and separators.
 4.  **Estimate Thermal Properties:**
-    * Assign a baseline temperature and pressure (e.g., 25°C, 1 bar) for the inlet feed if unspecified.
-    * Estimate logical temperature changes across units (e.g., increase after an exothermic reactor).
-5.  **Document Assumptions:** In the 'notes' section, you MUST list every significant assumption (e.g., "Assumed 95% conversion of Acetic Acid in R-101.", "Pressure drops are neglected.").
-6.  **Format Output:** Assemble the data into the final JSON object, strictly adhering to the schema.
+    * Assign baseline conditions (e.g., 25°C, 1 bar) for the initial air intake stream.
+    * Estimate logical temperature and pressure changes across units (e.g., significant temperature and pressure increase after a compressor, temperature decrease after a cooler).
+5.  **Preserve Structure:** Your final output must be the complete `streams` object. Do not add, remove, or reorder streams. Only replace the `null` values.
 
 # EXAMPLE
 ---
-**FLOWSHEET:** {{"units": [{{"id": "R-101", "type": "CSTR"}}, {{"id": "C-101", "type": "Distillation"}}], "connections": [{{"id": "S-01", "from": "Feed", "to": "R-101"}}, {{"id": "S-02", "from": "R-101", "to": "C-101"}}, {{"id": "S-03", "from": "C-101", "to": "Product"}}]}}
-**REQUIREMENTS:** {{"throughput": {{"value": 1000}}, "components": [{{"name": "Acetic Acid", "role": "Reactant"}}, {{"name": "Ethanol", "role": "Reactant"}}]}}
-**LITERATURE:** {{"Acetic Acid": {{"molecular_weight": 60.05}}, "Ethanol": {{"molecular_weight": 46.07}}, "Ethyl Acetate": {{"molecular_weight": 88.11}}, "Water": {{"molecular_weight": 18.02}}}}
-
-**EXPECTED JSON OUTPUT:**
+**STREAM_TABLE_JSON (Input Snippet):**
 {{
-    "balance_summary": {{
-        "streams": [
-            {{
-                "stream_id": "S-01",
-                "description": "Reactant Feed",
-                "source_unit": "Feed",
-                "dest_unit": "R-101",
-                "temperature_C": 25.0,
-                "pressure_bar": 1.5,
-                "total_mass_flow_kg_h": 1000.0,
-                "component_flows_kg_h": {{
-                    "Acetic Acid": 566.0,
-                    "Ethanol": 434.0,
-                    "Ethyl Acetate": 0.0,
-                    "Water": 0.0
-                }}
-            }},
-            {{
-                "stream_id": "S-02",
-                "description": "Reactor Effluent",
-                "source_unit": "R-101",
-                "dest_unit": "C-101",
-                "temperature_C": 80.0,
-                "pressure_bar": 1.2,
-                "total_mass_flow_kg_h": 1000.0,
-                "component_flows_kg_h": {{
-                    "Acetic Acid": 28.3,
-                    "Ethanol": 0.0,
-                    "Ethyl Acetate": 831.7,
-                    "Water": 140.0
-                }}
-            }},
-            {{
-                "stream_id": "S-03",
-                "description": "Final Product",
-                "source_unit": "C-101",
-                "dest_unit": "Product",
-                "temperature_C": 77.0,
-                "pressure_bar": 1.0,
-                "total_mass_flow_kg_h": 831.7,
-                "component_flows_kg_h": {{
-                    "Acetic Acid": 0.0,
-                    "Ethanol": 0.0,
-                    "Ethyl Acetate": 831.7,
-                    "Water": 0.0
-                }}
-            }}
-        ],
-        "notes": [
-            "Assumed feed is an equimolar ratio of reactants based on literature molecular weights, totaling 1000 kg/h.",
-            "Assumed 95% conversion of the limiting reactant (Acetic Acid) in R-101.",
-            "Assumed perfect separation of Ethyl Acetate in distillation column C-101.",
-            "Temperatures are estimated based on typical values for esterification and distillation."
-        ]
-    }}
+    "streams": [
+        {{
+            "id": "101",
+            "from": "FI-101",
+            "to": "MC-101",
+            "description": "Filtered ambient air",
+            "temperature": {{"value": null, "units": "C"}},
+            "pressure": {{"value": null, "units": "bar"}},
+            "mass_flow": {{"value": null, "units": "kg/h"}},
+            "composition": {{"components": {{"Nitrogen": null, "Oxygen": null, "Water": null}}, "basis": "mass_fraction"}}
+        }}
+    ]
 }}
 
-# NEGATIVES:
-* NEVER miss the flow rate, temperature, pressure of all streams.
-
+**EXPECTED JSON OUTPUT (Completed Snippet):**
+{{
+    "streams": [
+        {{
+            "id": "101",
+            "from": "FI-101",
+            "to": "MC-101",
+            "description": "Filtered ambient air",
+            "temperature": {{
+                "value": 25.0,
+                "units": "C"
+            }},
+            "pressure": {{
+                "value": 1.01,
+                "units": "bar"
+            }},
+            "mass_flow": {{
+                "value": 10000.0,
+                "units": "kg/h"
+            }},
+            "composition": {{
+                "components": {{
+                    "Nitrogen": 0.782,
+                    "Oxygen": 0.208,
+                    "Water": 0.01
+                }},
+                "basis": "mass_fraction"
+            }}
+        }}
+    ]
+}}
 ---
 
 # DATA TO ANALYZE
 ---
 **FLOWSHEET:**
-{json.dumps(flowsheet, default=str)}
+{to_json(flowsheet)}
+
+**STREAM_TABLE_JSON (to be completed):**
+{stream_table_json}
 
 **REQUIREMENTS:**
-{json.dumps(requirements, default=str)}
+{to_json(requirements)}
 
 **LITERATURE:**
-{json.dumps(literature, default=str)}
+{to_json(literature)}
 
 # FINAL JSON OUTPUT:
 """

@@ -11,21 +11,10 @@ load_dotenv()
 def create_literature_data_analyst(quick_think_llm: str):
     def literature_data_analyst(state: DesignState) -> DesignState:
         """Literature and Data Analyst: Extracts components from requirements and fetches PubChem data."""
+        print("\n=========================== Component List ===========================\n")
         llm = ChatOpenRouter()
-        
         requirements = state.get("requirements", {})
-        
-        # LLM extraction of key components from requirements
-        # prompt = f"""
-        # From the following process requirements, extract 1-3 primary chemical components (e.g., reactants, products).
-        # Requirements: {json.dumps(requirements, default=str)}
-        
-        # Output JSON: {{"components": ["component1", "component2"]}}
-        # Focus on chemical names; infer from context if needed (e.g., 'ethane' for ethylene production).
-        # """
-        
         prompt = system_prompt(json.dumps(requirements, default=str))
-        
         response = llm.invoke(prompt, model=quick_think_llm)
         
         try:
@@ -35,8 +24,6 @@ def create_literature_data_analyst(quick_think_llm: str):
         except (json.JSONDecodeError, ValueError):
             raise ValueError("Failed to extract components from requirements")
             components = ["ethane"]  # Simple fallback
-        
-        print("\n=========================== Component List ===========================\n")
         
         literature_data = {}
         for component in components[:3]:  # Limit to 3 for efficiency

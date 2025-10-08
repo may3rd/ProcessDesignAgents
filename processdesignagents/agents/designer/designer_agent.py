@@ -9,20 +9,18 @@ load_dotenv()
 def create_designer_agent(quick_think_llm: str):
     def designer_agent(state: DesignState) -> DesignState:
         """Designer Agent: Synthesizes preliminary flowsheet from research concepts."""
+        print("\n=========================== Selected Concept ===========================\n")
         llm = ChatOpenRouter()
-        
         concepts = state.get("research_concepts", {}).get("concepts", [{}])
         selected_concept = max(concepts, key=lambda c: c.get("feasibility_score", 0))  # Select highest feasibility
-        
         prompt = system_prompt(selected_concept, state)
-        
-        print("\n=========================== Selected Concept ===========================\n")
-        
         response = llm.invoke(prompt, model=quick_think_llm)
+        
         try:
             clean_json = extract_json_from_response(response.content)
             flowsheet_data = json.loads(clean_json)["flowsheet"]
         except (json.JSONDecodeError, KeyError):
+            raise ValueError("Failed to extract flowsheet from response")
             # Fallback: Static example for ethane cracking
             flowsheet_data = {
                 "units": [
@@ -36,6 +34,16 @@ def create_designer_agent(quick_think_llm: str):
         state["flowsheet"] = flowsheet_data
         print(f"Synthesized flowsheet for {selected_concept.get('name', 'concept')}: {flowsheet_data['overall_description']}")
         
+        # Print units in flowsheet
+        print("\n=========================== Flowsheet Units ===========================\n")
+        for unit in flowsheet_data["units"]:
+            print(f"Unit ID: {unit['id']}, Name: {unit['name']}, Type: {unit['type']}")
+        
+        # Print connections in flowsheet
+        print("\n=========================== Flowsheet Connections ===========================\n")
+        for connection in flowsheet_data["connections"]:
+            print(f"Connection ID: {connection['id']}, From: {connection['from']}, To: {connection['to']}")
+            
         return state
     return designer_agent
 
@@ -65,10 +73,11 @@ Your JSON output must conform to this exact structure and data types. Ensure all
         ],
         "connections": [
             {{
-                "id": "string",
+                "id": "string (e.g., '101', '102', '201', '202') format: XXX or XXXX",
+                "description": "string (e.g., 'Reactant Feed', 'Crude Product')",
                 "from": "string (must match a unit id)",
                 "to": "string (must match a unit id)",
-                "description": "string (e.g., 'Reactant Feed', 'Crude Product')"
+                "notes:": "string (optional)"
             }}
         ],
         "overall_description": "string"
@@ -76,10 +85,10 @@ Your JSON output must conform to this exact structure and data types. Ensure all
 }}
 
 # INSTRUCTIONS:
-1.  **Deconstruct the Process:** Analyze the 'SELECTED CONCEPT' and break it down into the main logical steps (e.g., Feed Preparation, Reaction, Separation, Purification, Product Storage).
-2.  **Identify Unit Operations:** For each process step, assign a primary unit operation. Use standard names like 'Mix Tank', 'Reactor', 'Distillation Column', 'Heat Exchanger', 'Pump', 'Storage Tank'.
+1.  **Deconstruct the Process:** Analyze the 'SELECTED CONCEPT' and break it down into the main logical steps (e.g., Feed Storage / source, Feed Preparation, Reaction, Separation, Purification, Product Storage).
+2.  **Identify Unit Operations:** For each process step, assign a primary unit operation. Use standard names like 'Mix Tank', 'Reactor', 'Distillation Column', 'Heat Exchanger', 'Pump', 'Surge Tank', 'Storage Tank'.
 3.  **Define Material Flow:** Create a logical sequence of connections showing how material flows from one unit to the next, from raw material feed from tank or external source to final product storage.
-4.  **Add Basic Specifications:** For each unit, write a brief, one-sentence `description` in the `specs` object explaining its purpose (e.g., "Reacts A and B to form C", "Separates light component D from heavy product E").
+4.  **Add Basic Specifications:** For each unit, write a brief, one-sentence `description` in the `specs` object explaining its purpose (e.g., "Reacts A and B to form C", "Separates light component D from heavy product E", "Cools the compressor outlet", "Preheat Feed prior feed to reactor").
 5.  **Summarize:** Write a concise `overall_description` that explains the complete process flow from start to finish.
 6.  **Assemble JSON:** Construct the final JSON object strictly following the schema. Do not include any text before or after the JSON.
 
@@ -136,28 +145,32 @@ Your JSON output must conform to this exact structure and data types. Ensure all
         ],
         "connections": [
             {{
-                "id": "S-01",
+                "id": "101",
                 "from": "TK-101",
                 "to": "P-101",
-                "description": "Reactant feed"
+                "description": "Reactant feed",
+                "notes": "Ambient Conitions from Tank",
             }},
             {{
-                "id": "S-02",
+                "id": "102",
                 "from": "P-101",
                 "to": "R-101",
-                "description": "Pressurized reactant feed"
+                "description": "Pressurized reactant feed",
+                "notes": "Pressure increased via pump",
             }},
             {{
-                "id": "S-03",
+                "id": "103",
                 "from": "R-101",
                 "to": "C-101",
-                "description": "Crude product mixture"
+                "description": "Crude product mixture",
+                "notes": "Composition changed in reactor",
             }},
             {{
-                "id": "S-04",
+                "id": "104",
                 "from": "C-101",
                 "to": "TK-102",
-                "description": "Final Ethyl Acetate product"
+                "description": "Final Ethyl Acetate product",
+                "notes": "The final product to storage, Ethyl Acetate purity 99.5%",
             }}
         ],
         "overall_description": "Ethanol and Acetic Acid are fed from a tank to a CSTR for reaction. The resulting crude mixture is sent to a distillation column to remove impurities and byproducts, yielding a high-purity Ethyl Acetate product which is sent to final storage."
@@ -167,6 +180,8 @@ Your JSON output must conform to this exact structure and data types. Ensure all
 # NEGATIVES:
 
 * NEVER miss the feed from outside, environment, or storage.
+* Consider pressure and temperature profile in the system at each equipment carefully.
+* Add equipment for pressure changes (e.g. pump, compressor, etc.) and temperature changes (e.g. heat exchanger, etc.) properly.
 
 ---
 

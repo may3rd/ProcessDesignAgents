@@ -27,9 +27,8 @@ def convert_numpy_to_python(obj):
 def create_safety_risk_analyst(deep_think_llm: str):
     def safety_risk_analyst(state: DesignState) -> DesignState:
         """Safety and Risk Analyst: Performs HAZOP-inspired risk assessment on optimized flowsheet."""
-
+        print("\n=========================== Safety and Risk Assessment ===========================\n")
         llm = ChatOpenRouter()  # Use deep_think for thorough analysis
-        
         validation_results = state.get("validation_results", {})
         flowsheet = state.get("flowsheet", {})
         requirements = state.get("requirements", {})
@@ -38,11 +37,9 @@ def create_safety_risk_analyst(deep_think_llm: str):
         flowsheet_serializable = convert_numpy_to_python(flowsheet)
         validation_results_serializable = convert_numpy_to_python(validation_results)
         
-        prompt = system_prompt(json.dumps(flowsheet_serializable, indent=2), json.dumps(validation_results_serializable, indent=2), requirements.get('constraints', []))
-        
-        print("\n=========================== Safety and Risk Assessment ===========================\n")
-        
+        prompt = system_prompt(json.dumps(flowsheet_serializable, indent=2), json.dumps(validation_results_serializable, indent=2), requirements.get('constraints', []))   
         response = llm.invoke(prompt, model=deep_think_llm)
+        
         try:
             clean_json = extract_json_from_response(response.content)
             risk_data = json.loads(clean_json)
@@ -69,7 +66,7 @@ def create_safety_risk_analyst(deep_think_llm: str):
     return safety_risk_analyst
 
 def system_prompt(flowsheet: str, validation_results: str, requirements: str) -> str:
-    return """
+    return f"""
 # ROLE
 You are a Certified Process Safety Professional (CPSP) with 20 years of experience facilitating Hazard and Operability (HAZOP) studies for the chemical industry.
 
