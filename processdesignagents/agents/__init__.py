@@ -7,7 +7,10 @@ from .analysts.literature_data_analyst import create_literature_data_analyst
 from .researchers.innovative_researcher import create_innovative_researcher
 from .researchers.conservative_researcher import create_conservative_researcher
 from .designer.designer_agent import create_designer_agent
-# from .simulator.process_simulator import create_process_simulator
+from .validation.process_simulator import create_process_simulator
+# from .validation.optimizer import create_optimizer
+from .validation.safety_risk_analyst import create_safety_risk_analyst
+
 
 __all__ = [
     "DesignState",
@@ -18,5 +21,6 @@ __all__ = [
     "create_innovative_researcher",
     "create_conservative_researcher",
     "create_designer_agent",
-    # "create_process_simulator",
+    "create_process_simulator",
+    "create_safety_risk_analyst",
 ]

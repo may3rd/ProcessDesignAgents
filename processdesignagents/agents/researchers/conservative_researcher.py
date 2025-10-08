@@ -21,6 +21,8 @@ def create_conservative_researcher(quick_think_llm: str):
         Output as JSON: {{"concepts": [{{"name": str, "description": str, "units": [str], "benefits": [str], "risks": [str], "feasibility_score": int, "recommendations": [str] }}]}}
         """
         
+        print("\n=========================== Conservatively Critiqued Concepts===========================\n")
+        
         response = llm.invoke(prompt, model=quick_think_llm)
         try:
             clean_json = extract_json_from_response(response.content)
@@ -33,7 +35,6 @@ def create_conservative_researcher(quick_think_llm: str):
                 concept["feasibility_score"] = 7
                 concept["recommendations"] = ["Pilot testing required"]
         
-        print("\n=========================== Conservatively Critiqued Concepts===========================\n")
         print("Applied conservative critiques to research concepts.")
         for concept in updated_concepts.get("concepts", []):
             print(f"---\nConcept: {concept.get('name', 'Unknown')}")

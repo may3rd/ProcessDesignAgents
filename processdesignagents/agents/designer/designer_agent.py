@@ -16,6 +16,8 @@ def create_designer_agent(quick_think_llm: str):
         
         prompt = system_prompt(selected_concept, state)
         
+        print("\n=========================== Selected Concept ===========================\n")
+        
         response = llm.invoke(prompt, model=quick_think_llm)
         try:
             clean_json = extract_json_from_response(response.content)
@@ -33,10 +35,6 @@ def create_designer_agent(quick_think_llm: str):
         
         state["flowsheet"] = flowsheet_data
         print(f"Synthesized flowsheet for {selected_concept.get('name', 'concept')}: {flowsheet_data['overall_description']}")
-        
-        # Add report saving
-        from processdesignagents.utils.report_saver import save_agent_report
-        save_agent_report("designer_agent", {"flowsheet": flowsheet_data}, "Flowsheet synthesized for selected concept.")
         
         return state
     return designer_agent
@@ -88,9 +86,7 @@ Your JSON output must conform to this exact structure and data types. Ensure all
 # EXAMPLE:
 ---
 **SELECTED CONCEPT:** "Production of Ethyl Acetate via Catalytic Esterification in a CSTR followed by distillation."
-
 **REQUIREMENTS:** {{'components': [{{'name': 'Ethanol', 'role': 'Reactant'}}, {{'name': 'Acetic Acid', 'role': 'Reactant'}}, {{'name': 'Ethyl Acetate', 'role': 'Product'}}], 'purity': {{'component': 'Ethyl Acetate', 'value': 99.5}}}}
-
 **LITERATURE:** "The reaction is equilibrium-limited. Water is a byproduct and must be removed to drive the reaction forward. Ethyl Acetate and Water form a minimum-boiling azeotrope."
 
 **EXPECTED JSON OUTPUT:**
@@ -167,6 +163,11 @@ Your JSON output must conform to this exact structure and data types. Ensure all
         "overall_description": "Ethanol and Acetic Acid are fed from a tank to a CSTR for reaction. The resulting crude mixture is sent to a distillation column to remove impurities and byproducts, yielding a high-purity Ethyl Acetate product which is sent to final storage."
     }}
 }}
+---
+# NEGATIVES:
+
+* NEVER miss the feed from outside, environment, or storage.
+
 ---
 
 # PROBLEM TO SOLVE
