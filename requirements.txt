@@ -13,3 +13,6 @@ pubchempy
 scipy
 pandas
 tabulate
+rich
+questionary
+typer
