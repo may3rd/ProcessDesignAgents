@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import typer
 from pathlib import Path
 from rich.console import Console
@@ -51,8 +51,8 @@ def get_user_selections():
         welcome_content,
         border_style="green",
         padding=(1, 2),
-        title="Welcome to TradingAgents",
-        subtitle="Multi-Agents LLM Financial Trading Framework",
+        title="Welcome to ProcessDesignAgents",
+        subtitle="Multi-Agents LLM Process Design Framework",
     )
     console.print(Align.center(welcome_box))
     console.print()  # Add a blank line after the welcome box
@@ -88,6 +88,10 @@ def get_user_selections():
         "quick_think_llm": selected_shallow_thinker,
         "deep_think_llm": selected_deep_thinker
     }
+    
+def get_problem_statement():
+    """Get problem statement from user input."""
+    return typer.prompt("", default="Design column separate methanal and water.")
 
 def run_analysis():
     # First get all user selections
@@ -99,6 +103,14 @@ def run_analysis():
     config["deep_think_llm"] = selections["deep_think_llm"]
 
     graph = ProcessDesignGraph(debug=True, config=config)
+
+    analysis_date = datetime.now().strftime("%Y%m%d_%H%M")
+    results_dir = Path(config["results_dir"]) / analysis_date
+    results_dir.mkdir(parents=True, exist_ok=True)
+    report_dir = results_dir / "reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    log_file = results_dir / "message_tool.log"
+    log_file.touch(exist_ok=True)
     
 @app.command()
 def main():
