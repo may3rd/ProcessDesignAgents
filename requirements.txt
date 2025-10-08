@@ -1,5 +1,7 @@
 langgraph
 langchain-openai
+langchain_anthropic
+langchain_google
 openai
 scipy
 numpy

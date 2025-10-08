@@ -13,4 +13,8 @@ def extract_json_from_response(content: str) -> str:
     if stripped.startswith('{') and stripped.endswith('}'):
         return stripped
     
+    # For debugging - TODO remove when ready to release.
+    print(content)
+    exit(0)
+    
     raise ValueError("No valid JSON found in response")

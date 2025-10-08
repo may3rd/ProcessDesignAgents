@@ -1,5 +1,5 @@
 import click
-from processdesignagents.graph.design_graph import build_graph
+from processdesignagents.graph.process_design_graph import build_graph
 
 @click.command()
 @click.argument("problem")
