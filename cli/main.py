@@ -1,6 +1,7 @@
 from datetime import datetime
 import typer
 from pathlib import Path
+from functools import wraps
 from rich.console import Console
 
 from rich.panel import Panel
@@ -30,6 +31,378 @@ app = typer.Typer(
     help="ProcessDesignAgents CLI: Multi-Agents LLM Framework for Chemical Process Engineering Design.",
     add_completion=True,
 )
+
+
+# Create a deque to store recent messages with a maximum length
+class MessageBuffer:
+    def __init__(self, max_length=100):
+        self.messages = deque(maxlen=max_length)
+        self.tool_calls = deque(maxlen=max_length)
+        self.current_report = None
+        self.final_report = None  # Store the complete final report
+        self.agents_status = {
+            # Analyst Team
+            "Process Requirement Analyst": "pending",
+            "Literature Data Analyst": "pending",
+            # Research Team
+            "Innovative Researcher": "pending",
+            "Conservative Researcher": "pending",
+            # Designer Team
+            "Designer": "pending",
+            "Process Simulator": "pending",
+            # Lead Process Design Engineer
+            "Safety Risk Analyst": "pending",
+            "Project Manager": "pending"
+        }
+        self.current_agent = None
+        self.report_sections = {
+            "process_requirements_report": None,
+            "literature_data_report": None,
+            "innovative_research_report": None,
+            "conservative_research_report": None,
+            "designer_report": None,
+            "process_simulator_report": None,
+            "safety_risk_analyst_report": None,
+            "project_manager_report": None,
+        }
+    
+    def add_message(self, message_type, message):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.messages.append((timestamp, message_type, message))
+        
+    def add_tool_call(self, tool_call, agrs):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.tool_calls.append((timestamp, tool_call, agrs))
+        
+    def update_agent_status(self, agent, status):
+        if agent in self.agents_status:
+            self.agents_status[agent] = status
+            self.current_agent = agent
+            
+    def update_report_section(self, section, report):
+        if section in self.report_sections:
+            self.report_sections[section] = report
+            self._update_current_report()
+            
+    def _update_current_report(self):
+        # For the panel display, only show the most recently update section
+        latest_section = None
+        latest_content = None
+        
+        # Find the most recently updated section
+        for section, report in self.report_sections.items():
+            if report is not None:
+                latest_section = section
+                latest_content = report
+                break
+
+        if latest_section and latest_content:
+            # Format the current section for display
+            section_titles = {
+                "process_requirements_report": "Process Requirements Report",
+                "literature_data_report": "Literature Data Report",
+                "innovative_research_report": "Innovative Research Report",
+                "conservative_research_report": "Conservative Research Report",
+                "designer_report": "Designer Report",
+                "process_simulator_report": "Process Simulator Report",
+                "safety_risk_analyst_report": "Safety Risk Analyst Report",
+                "project_manager_report": "Project Manager Report",
+            }
+            self.current_report = (
+                f"### {section_titles[latest_section]}\n{latest_content}\n"
+            )
+        
+        # Update the final complete report
+        self._update_final_report()
+        
+    def _update_final_report(self):
+        report_parts = []
+
+        # Analyst Team Reports
+        if any(
+            self.report_sections[section]
+            for section in [
+                "process_requirements_report",
+                "literature_data_report",
+            ]
+        ):
+            report_parts.append("## Analyst Team Reports")
+            if self.report_sections["process_requirements_report"]:
+                report_parts.append(
+                    f"### Process Requirements Report\n{self.report_sections['process_requirements_report']}"
+                )
+            if self.report_sections["literature_data_report"]:
+                report_parts.append(
+                    f"### Literature Data Report\n{self.report_sections['literature_data_report']}"
+                )
+
+        # Research Team Reports
+        if any(
+            self.report_sections[section]
+            for section in [
+                "innovative_research_report",
+                "conservative_research_report",
+            ]
+        ):
+            report_parts.append("## Research Team Reports")
+            if self.report_sections["innovative_research_report"]:
+                report_parts.append(
+                    f"### Innovative Research Report\n{self.report_sections['innovative_research_report']}"
+                )
+            if self.report_sections["conservative_research_report"]:
+                report_parts.append(
+                    f"### Conservative Research Report\n{self.report_sections['conservative_research_report']}"
+                )
+
+        # Designer Team Reports
+        if any(
+            self.report_sections[section]
+            for section in [
+                "designer_report",
+                "process_simulator_report",
+            ]
+        ):
+            report_parts.append("## Designer Team Reports")
+            if self.report_sections["designer_report"]:
+                report_parts.append(
+                    f"### Designer Report\n{self.report_sections['designer_report']}"
+                )
+            if self.report_sections["process_simulator_report"]:
+                report_parts.append(
+                    f"### Process Simulator Report\n{self.report_sections['process_simulator_report']}"
+                )
+
+        # Lead Process Design Engineer Reports
+        if any(
+            self.report_sections[section]
+            for section in [
+                "safety_risk_analyst_report",
+                "project_manager_report",
+            ]
+        ):
+            report_parts.append("## Lead Process Design Engineer Reports")
+            if self.report_sections["safety_risk_analyst_report"]:
+                report_parts.append(
+                    f"### Safety Risk Analyst Report\n{self.report_sections['safety_risk_analyst_report']}"
+                )
+            if self.report_sections["project_manager_report"]:
+                report_parts.append(
+                    f"### Project Manager Report\n{self.report_sections['project_manager_report']}"
+                )
+
+        self.final_report = "\n\n".join(report_parts) if report_parts else None
+
+message_buffer = MessageBuffer()
+
+
+def create_layout():
+    """Create console layout for analysis display."""
+    layout = Layout()
+    layout.split_column(
+        Layout(name="header", size=3),
+        Layout(name="main"),
+        Layout(name="footer", size=3),
+    )
+    layout["main"].split_column(
+        Layout(name="upper", ratio=3), Layout(name="analysis", ratio=5)
+    )
+    layout["upper"].split_row(
+        Layout(name="progress", ratio=2), Layout(name="messages", ratio=3)
+    )
+    return layout
+
+def update_display(layout, snippet_text=None):
+    # Header with welcome message
+    layout["header"].update(
+        Panel(
+            "[bold green]Welcome to ProcessDesignAgents CLI[/bold green]\n"
+            "[dim]© [GCME EPT-PX](https://github.com/may3rd)[/dim]",
+            title="Welcome to ProcessDesignAgents",
+            border_style="green",
+            padding=(1, 2),
+            expand=True,
+        )
+    )
+    
+    # Progress panel showing agent status
+    progress_table = Table(
+        show_header=True,
+        header_style="bold magenta",
+        show_footer=False,
+        box=box.SIMPLE_HEAD,  # Use simple header wih horizontal lines
+        title=None,  # Remove the redundant Progress title
+        padding=(0, 2),  # Add horizontal padding
+        expand=True,  # Make table expand to fill available space
+    )
+    progress_table.add_column("Team", style="cyan", justify="center", width=20)
+    progress_table.add_column("Agent", style="green", justify="center", width=20)
+    progress_table.add_column("Status", style="green", justify="center", width=20)
+
+    # Group agents by team
+    teams = {
+        "Analyst Team": ["Process Requirement Analyst", "Literature Data Analyst"],
+        "Research Team": ["Innovative Researcher", "Conservative Researcher"],
+        "Designer Team": ["Designer Agent", "Process Simulator"],
+        "Lead Process Design Engineer": ["Safety Risk Analyst", "Project Manager"],
+    }
+    
+    for team, agents in teams.items():
+        # Add first agent with team name
+        first_agent = agents[0]
+        status = message_buffer.agents_status.get(first_agent, "pending")
+        if status == "in_progress":
+            spinner = Spinner(
+                "dots", text="[blue]in_progress[/blue]", style="bold cyan"
+            )
+            status_cell = spinner
+        else:
+            status_color = {
+                "pending": "yellow",
+                "completed": "green",
+                "error": "red",
+            }.get(status, "white")
+            status_cell = f"[{status_color}]{status}[/{status_color}]"
+        progress_table.add_row(team, first_agent, status_cell)
+        
+        # Add remaining agents in team
+        for agent in agents[1:]:
+            status = message_buffer.agents_status.get(agent, "pending")
+            if status == "in_progress":
+                spinner = Spinner(
+                    "dots", text="[blue]in_progress[/blue]", style="bold cyan"
+                )
+                status_cell = spinner
+            else:
+                status_color = {
+                    "pending": "yellow",
+                    "completed": "green",
+                    "error": "red",
+                }.get(status, "white")
+                status_cell = f"[{status_color}]{status}[/{status_color}]"
+            progress_table.add_row("", agent, status_cell)
+
+        # Add horizontal line after each team
+        progress_table.add_row("-" * 20, "-" * 20, "-" * 20, style="dim")
+
+    layout["progress"].update(
+        Panel(progress_table, title="Progress", border_style="cyan", padding=(1, 2))    
+    )
+    
+    # Messages panel showing recent messages and tool calls
+    message_table = Table(
+        show_header=True,
+        header_style="bold magenta",
+        show_footer=False,
+        box=box.MINIMAL,  # Use simple header wih horizontal lines
+        show_lines=True,
+        padding=(0, 1),  # Add horizontal padding
+        expand=True,  # Make table expand to fill available space
+    )
+    message_table.add_column("Time", style="cyan", justify="center", width=8)
+    message_table.add_column("Type", style="green", justify="center", width=10)
+    message_table.add_column(
+        "Content", style="white", no_wrap=False, ratio=1
+    )  # Make content column expand
+    
+    # Combine tool calls and message
+    all_messages = []
+    
+    # Add tool calls
+    for timestamp, tool_call, args in message_buffer.tool_calls:
+        # Truncate tool call args if too long
+        if isinstance(args, str) and len(args) > 100:
+            args = args[:97] + "..."
+        all_messages.append((timestamp, "Tool", f"{tool_call}: {args}"))
+    
+    # Add regular messages
+    for timestamp, message_type, content in message_buffer.messages:
+        # covert content to string if if it's not already
+        content_str = content
+        if isinstance(content, List):
+            # Handle list of content blocks (Anthropic format)
+            text_parts = []
+            for item in content:
+                if isinstance(item, dict):
+                    if item.get("type") == "text":
+                        text_parts.append(item.get("text", ""))
+                    elif item.get("type") == "tool_use":
+                        text_parts.append(f"[Tool: {item.get("name", "unkonwn")}]")
+                else:
+                    text_parts.append(str(item))
+            content_str = " ".join(text_parts)
+        elif not isinstance(content, str):
+            content_str = str(content)
+
+        # Truncate message content if too long
+        if len(content_str) > 200:
+            content_str = content_str[:197] + "..."
+        all_messages.append((timestamp, message_type, content_str))
+    
+    # Sort messages by timestamp
+    all_messages.sort(key=lambda x: x[0])
+    
+    # Calculate how many messages we can show based on available space
+    # Start with a resaonable number and adjust based on content length
+    max_messages = 12
+    
+    # Get the last N messages that will fit in the panel
+    recent_messages = all_messages[-max_messages:]
+    
+    # Add messages to table
+    for timestamp, message_type, content in recent_messages:
+        # Format content with word wrapping
+        wrapped_content = Text(content, overflow="fold")
+        message_table.add_row(timestamp, message_type, wrapped_content)
+        
+    if snippet_text:
+        message_table.add_row("", "Spinner", snippet_text)
+    
+    # Add a footer to indicate if messages were truncated
+    if len(all_messages) > max_messages:
+        message_table.footer = (
+            f"[dim]Showing last {max_messages} of {len(all_messages)} messages[/dim]"
+        )
+
+    layout["messages"].update(
+        Panel(message_table, title="Messages & Tools", border_style="blue", padding=(1, 2))
+    )
+    
+    # Analysis panel showing current report
+    if message_buffer.current_report:
+        layout["analysis"].update(
+            Panel(
+                Markdown(message_buffer.current_report),
+                title="Current Report",
+                border_style="green",
+                padding=(1, 2),
+            )
+        )
+    else:
+        layout["analysis"].update(
+            Panel(
+                "[italic]Waiting for analysis report...[/italic]",
+                title="Current Report",
+                border_style="green",
+                padding=(1, 2),
+            )
+        )
+    
+    # Footer with statistics
+    tool_calls_count = len(message_buffer.tool_calls)
+    llm_calls_count = sum(
+        1 for _, message_type, _ in message_buffer.messages if message_type == "Reasoning"
+    )
+    reports_count = sum(
+        1 for content in message_buffer.report_sections.values() if content is not None
+    )
+
+    status_table = Table(show_header=False, box=None, padding=(0, 2), expand=True)
+    status_table.add_column("Stats", justify="center")
+    status_table.add_row(
+        f"Tool Calls: {tool_calls_count} | LLM Calls: {llm_calls_count} | Generated Reports: {reports_count}"
+    )
+    
+    layout["footer"].update(Panel(status_table, border_style="grey50"))
 
 def get_user_selections():
     """Get all user selections before starting the analysis display."""
@@ -68,11 +441,11 @@ def get_user_selections():
     # Step 1: Ticker symbol
     console.print(
         create_question_box(
-            "Step 1: Problem Statement", "Enter the problem to analyze", "Design process system"
+            "Step 1: Problem Statement", "Enter the problem to analyze", "Design column separate methanal and water"
         )
     )
     
-    problem_statement = get_problem_statement()
+    problem_statement = get_problem_statement(console)
     
     # Step 2: Thinking agents
     console.print(
@@ -80,8 +453,8 @@ def get_user_selections():
             "Step 2: Thinking Agents", "Select your thinking agents for analysis"
         )
     )
-    selected_shallow_thinker = select_shallow_thinking_agent()
-    selected_deep_thinker = select_deep_thinking_agent()
+    selected_shallow_thinker = select_shallow_thinking_agent(console)
+    selected_deep_thinker = select_deep_thinking_agent(console)
     
     return {
         "problem_statement": problem_statement,
@@ -89,9 +462,38 @@ def get_user_selections():
         "deep_think_llm": selected_deep_thinker
     }
     
-def get_problem_statement():
+def get_problem_statement(console: Console):
     """Get problem statement from user input."""
-    return typer.prompt("", default="Design column separate methanal and water.")
+    return typer.prompt("", default="Design column separate methanal and water")
+
+
+def display_complete_report(final_state):
+    pass
+
+def update_research_team_status(status):
+    """Update status for all research team agents."""
+    research_team = ["Innovative Researcher", "Conservative Researcher", "Designer Agent", "Process Simulator", "Lead Process Design Engineer", "Project Manager"]
+    for agent in research_team:
+        message_buffer.update_agent_status(agent, status)
+
+def extract_content_string(content):
+    """Extract string content from various message formats."""
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        # Handle Anthropic's list format
+        text_parts = []
+        for item in content:
+            if isinstance(item, dict):
+                if item.get('type') == 'text':
+                    text_parts.append(item.get('text', ''))
+                elif item.get('type') == 'tool_use':
+                    text_parts.append(f"[Tool: {item.get('name', 'unknown')}]")
+            else:
+                text_parts.append(str(item))
+        return ' '.join(text_parts)
+    else:
+        return str(content)
 
 def run_analysis():
     # First get all user selections
@@ -112,6 +514,140 @@ def run_analysis():
     log_file = results_dir / "message_tool.log"
     log_file.touch(exist_ok=True)
     
+    def save_message_decorator(obj, func_name):
+        func = getattr(obj, func_name)
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            func(*args, **kwargs)
+            timestamp, message_type, content = obj.messages[-1]
+            content = content.replace("\n", " ")
+            with open(log_file, "a") as f:
+                f.write(f"{timestamp}, {message_type}, {content}\n")
+        return wrapper
+    
+    def save_tool_decorator(obj, func_name):
+        func = getattr(obj, func_name)
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            func(*args, **kwargs)
+            timestamp, tool_name, args = obj.tool_calls[-1]
+            args_str = ", ".join(f"{k}={v}" for k, v in args.items())
+            with open(log_file, "a") as f:
+                f.write(f"{timestamp}, [Tool Call] {tool_name}({args_str})\n")
+        return wrapper
+    
+    def save_report_section_decorator(obj, func_name):
+        func = getattr(obj, func_name)
+        @wraps(func)
+        def wrapper(section_name, content):
+            func(section_name, content)
+            if section_name in obj.report_sections and obj.report_sections[section_name] is not None:
+                content = obj.report_sections[section_name]
+                if content:
+                    file_name = f"{section_name}.md"
+                    with open(report_dir / file_name, "w") as f:
+                        f.write(content)
+        return wrapper
+    
+    message_buffer.add_message = save_message_decorator(message_buffer, "add_message")
+    message_buffer.add_tool_call = save_tool_decorator(message_buffer, "add_tool_call")
+    message_buffer.update_report_section = save_report_section_decorator(message_buffer, "update_report_section")
+    
+    # Now start the display layout
+    layout = create_layout()
+
+    with Live(layout, refresh_per_second=4) as live:
+        # Initial display
+        update_display(layout)
+        
+        # Add initial messages
+        message_buffer.add_message("System", f"Problem: {selections['problem_statement']}")
+        update_display(layout)
+        
+        # Reset agent status
+        for agent in message_buffer.agents_status:
+            message_buffer.update_agent_status(agent, "pending")
+        
+        # Reset report sections
+        for section in message_buffer.report_sections:
+            message_buffer.update_report_section(section, None)
+        message_buffer.current_agent = None
+        message_buffer.final_report = None
+        
+        # Update agent status to in_progress for the first analyst
+        first_analyst = "Process Requirement Analyst"
+        message_buffer.update_agent_status(first_analyst, "in_progress")
+        update_display(layout)
+        
+        # Create spinner text
+        spinner_text = (
+            f"Analyzing the problem..."
+        )
+        update_display(layout, spinner_text)
+        
+        # Initialize state and get graph args
+        init_agent_state = graph.propagator.create_initial_state(
+            selections["problem_statement"]
+        )
+        args = graph.propagator.get_graph_args()
+        
+        # Stream the analysis
+        trace = []
+        
+        for chunk in graph.graph.stream(init_agent_state, **args):
+            if len(chunk.get("messages", [])) > 0:
+                # Get the last message from the chunk
+                last_message = chunk["messages"][-1]
+                
+                # Extract message content and type
+                if hasattr(last_message, "content"):
+                    content = extract_content_string(last_message.content)
+                    msg_type = "Reasoning"
+                else:
+                    content = str(last_message)
+                    msg_type = "System"
+                
+                # Add message to buffer
+                message_buffer.add_message(msg_type, content)
+                
+                # If it's a tool call, add it to tool calls
+                if hasattr(last_message, "tool_calls"):
+                    for tool_call in last_message.tool_calls:
+                        # Handle both dictionary and object tool calls
+                        if isinstance(tool_call, dict):
+                            message_buffer.add_tool_call(
+                                tool_call["name"], tool_call["args"]
+                            )
+                        else:
+                            message_buffer.add_tool_call(
+                                tool_call.name, tool_call.args
+                            )
+                
+                # Update reports and agent status based on chunk content
+                # Analyst Team Reports
+                if "process_requirements_report" in chunk and chunk["process_requirements_report"]:
+                    message_buffer.update_report_section(
+                        "process_requirements_report", chunk["process_requirements_report"]
+                        )
+                    message_buffer.update_agent_status("Process Requirement Analyst", "completed")
+                    # Set next agent to in_progress
+                    message_buffer.update_agent_status("Literature Data Analyst", "in_progress")
+                
+                if "literature_data_report" in chunk and chunk["literature_data_report"]:
+                    message_buffer.update_report_section(
+                        "literature_data_report", chunk["literature_data_report"]
+                        )
+                    message_buffer.update_agent_status("Literature Data Analyst", "completed")
+                    # Set next agent to in_progress
+                    message_buffer.update_agent_status("Innovative Researcher", "in_progress")
+                
+                # Update display
+                update_display(layout)
+            
+            trace.append(chunk)
+
+        
+        
 @app.command()
 def main():
     run_analysis()

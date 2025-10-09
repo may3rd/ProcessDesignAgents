@@ -1,78 +1,113 @@
-from typing import Dict, Any
-from processdesignagents.agents.utils.chat_openrouter import ChatOpenRouter  # Assuming resolved wrapper
-from processdesignagents.agents.utils.json_utils import extract_json_from_response
-from processdesignagents.default_config import load_config
+from __future__ import annotations
+
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from processdesignagents.agents.utils.agent_states import DesignState
+from dotenv import load_dotenv
 import json
-import numpy as np  # For type handling
+import re
 
-class DesignState:
-    pass  # Placeholder for TypedDict alignment
+load_dotenv()
 
-def convert_numpy_to_python(obj):
-    """Recursively convert NumPy types to Python natives for JSON serialization."""
-    if isinstance(obj, dict):
-        return {k: convert_numpy_to_python(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [convert_numpy_to_python(item) for item in obj]
-    elif isinstance(obj, np.integer):
-        return int(obj)
-    elif isinstance(obj, np.floating):
-        return float(obj)
-    elif isinstance(obj, np.bool_):
-        return bool(obj)
-    elif isinstance(obj, (np.ndarray, np.generic)):
-        return obj.item()
-    else:
-        return obj
 
-def project_manager(state: DesignState) -> DesignState:
-    """Project Manager: Reviews design for approval and generates implementation plan."""
-    config = load_config()
-    llm = ChatOpenRouter(model=config["deep_think_llm"])  # Use deep_think for strategic review
-    requirements = state.get("requirements", {})
-    validation_results = state.get("validation_results", {})
-    flowsheet = state.get("flowsheet", {})
-    
-    # Convert for serialization
-    flowsheet_serializable = convert_numpy_to_python(flowsheet)
-    validation_serializable = convert_numpy_to_python(validation_results)
-    
-    prompt = f"""
-    Review the complete process design and issue final approval.
-    Requirements: {requirements}
-    Flowsheet: {json.dumps(flowsheet_serializable, indent=2)}
-    Validation: {json.dumps(validation_serializable, indent=2)}
-    
-    Determine approval status (Approved/Rejected/Conditional), estimate CAPEX ($M) and OPEX ($/yr), and list 3-5 implementation steps.
-    If yield < {requirements.get('yield_target', 95)}%, suggest revisions.
-    Output JSON: {{"approval_status": str, "capex_estimate": float, "opex_estimate": float, "implementation_steps": [str], "final_notes": str}}
-    """
-    
-    response = llm.invoke(prompt)
-    try:
-        clean_json = extract_json_from_response(response.content)
-        approval_data = json.loads(clean_json)
-    except json.JSONDecodeError:
-        # Fallback: Conditional approval for plasma cracking
-        approval_data = {
-            "approval_status": "Conditional",
-            "capex_estimate": 5.2,
-            "opex_estimate": 1.8,
-            "implementation_steps": [
-                "Conduct detailed HAZOP and pilot-scale testing.",
-                "Integrate CO2 capture for full compliance.",
-                "Refine reactor design to achieve 95% yield.",
-                "Prepare regulatory submissions.",
-                "Scale-up to full production."
-            ],
-            "final_notes": "Viable design with optimization potential; address yield gap."
+def create_project_manager(deep_think_llm: str, llm):
+    def project_manager(state: DesignState) -> DesignState:
+        """Project Manager: Reviews design for approval and generates implementation plan."""
+        print("\n=========================== Project Review ===========================\n")
+
+        requirements_markdown = _extract_markdown(state.get("requirements", {}))
+        flowsheet_markdown = _extract_markdown(state.get("flowsheet", {}))
+        validation_markdown = _extract_markdown(state.get("validation_results", {}))
+        safety_and_risk_markdown = _extract_markdown(state.get("safety_and_risk_assessment", {}))
+
+        system_message = system_prompt(requirements_markdown, flowsheet_markdown, validation_markdown, safety_and_risk_markdown)
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "{system_message}"),
+            MessagesPlaceholder(variable_name="messages"),
+        ])
+
+        chain = prompt.partial(system_message=system_message) | llm
+        response = chain.invoke(state.get("messages", []))
+
+        approval_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        approval_status = _extract_status(approval_markdown)
+
+        print(f"Project review completed. Status: {approval_status or 'Unknown'}")
+        print(approval_markdown)
+
+        return {
+            "approval": {
+                "markdown": approval_markdown,
+                "status": approval_status,
+            },
+            "messages": [response],
         }
-    
-    state["approval"] = approval_data
-    print(f"Project review: Status {approval_data['approval_status']}, CAPEX ${approval_data['capex_estimate']}M")
-    
-    # Add report saving
-    from processdesignagents.utils.report_saver import save_agent_report
-    save_agent_report("project_manager", approval_data, f"Final approval: {approval_data['approval_status']} with implementation plan.")
-    
-    return state
+
+    return project_manager
+
+
+def _extract_markdown(section: object) -> str:
+    if isinstance(section, dict):
+        if "markdown" in section and isinstance(section["markdown"], str):
+            return section["markdown"]
+        return json.dumps(section, indent=2, default=str)
+    if isinstance(section, str):
+        return section
+    return str(section)
+
+
+def _extract_status(markdown_text: str) -> str | None:
+    match = re.search(r"Approval Status\s*[:\-]\s*([A-Za-z ]+)", markdown_text, re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def system_prompt(requirements_markdown: str, flowsheet_markdown: str, validation_markdown: str, safety_and_risk_markdown: str) -> str:
+    return f"""
+# ROLE
+You are the project manager responsible for final stage-gate approval of the process design.
+
+# TASK
+Review the provided requirements, flowsheet summary, validation results, and safety and risk results. Decide whether to approve, conditionally approve, or reject the project. Summarize financial estimates and outline the immediate implementation plan.
+
+# OUTPUT FORMAT
+Return a Markdown report with the following structure:
+```
+## Executive Summary
+- Approval Status: <Approved | Conditional | Rejected>
+- Key Rationale: <one sentence>
+
+## Financial Outlook
+| Metric | Estimate |
+|--------|----------|
+| CAPEX (USD millions) | ... |
+| OPEX (USD millions per year) | ... |
+| Contingency (%) | ... |
+
+## Implementation Plan
+1. <Step 1>
+2. <Step 2>
+3. <Step 3>
+
+## Final Notes
+- <risk or follow-up item>
+- <compliance reminder>
+```
+
+# DATA FOR REVIEW
+---
+**REQUIREMENTS SUMMARY (Markdown):**
+{requirements_markdown}
+
+**FLOWSHEET SUMMARY (Markdown):**
+{flowsheet_markdown}
+
+**VALIDATION RESULTS (Markdown):**
+{validation_markdown}
+
+**SAFETY AND RISK ASSESSMENT (Markdown):**
+{safety_and_risk_markdown}
+
+# FINAL MARKDOWN OUTPUT:
+"""

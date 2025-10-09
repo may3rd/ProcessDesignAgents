@@ -1,7 +1,9 @@
 import questionary
 from typing import List, Optional, Tuple, Dict
+from rich.console import Console
 
-def get_problem_statement() -> str:
+
+def get_problem_statement(console: Console) -> str:
     """Prompt the user to enter a problem_statement."""
     problem = questionary.text(
         "Enter the problem to analyze:",
@@ -21,7 +23,7 @@ def get_problem_statement() -> str:
     return problem
 
 
-def select_shallow_thinking_agent(provider: str="openrouter") -> str:
+def select_shallow_thinking_agent(console: Console, provider: str="openrouter") -> str:
     """Select shallow thinking llm engine using an interactive selection."""
 
     # Define shallow thinking llm engine options with their corresponding model names
@@ -81,7 +83,7 @@ def select_shallow_thinking_agent(provider: str="openrouter") -> str:
     return choice
 
 
-def select_deep_thinking_agent(provider: str="openrouter") -> str:
+def select_deep_thinking_agent(console: Console, provider: str="openrouter") -> str:
     """Select deep thinking llm engine using an interactive selection."""
 
     # Define deep thinking llm engine options with their corresponding model names

@@ -13,10 +13,14 @@ class GraphSetup:
         self,
         quick_think_llm: str,
         deep_think_llm: str,
+        quick_thinking_llm: ChatOpenAI,
+        deep_thinking_llm: ChatOpenAI,
     ):
         """Initialize with required components."""
         self.quick_think_llm = quick_think_llm
         self.deep_think_llm = deep_think_llm
+        self.quick_thinking_llm = quick_thinking_llm
+        self.deep_thinking_llm = deep_thinking_llm
         
     def setup_graph(
         self
@@ -24,15 +28,16 @@ class GraphSetup:
         """Set up and complie the agent graph."""
         graph = StateGraph(DesignState)
         
-        process_requirements_analyst = create_process_requiruments_analyst(self.quick_think_llm)
-        literature_data_analyst = create_literature_data_analyst(self.quick_think_llm)
-        innovative_researcher = create_innovative_researcher(self.quick_think_llm)
-        conservative_researcher = create_conservative_researcher(self.deep_think_llm)
-        designer_agent = create_designer_agent(self.quick_think_llm)
-        process_simulator = create_process_simulator(self.deep_think_llm)
+        process_requirements_analyst = create_process_requiruments_analyst(self.quick_think_llm, self.quick_thinking_llm)
+        literature_data_analyst = create_literature_data_analyst(self.quick_think_llm, self.quick_thinking_llm)
+        innovative_researcher = create_innovative_researcher(self.quick_think_llm, self.quick_thinking_llm)
+        conservative_researcher = create_conservative_researcher(self.deep_think_llm, self.deep_thinking_llm)
+        designer_agent = create_designer_agent(self.quick_think_llm, self.quick_thinking_llm)
+        process_simulator = create_process_simulator(self.deep_think_llm, self.deep_thinking_llm)
+        equipment_sizing_agent = create_equipment_sizing_agent(self.deep_think_llm, self.deep_thinking_llm)
         # optimizer = create_optimizer(self.quick_think_llm)
-        safety_risk_analyst = create_safety_risk_analyst(self.deep_think_llm)
-        # project_manager = create_project_manager(self.quick_think_llm)
+        safety_risk_analyst = create_safety_risk_analyst(self.deep_think_llm, self.deep_thinking_llm)
+        project_manager = create_project_manager(self.deep_think_llm, self.deep_thinking_llm)
         
         # Add implemented nodes (expand as agents are developed)
         graph.add_node("process_requirements_analyst", process_requirements_analyst)
@@ -41,9 +46,10 @@ class GraphSetup:
         graph.add_node("conservative_researcher", conservative_researcher)
         graph.add_node("designer_agent", designer_agent)
         graph.add_node("process_simulator", process_simulator)
+        graph.add_node("equipment_sizing_agent", equipment_sizing_agent)
         # graph.add_node("optimizer", optimizer)
         graph.add_node("safety_risk_analyst", safety_risk_analyst)
-        # graph.add_node("project_manager", project_manager)
+        graph.add_node("project_manager", project_manager)
         
         # Set entry point
         graph.set_entry_point("process_requirements_analyst")
@@ -53,10 +59,17 @@ class GraphSetup:
         graph.add_edge("conservative_researcher", "designer_agent")
         graph.add_edge("designer_agent", "process_simulator")
         # graph.add_edge("process_simulator", "optimizer")
-        graph.add_edge("process_simulator", "safety_risk_analyst")
-        # graph.add_edge("safety_risk_analyst", "project_manager")
-        # graph.add_edge("project_manager", END)
+        graph.add_edge("process_simulator", "equipment_sizing_agent")
+        graph.add_edge("equipment_sizing_agent", "safety_risk_analyst")
+        graph.add_edge("safety_risk_analyst", "project_manager")
+        graph.add_edge("project_manager", END)
         
-        graph.add_edge("safety_risk_analyst", END)
+        # graph.add_edge("process_requirements_analyst", END)
+        # graph.add_edge("literature_data_analyst", END)
+        # graph.add_edge("innovative_researcher", END)
+        # graph.add_edge("conservative_researcher", END)
+        # graph.add_edge("designer_agent", END)
+        # graph.add_edge("process_simulator", END)
+        # graph.add_edge("safety_risk_analyst", END)
         
         return graph.compile()

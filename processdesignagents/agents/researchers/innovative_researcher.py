@@ -1,102 +1,107 @@
-from processdesignagents.agents.utils.chat_openrouter import ChatOpenRouter  # Assuming wrapper from prior resolution
-from processdesignagents.agents.utils.json_utils import extract_json_from_response
+from __future__ import annotations
+
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
 from dotenv import load_dotenv
 import json
+import re
 
 load_dotenv()
 
-def create_innovative_researcher(quick_think_llm: str):
+
+def create_innovative_researcher(quick_think_llm: str, llm):
     def innovative_researcher(state: DesignState) -> DesignState:
         """Innovative Researcher: Proposes novel process concepts using LLM."""
         print("\n=========================== Innovative Research Concepts ===========================\n")
-        llm = ChatOpenRouter()
-        prompt = system_prompt(state.get('requirements', {}), state.get('literature_data', {}))
-        response = llm.invoke(prompt, model=quick_think_llm)
-        
-        try:
-            clean_json = extract_json_from_response(response.content)
-            research_concepts = json.loads(clean_json)
-        except json.JSONDecodeError:
-            raise ValueError("Failed to extract research concepts from response")
-            research_concepts = {"concepts": [{"name": "Plasma Cracking", "description": "High-temperature plasma reactor for ethane", "units": ["Plasma Reactor"], "benefits": ["Higher yield"]}]}
-        
-        state["research_concepts"] = research_concepts
+
+        requirements_summary = _extract_markdown(state.get("requirements", {}))
+        literature_summary = _extract_markdown(state.get("literature_data", {}))
+        system_message = system_prompt(requirements_summary, literature_summary)
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "{system_message}"),
+            MessagesPlaceholder(variable_name="messages"),
+        ])
+
+        chain = prompt.partial(system_message=system_message) | llm
+        response = chain.invoke(state.get("messages", []))
+
+        research_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        concept_names = _extract_concept_names(research_markdown)
+
         print("Generated innovative research concepts.")
-        
-        # print name of concepts
         print("\n--- Concept Names ---")
-        for concept in research_concepts.get("concepts", []):
-            print(f"- {concept.get('name', 'Unknown')}")
-            
-        return state
+        if concept_names:
+            for concept_name in concept_names:
+                print(f"- {concept_name}")
+        else:
+            print("- (No concept headings detected)")
+
+        return {
+            "research_concepts": {
+                "markdown": research_markdown,
+                "concept_names": concept_names,
+            },
+            "messages": [response],
+        }
+
     return innovative_researcher
 
-def system_prompt(requirements: str, literature: str) -> str:
+
+def _extract_markdown(section: object) -> str:
+    if isinstance(section, dict):
+        if "markdown" in section and isinstance(section["markdown"], str):
+            return section["markdown"]
+        return json.dumps(section, indent=2, default=str)
+    if isinstance(section, str):
+        return section
+    return str(section)
+
+
+def _extract_concept_names(markdown_text: str) -> list[str]:
+    names: list[str] = []
+    for line in markdown_text.splitlines():
+        match = re.match(r"^##\s+(.*)", line.strip())
+        if match:
+            names.append(match.group(1).strip())
+    return names
+
+
+def system_prompt(requirements_markdown: str, literature_markdown: str) -> str:
     return f"""
 # ROLE
 You are a Senior R&D Process Engineer specializing in conceptual design and process innovation. Your expertise lies in brainstorming novel, sustainable, and efficient chemical processes.
 
 # TASK
-Based on the provided 'REQUIREMENTS' and 'LITERATURE DATA', generate exactly 3 distinct and innovative chemical process concepts. Your goal is to propose traditional methods and creative solutions. For each concept, provide a concise name, a clear description, the key unit operations involved, and its primary benefits.
+Based on the provided 'REQUIREMENTS' and 'LITERATURE DATA' summaries, generate 3 to 5 distinct process concepts. For each concept, provide a concise name, a clear description, the key unit operations involved, and its primary benefits.
+
+The concepts you generate must includes the typical or standard process that widely used in refinery and petrochemical industy, more complex and innovative processes, and state-of-the-art processes.
+
 
 # INSTRUCTIONS
-1.  **Synthesize Data:** First, thoroughly analyze the 'REQUIREMENTS' and 'LITERATURE DATA' to understand the core objective, key components, and known science.
-2.  **Brainstorm Process Ideas:** Think across process idea vectors such as:
-    * **Standard Practice:** The typical process unit that widely used in the industry.
-    * **Alternative creative solutions:** The new methods that improve from traditional methods.
-3.  **Develop Concepts:** For each of your three ideas, structure it with a descriptive name, a paragraph explaining the concept, a list of the essential unit operations, and a list of its key advantages.
-4.  **Format Output:** Your final output must be a single, valid JSON object that strictly adheres to the schema below.
-
-# JSON SCHEMA
-{{
-    "concepts": [
-        {{
-            "name": "string",
-            "description": "string",
-            "units": ["list of strings"],
-            "benefits": ["list of strings"]
-        }}
-    ]
-}}
-
-# EXAMPLE
----
-**REQUIREMENTS:** {{"components": ["Styrene"], "throughput": {{"value": 100000, "units": "t/a"}}}}
-**LITERATURE DATA:** {{"info": "Conventional styrene production is via ethylbenzene dehydrogenation, which is energy-intensive and equilibrium-limited."}}
-
-**EXPECTED JSON OUTPUT:**
-{{
-    "concepts": [
-        {{
-            "name": "Oxidative Coupling of Toluene",
-            "description": "A novel pathway that uses toluene, a cheaper feedstock, and couples it with methane or methanol in an oxidative reaction to directly synthesize styrene. This avoids the energy-intensive ethylbenzene intermediate.",
-            "units": ["Fluidized Bed Reactor", "Catalyst Regeneration System", "Product Separation Train"],
-            "benefits": ["Utilizes lower-cost feedstock", "Potentially lower energy consumption", "Avoids equilibrium limitations of dehydrogenation"]
-        }},
-        {{
-            "name": "Biocatalytic Synthesis from Cinnamic Acid",
-            "description": "A green chemistry approach using a genetically engineered microorganism or enzyme to convert cinnamic acid to styrene under mild conditions (room temperature and atmospheric pressure). Cinnamic acid can be sourced from biomass.",
-            "units": ["Bioreactor (Fermenter)", "Centrifuge/Filtration Unit", "Extraction Column"],
-            "benefits": ["Uses renewable feedstocks", "Significantly lower energy footprint", "High selectivity and minimal byproducts", "Operates at mild conditions"]
-        }},
-        {{
-            "name": "Microwave-Assisted Dehydrogenation",
-            "description": "This concept enhances the traditional ethylbenzene dehydrogenation process by using microwave heating. Microwaves can selectively heat the catalyst bed, leading to faster reaction rates and potentially shifting the equilibrium favorably.",
-            "units": ["Microwave Reactor", "Heat Recovery Exchanger", "Styrene Purification Unit"],
-            "benefits": ["Improved energy efficiency through targeted heating", "Higher conversion and selectivity", "Faster start-up and shutdown times"]
-        }}
-    ]
-}}
----
+1.  **Synthesize Data:** First, thoroughly analyze the 'REQUIREMENTS' and 'LITERATURE DATA' summaries to understand the core objective, key components, and known science.
+2.  **Brainstorm Process Ideas:** Consider both conventional and unconventional approaches that align with the requirements and literature insights.
+3.  **Develop Concepts:** For each of your three ideas, structure it with a descriptive name, a compact paragraph explaining the concept, a list of the essential unit operations, and a list of its key advantages.
+4.  **Format Output:** Your final output MUST be Markdown with the following structure repeated for each concept:
+    ```
+    ## Concept N: <Descriptive Name>
+    **Description:** <one paragraph summarizing the idea>
+    **Unit Operations:**
+    - <unit operation>
+    - ...
+    **Key Benefits:**
+    - <benefit>
+    - ...
+    ```
+    Ensure there are exactly three concept sections (Concept 1, Concept 2, Concept 3).
 
 # DATA FOR ANALYSIS
 ---
-**REQUIREMENTS:**
-{requirements}
+**REQUIREMENTS SUMMARY (Markdown):**
+{requirements_markdown}
 
-**LITERATURE DATA:**
-{literature}
+**LITERATURE DATA SUMMARY (Markdown or JSON):**
+{literature_markdown}
 
-# FINAL JSON OUTPUT:
+# FINAL MARKDOWN OUTPUT:
 """

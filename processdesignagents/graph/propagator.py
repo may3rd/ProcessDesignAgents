@@ -1,4 +1,5 @@
 from typing import Dict, Any
+from langchain_core.messages import HumanMessage
 from processdesignagents.agents.utils.agent_states import DesignState
 
 class Propagator:
@@ -13,13 +14,14 @@ class Propagator:
     ) -> Dict[str, Any]:
         """Create the initial state for the agent graph."""
         return {
+            "messages": [HumanMessage(content=problem_statement)],
             "problem_statement": problem_statement,
-            "requirements": "",
-            "literature_data": "",
-            "research_concepts": "",
-            "flowsheet": "",
-            "validation_results": "",
-            "approval": ""
+            "requirements": {},
+            "literature_data": {},
+            "research_concepts": {},
+            "flowsheet": {},
+            "validation_results": {},
+            "approval": {}
         }
         
     def get_graph_args(self) -> Dict[str, Any]:

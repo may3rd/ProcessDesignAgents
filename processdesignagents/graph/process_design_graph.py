@@ -33,21 +33,26 @@ class ProcessDesignGraph:
         self.config = config or DEFAULT_CONNFIG
 
         # Initialize LLMs
-        # if self.config["llm_provider"].lower() == "openai" or self.config["llm_provider"] == "ollama" or self.config["llm_provider"] == "openrouter":
-        #     self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
-        #     self.quick_thinking_llm = ChatOpenAI(model=self.config["quick_think_llm"], base_url=self.config["backend_url"], api_key=os.getenv("OPENAI_API_KEY"))
+        if self.config["llm_provider"].lower() == "openai" or self.config["llm_provider"] == "ollama" or self.config["llm_provider"] == "openrouter":
+            if self.config["llm_provider"] == "openrouter":
+                base_url = "https://openrouter.ai/api/v1"
+                api_key = os.getenv("OPENROUTER_API_KEY")
+            self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=base_url, api_key=api_key)
+            self.quick_thinking_llm = ChatOpenAI(model=self.config["quick_think_llm"], base_url=base_url, api_key=api_key)
         # elif self.config["llm_provider"].lower() == "anthropic":
         #     self.deep_thinking_llm = ChatAnthropic(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
         #     self.quick_thinking_llm = ChatAnthropic(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
         # elif self.config["llm_provider"].lower() == "google":
         #     self.deep_thinking_llm = ChatGoogleGenerativeAI(model=self.config["deep_think_llm"])
         #     self.quick_thinking_llm = ChatGoogleGenerativeAI(model=self.config["quick_think_llm"])
-        # else:
-        #     raise ValueError(f"Unsupported LLM provider: {self.config['llm_provider']}")
+        else:
+            raise ValueError(f"Unsupported LLM provider: {self.config['llm_provider']}")
 
         self.graph_setup = GraphSetup(
             self.config["quick_think_llm"],
             self.config["deep_think_llm"],
+            self.deep_thinking_llm,
+            self.quick_thinking_llm,
         )
         
         self.propagator = Propagator()
@@ -64,8 +69,20 @@ class ProcessDesignGraph:
 
         args = self.propagator.get_graph_args()
         
-        # Run the graph
-        final_state = self.graph.invoke(init_agent_state, **args)
+        if self.debug:
+            # Debug mode with tracing
+            trace = []
+            for chunk in self.graph.stream(init_agent_state, **args):
+                if len(chunk["messages"]) == 0:
+                    pass
+                else:
+                    chunk["messages"][-1].pretty_print()
+                    trace.append(chunk)
+                    
+            final_state = trace[-1]
+        else:
+            # Run the graph
+            final_state = self.graph.invoke(init_agent_state, **args)
         
         # Store current state for reflection
         self.curr_state = final_state

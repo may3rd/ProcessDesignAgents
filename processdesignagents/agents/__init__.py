@@ -8,8 +8,10 @@ from .researchers.innovative_researcher import create_innovative_researcher
 from .researchers.conservative_researcher import create_conservative_researcher
 from .designer.designer_agent import create_designer_agent
 from .validation.process_simulator import create_process_simulator
+from .validation.equipment_sizing_agent import create_equipment_sizing_agent
 # from .validation.optimizer import create_optimizer
 from .validation.safety_risk_analyst import create_safety_risk_analyst
+from .project_manager.project_manager import create_project_manager
 
 
 __all__ = [
@@ -22,5 +24,7 @@ __all__ = [
     "create_conservative_researcher",
     "create_designer_agent",
     "create_process_simulator",
+    "create_equipment_sizing_agent",
     "create_safety_risk_analyst",
+    "create_project_manager",
 ]
