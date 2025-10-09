@@ -1,6 +1,7 @@
 from typing import Dict, Any
 from langchain_core.messages import HumanMessage
 from processdesignagents.agents.utils.agent_states import DesignState
+import uuid
 
 class Propagator:
     """Handle state initialization and propagation through the graph."""
@@ -26,8 +27,12 @@ class Propagator:
         
     def get_graph_args(self) -> Dict[str, Any]:
         """Get arguments for the graph invocation."""
+        thread_id = str(uuid.uuid4())
         return {
             "stream_mode": "values",
-            "config": {"recursion_limit": self.max_recur_limit},
+            "config": {
+                "recursion_limit": self.max_recur_limit,
+                "configurable": {"thread_id": thread_id},
+            },
         }
         

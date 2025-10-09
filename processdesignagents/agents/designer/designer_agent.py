@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.markdown_validators import require_sections, require_table_headers
 from dotenv import load_dotenv
 import json
 import re
@@ -9,7 +10,7 @@ import re
 load_dotenv()
 
 
-def create_designer_agent(quick_think_llm: str, llm):
+def create_designer_agent(llm):
     def designer_agent(state: DesignState) -> DesignState:
         """Designer Agent: Synthesizes preliminary flowsheet from research concepts."""
         print("\n=========================== Selected Concept ===========================\n")
@@ -31,6 +32,21 @@ def create_designer_agent(quick_think_llm: str, llm):
         response = chain.invoke(state.get("messages", []))
 
         flowsheet_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        require_sections(
+            flowsheet_markdown,
+            ["Flowsheet Summary", "Units", "Connections", "Overall Description"],
+            "Flowsheet design report",
+        )
+        require_table_headers(
+            flowsheet_markdown,
+            ["ID", "Name", "Type", "Description"],
+            "Flowsheet units table",
+        )
+        require_table_headers(
+            flowsheet_markdown,
+            ["ID", "Stream", "From", "To", "Description"],
+            "Flowsheet connections table",
+        )
 
         print(f"Synthesized flowsheet for {selected_concept_title}.")
         print("---")
@@ -42,6 +58,7 @@ def create_designer_agent(quick_think_llm: str, llm):
                 "markdown": flowsheet_markdown,
                 "concept": selected_concept_title,
             },
+            "designer_report": flowsheet_markdown,
             "messages": [response],
         }
 

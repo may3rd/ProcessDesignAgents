@@ -46,11 +46,11 @@ def select_shallow_thinking_agent(console: Console, provider: str="openrouter") 
             ("Gemini 2.5 Flash - Adaptive thinking, cost efficiency", "gemini-2.5-flash-preview-05-20"),
         ],
         "openrouter": [
+            ("Gemini 2.5 Flash Lite - Cost efficiency and low latency","google/gemini-2.5-flash-lite"),
+            ("Gemini 2.5 Flash - Adaptive thinking, cost efficiency","google/gemini-2.5-flash"),
             ("Meta: Llama 4 Scout", "meta-llama/llama-4-scout:free"),
             ("Meta: Llama 3.3 8B Instruct - A lightweight and ultra-fast variant of Llama 3.3 70B", "meta-llama/llama-3.3-8b-instruct:free"),
             ("google/gemini-2.0-flash-exp:free - Gemini Flash 2.0 offers a significantly faster time to first token", "google/gemini-2.0-flash-exp:free"),
-            ("Gemini 2.5 Flash - Adaptive thinking, cost efficiency","google/gemini-2.5-flash"),
-            ("Gemini 2.5 Flash Lite - Cost efficiency and low latency","google/gemini-2.5-flash-lite"),
         ],
         "ollama": [
             ("llama3.1 local", "llama3.1"),
@@ -111,10 +111,10 @@ def select_deep_thinking_agent(console: Console, provider: str="openrouter") -> 
             ("Gemini 2.5 Pro", "gemini-2.5-pro-preview-06-05"),
         ],
         "openrouter": [
+            ("Grok 4 Fast - best of its kind model.", "x-ai/grok-4-fast"),
             ("DeepSeek V3 - a 685B-parameter, mixture-of-experts model", "deepseek/deepseek-chat-v3-0324:free"),
             ("Deepseek - latest iteration of the flagship chat model family from the DeepSeek team.", "deepseek/deepseek-chat-v3-0324:free"),
             ("Gemini 2.5 Pro - latest iteration of the flagship chat model family from the Gemini team.", "google/gemini-2.5-pro-preview-06-05"),
-            ("Grok 4 Fast - best of its kind model.", "x-ai/grok-4-fast")
         ],
         "ollama": [
             ("llama3.1 local", "llama3.1"),

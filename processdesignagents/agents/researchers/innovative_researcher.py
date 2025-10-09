@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.markdown_validators import require_heading_prefix
 from dotenv import load_dotenv
 import json
 import re
@@ -9,7 +10,7 @@ import re
 load_dotenv()
 
 
-def create_innovative_researcher(quick_think_llm: str, llm):
+def create_innovative_researcher(llm):
     def innovative_researcher(state: DesignState) -> DesignState:
         """Innovative Researcher: Proposes novel process concepts using LLM."""
         print("\n=========================== Innovative Research Concepts ===========================\n")
@@ -27,7 +28,10 @@ def create_innovative_researcher(quick_think_llm: str, llm):
         response = chain.invoke(state.get("messages", []))
 
         research_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        require_heading_prefix(research_markdown, "Concept", "Innovative concepts report")
         concept_names = _extract_concept_names(research_markdown)
+        if len(concept_names) < 3:
+            raise ValueError("Innovative concepts report must include at least three concept sections.")
 
         print("Generated innovative research concepts.")
         print("\n--- Concept Names ---")
@@ -42,6 +46,7 @@ def create_innovative_researcher(quick_think_llm: str, llm):
                 "markdown": research_markdown,
                 "concept_names": concept_names,
             },
+            "innovative_research_report": research_markdown,
             "messages": [response],
         }
 

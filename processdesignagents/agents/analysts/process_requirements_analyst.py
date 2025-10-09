@@ -1,10 +1,11 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.markdown_validators import require_sections, require_table_headers
 from dotenv import load_dotenv
 
 load_dotenv()
 
-def create_process_requiruments_analyst(quick_think_llm: str, llm):
+def create_process_requiruments_analyst(llm):
   def process_requirements_analyst(state: DesignState) -> DesignState:
       """Process Requirements Analyst: Extracts key design requirements using LLM."""
       print("\n=========================== Problem ===========================\n")
@@ -29,11 +30,22 @@ def create_process_requiruments_analyst(quick_think_llm: str, llm):
       # response = llm.invoke(system_message, model=quick_think_llm, temperature=0.7)
       
       requirements_markdown = response.content if isinstance(response.content, str) else str(response.content)
+      require_sections(
+          requirements_markdown,
+          ["Objective", "Capacity", "Components", "Purity Target", "Constraints & Assumptions"],
+          "Requirements briefing",
+      )
+      require_table_headers(
+          requirements_markdown,
+          ["Parameter", "Value", "Units", "Basis"],
+          "Requirements capacity table",
+      )
 
       print(f"Extracted requirements (markdown).\n{requirements_markdown}")
       
       return {
         "requirements": {"markdown": requirements_markdown},
+        "process_requirements_report": requirements_markdown,
         "messages": [response]
       }
   return process_requirements_analyst
@@ -61,7 +73,8 @@ Your goal is to act as a Process Requirement Analyst. You must read the provided
 # NEGATIVES:
     * **Capacity** row must always include a numeric value; if absent, estimate a reasonable default and note the assumption.
     * **Purity Target** should never be left blank—use `Not specified` and explain why if no data exists.
-
+    * Do not output the compound name, e.g. Air, instead report the chemical compostion names, e.g. Hydrogen, Oxygen, Carbon Dioxide, etc.
+    
 # MARKDOWN TEMPLATE:
 Your Markdown output must follow this structure:
 ## Objective
@@ -74,8 +87,8 @@ Your Markdown output must follow this structure:
 | Throughput | <value or `Not specified`> | kg/h | <basis or `Not specified`> |
 
 ## Components
-- <Component 1 and role>
-- <Component 2 and role>
+- <Component 1>
+- <Component 2>
 - ...
 
 ## Purity Target

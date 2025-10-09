@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from processdesignagents.default_config import DEFAULT_CONNFIG
 from .setup import GraphSetup
 from .propagator import Propagator
+from langgraph.checkpoint.memory import MemorySaver
 
 load_dotenv()
 
@@ -48,11 +49,12 @@ class ProcessDesignGraph:
         else:
             raise ValueError(f"Unsupported LLM provider: {self.config['llm_provider']}")
 
+        self.checkpointer = MemorySaver()
+
         self.graph_setup = GraphSetup(
-            self.config["quick_think_llm"],
-            self.config["deep_think_llm"],
-            self.deep_thinking_llm,
             self.quick_thinking_llm,
+            self.deep_thinking_llm,
+            checkpointer=self.checkpointer,
         )
         
         self.propagator = Propagator()
@@ -83,6 +85,7 @@ class ProcessDesignGraph:
         else:
             # Run the graph
             final_state = self.graph.invoke(init_agent_state, **args)
+            print(f"=========================== Finish Line ===========================")
         
         # Store current state for reflection
         self.curr_state = final_state

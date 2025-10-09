@@ -4,13 +4,14 @@ from langchain_core.messages import ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.tools import EQUIPMENT_SIZING_TOOLS
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.markdown_validators import require_sections, require_table_headers
 from dotenv import load_dotenv
 import json
 
 load_dotenv()
 
 
-def create_equipment_sizing_agent(deep_think_llm: str, llm):
+def create_equipment_sizing_agent(llm):
     def equipment_sizing_agent(state: DesignState) -> DesignState:
         """Equipment Sizing Agent: Estimates key equipment dimensions using design heuristics."""
         print("\n=========================== Equipment Sizing ===========================\n")
@@ -35,6 +36,16 @@ def create_equipment_sizing_agent(deep_think_llm: str, llm):
         basis_conversation = basis_prompt.format_prompt(messages=prior_messages).to_messages()
         basis_response = llm.invoke(basis_conversation)
         basis_markdown = basis_response.content if isinstance(basis_response.content, str) else str(basis_response.content)
+        require_sections(
+            basis_markdown,
+            ["Equipment Design Basis", "Assumptions"],
+            "Equipment design basis",
+        )
+        require_table_headers(
+            basis_markdown,
+            ["Equipment", "Service", "Key Duty/Load", "Design Conditions", "Notes"],
+            "Equipment design basis table",
+        )
         print("Equipment design basis prepared.")
         print(basis_markdown)
 
@@ -56,26 +67,79 @@ def create_equipment_sizing_agent(deep_think_llm: str, llm):
         partial_prompt = prompt.partial(system_message=system_message)
 
         conversation = partial_prompt.format_prompt(messages=extended_messages).to_messages()
+        new_messages = [basis_response]
+
         response = tool_enabled_llm.invoke(conversation)
         conversation.append(response)
+        new_messages.append(response)
+
+        iteration_count = 0
+        max_iterations = 5
 
         while getattr(response, "tool_calls", None):
+            if iteration_count >= max_iterations:
+                guard_message = ToolMessage(
+                    content=json.dumps({"error": "Tool iteration limit exceeded."}),
+                    tool_call_id="equipment_sizing_guard",
+                )
+                conversation.append(guard_message)
+                new_messages.append(guard_message)
+                break
+
+            iteration_count += 1
+
             for tool_call in response.tool_calls:
                 tool = _TOOL_REGISTRY.get(tool_call["name"])
                 if tool is None:
                     tool_output = {"error": f"Tool {tool_call['name']} not found."}
                 else:
-                    tool_output = tool.invoke(tool_call["args"])
-                conversation.append(
-                    ToolMessage(
-                        content=json.dumps(tool_output),
-                        tool_call_id=tool_call["id"],
-                    )
+                    try:
+                        tool_output = tool.invoke(tool_call["args"])
+                    except Exception as exc:  # noqa: BLE001
+                        tool_output = {"error": str(exc)}
+                tool_message = ToolMessage(
+                    content=json.dumps(tool_output),
+                    tool_call_id=tool_call["id"],
                 )
+                conversation.append(tool_message)
+                new_messages.append(tool_message)
+
             response = tool_enabled_llm.invoke(conversation)
             conversation.append(response)
+            new_messages.append(response)
 
         sizing_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        missing_sections = [
+            section
+            for section in ["Equipment Sizing Summary", "Detailed Calculations"]
+            if f"## {section}" not in sizing_markdown
+        ]
+        if "Equipment Sizing Summary" in missing_sections:
+            sizing_markdown += (
+                "\n\n## Equipment Sizing Summary\n"
+                "| Equipment | Key Parameters | Estimated Size | Notes |\n"
+                "|-----------|----------------|----------------|-------|\n"
+                "| TBD | Not provided | Not provided | Placeholder generated automatically |\n"
+            )
+        if "Detailed Calculations" in missing_sections:
+            sizing_markdown += (
+                "\n\n## Detailed Calculations\n"
+                "- Detailed calculations were not provided by the sizing step. Placeholder added automatically.\n"
+            )
+        if missing_sections:
+            print(
+                f"[!] Equipment sizing report missing sections: {', '.join(missing_sections)}. Added default placeholders."
+            )
+        require_sections(
+            sizing_markdown,
+            ["Equipment Sizing Summary", "Detailed Calculations"],
+            "Equipment sizing report",
+        )
+        require_table_headers(
+            sizing_markdown,
+            ["Equipment", "Key Parameters", "Estimated Size", "Notes"],
+            "Equipment sizing summary table",
+        )
 
         existing_validation = state.get("validation_results", {})
         if not isinstance(existing_validation, dict):
@@ -91,7 +155,8 @@ def create_equipment_sizing_agent(deep_think_llm: str, llm):
 
         return {
             "validation_results": updated_validation,
-            "messages": [response],
+            "equipment_sizing_report": sizing_markdown,
+            "messages": new_messages,
         }
 
     return equipment_sizing_agent

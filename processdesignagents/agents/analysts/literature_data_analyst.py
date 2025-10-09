@@ -3,6 +3,7 @@ from __future__ import annotations
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import pubchempy as pcp
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.markdown_validators import require_sections
 from dotenv import load_dotenv
 import json
 import re
@@ -10,7 +11,7 @@ import re
 load_dotenv()
 
 
-def create_literature_data_analyst(quick_think_llm: str, llm):
+def create_literature_data_analyst(llm):
     def literature_data_analyst(state: DesignState) -> DesignState:
         """Literature and Data Analyst: Extracts components from markdown requirements and fetches PubChem data."""
         print("\n=========================== Component List ===========================\n")
@@ -36,6 +37,7 @@ def create_literature_data_analyst(quick_think_llm: str, llm):
 
         response = chain.invoke(state.get("messages", []))
         response_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        require_sections(response_markdown, ["Components", "Rationale"], "Literature component summary")
 
         components = _extract_components_from_markdown(response_markdown)
         if not components:
@@ -67,6 +69,7 @@ def create_literature_data_analyst(quick_think_llm: str, llm):
 
         return {
             "literature_data": literature_payload,
+            "literature_data_report": response_markdown,
             "messages": [response],
         }
 

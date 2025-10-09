@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.markdown_validators import require_heading_prefix, require_sections
 from dotenv import load_dotenv
 import json
 
 load_dotenv()
 
 
-def create_safety_risk_analyst(deep_think_llm: str, llm):
+def create_safety_risk_analyst(llm):
     def safety_risk_analyst(state: DesignState) -> DesignState:
         """Safety and Risk Analyst: Performs HAZOP-inspired risk assessment on optimized flowsheet."""
         print("\n=========================== Safety and Risk Assessment ===========================\n")
@@ -33,6 +34,8 @@ def create_safety_risk_analyst(deep_think_llm: str, llm):
         response = chain.invoke(state.get("messages", []))
 
         risk_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        require_heading_prefix(risk_markdown, "Hazard", "Risk assessment report")
+        require_sections(risk_markdown, ["Overall Assessment"], "Risk assessment report")
 
         print("Risk assessment generated (markdown).")
         print(risk_markdown)
@@ -47,6 +50,7 @@ def create_safety_risk_analyst(deep_think_llm: str, llm):
 
         return {
             "validation_results": updated_validation_results,
+            "safety_risk_analyst_report": risk_markdown,
             "messages": [response],
         }
 
@@ -86,18 +90,14 @@ Your Markdown must follow this structure exactly:
 ```
 ## Hazard 1: <Hazard Title>
 **Severity:** <1-5>
- - Personel: <1-5>
- - Economic: <1-5>
- - Environmental: <1-5>
- - Regulatory: <1-5>
 **Likelihood:** <1-5>
 **Risk Score:** <integer>
 
-### Caurses
+### Causes
 - <cause 1>
 - <cause 2>
 
-### Consuquenses
+### Consequences
 - <consequence 1>
 - <consequence 2>
 

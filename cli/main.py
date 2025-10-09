@@ -2,6 +2,7 @@ from datetime import datetime
 import typer
 from pathlib import Path
 from functools import wraps
+from typing import List
 from rich.console import Console
 
 from rich.panel import Panel
@@ -48,8 +49,9 @@ class MessageBuffer:
             "Innovative Researcher": "pending",
             "Conservative Researcher": "pending",
             # Designer Team
-            "Designer": "pending",
+            "Designer Agent": "pending",
             "Process Simulator": "pending",
+            "Equipment Sizing Agent": "pending",
             # Lead Process Design Engineer
             "Safety Risk Analyst": "pending",
             "Project Manager": "pending"
@@ -62,6 +64,7 @@ class MessageBuffer:
             "conservative_research_report": None,
             "designer_report": None,
             "process_simulator_report": None,
+            "equipment_sizing_report": None,
             "safety_risk_analyst_report": None,
             "project_manager_report": None,
         }
@@ -105,6 +108,7 @@ class MessageBuffer:
                 "conservative_research_report": "Conservative Research Report",
                 "designer_report": "Designer Report",
                 "process_simulator_report": "Process Simulator Report",
+                "equipment_sizing_report": "Equipment Sizing Report",
                 "safety_risk_analyst_report": "Safety Risk Analyst Report",
                 "project_manager_report": "Project Manager Report",
             }
@@ -160,6 +164,7 @@ class MessageBuffer:
             for section in [
                 "designer_report",
                 "process_simulator_report",
+                "equipment_sizing_report",
             ]
         ):
             report_parts.append("## Designer Team Reports")
@@ -170,6 +175,10 @@ class MessageBuffer:
             if self.report_sections["process_simulator_report"]:
                 report_parts.append(
                     f"### Process Simulator Report\n{self.report_sections['process_simulator_report']}"
+                )
+            if self.report_sections["equipment_sizing_report"]:
+                report_parts.append(
+                    f"### Equipment Sizing Report\n{self.report_sections['equipment_sizing_report']}"
                 )
 
         # Lead Process Design Engineer Reports
@@ -242,7 +251,7 @@ def update_display(layout, snippet_text=None):
     teams = {
         "Analyst Team": ["Process Requirement Analyst", "Literature Data Analyst"],
         "Research Team": ["Innovative Researcher", "Conservative Researcher"],
-        "Designer Team": ["Designer Agent", "Process Simulator"],
+        "Designer Team": ["Designer Agent", "Process Simulator", "Equipment Sizing Agent"],
         "Lead Process Design Engineer": ["Safety Risk Analyst", "Project Manager"],
     }
     
@@ -326,7 +335,7 @@ def update_display(layout, snippet_text=None):
                     if item.get("type") == "text":
                         text_parts.append(item.get("text", ""))
                     elif item.get("type") == "tool_use":
-                        text_parts.append(f"[Tool: {item.get("name", "unkonwn")}]")
+                        text_parts.append(f"[Tool: {item.get('name', 'unknown')}]")
                 else:
                     text_parts.append(str(item))
             content_str = " ".join(text_parts)
@@ -468,11 +477,93 @@ def get_problem_statement(console: Console):
 
 
 def display_complete_report(final_state):
-    pass
+    """Display the complete analysis report using Rich panels."""
+    console.print("\n[bold green]Complete Analysis Report[/bold green]\n")
+
+    team_sections = [
+        (
+            "Analyst Team Reports",
+            [
+                ("process_requirements_report", "Process Requirements Report"),
+                ("literature_data_report", "Literature Data Report"),
+            ],
+        ),
+        (
+            "Research Team Reports",
+            [
+                ("innovative_research_report", "Innovative Research Report"),
+                ("conservative_research_report", "Conservative Research Report"),
+            ],
+        ),
+        (
+            "Designer Team Reports",
+            [
+                ("designer_report", "Designer Report"),
+                ("process_simulator_report", "Process Simulator Report"),
+                ("equipment_sizing_report", "Equipment Sizing Report"),
+            ],
+        ),
+        (
+            "Lead Process Design Engineer Reports",
+            [
+                ("safety_risk_analyst_report", "Safety Risk Analyst Report"),
+                ("project_manager_report", "Project Manager Report"),
+            ],
+        ),
+    ]
+
+    found_any = False
+
+    for team_title, sections in team_sections:
+        rendered_sections = []
+        for key, title in sections:
+            report_content = final_state.get(key) or message_buffer.report_sections.get(key)
+            if report_content:
+                rendered_sections.append(
+                    Panel(
+                        Markdown(report_content),
+                        title=title,
+                        border_style="blue",
+                        padding=(1, 2),
+                    )
+                )
+        
+        if rendered_sections:
+            found_any = True
+            # Combine sections either stacked or as columns depending on count
+            if len(rendered_sections) == 1:
+                content = rendered_sections[0]
+            else:
+                content = Columns(rendered_sections, expand=True)
+            console.print(
+                Panel(
+                    content,
+                    title=team_title,
+                    border_style="green",
+                    padding=(1, 2),
+                )
+            )
+
+    if not found_any:
+        console.print(
+            Panel(
+                "No reports were generated.",
+                border_style="red",
+                padding=(1, 2),
+            )
+        )
 
 def update_research_team_status(status):
     """Update status for all research team agents."""
-    research_team = ["Innovative Researcher", "Conservative Researcher", "Designer Agent", "Process Simulator", "Lead Process Design Engineer", "Project Manager"]
+    research_team = [
+        "Innovative Researcher",
+        "Conservative Researcher",
+        "Designer Agent",
+        "Process Simulator",
+        "Equipment Sizing Agent",
+        "Safety Risk Analyst",
+        "Project Manager",
+    ]
     for agent in research_team:
         message_buffer.update_agent_status(agent, status)
 
@@ -593,7 +684,6 @@ def run_analysis():
         
         # Stream the analysis
         trace = []
-        
         for chunk in graph.graph.stream(init_agent_state, **args):
             if len(chunk.get("messages", [])) > 0:
                 # Get the last message from the chunk
@@ -640,12 +730,80 @@ def run_analysis():
                     message_buffer.update_agent_status("Literature Data Analyst", "completed")
                     # Set next agent to in_progress
                     message_buffer.update_agent_status("Innovative Researcher", "in_progress")
+
+                if "innovative_research_report" in chunk and chunk["innovative_research_report"]:
+                    message_buffer.update_report_section(
+                        "innovative_research_report", chunk["innovative_research_report"]
+                    )
+                    message_buffer.update_agent_status("Innovative Researcher", "completed")
+                    message_buffer.update_agent_status("Conservative Researcher", "in_progress")
+
+                if "conservative_research_report" in chunk and chunk["conservative_research_report"]:
+                    message_buffer.update_report_section(
+                        "conservative_research_report", chunk["conservative_research_report"]
+                    )
+                    message_buffer.update_agent_status("Conservative Researcher", "completed")
+                    message_buffer.update_agent_status("Designer Agent", "in_progress")
+
+                if "designer_report" in chunk and chunk["designer_report"]:
+                    message_buffer.update_report_section(
+                        "designer_report", chunk["designer_report"]
+                    )
+                    message_buffer.update_agent_status("Designer Agent", "completed")
+                    message_buffer.update_agent_status("Process Simulator", "in_progress")
+
+                if "process_simulator_report" in chunk and chunk["process_simulator_report"]:
+                    message_buffer.update_report_section(
+                        "process_simulator_report", chunk["process_simulator_report"]
+                    )
+                    message_buffer.update_agent_status("Process Simulator", "completed")
+                    message_buffer.update_agent_status("Equipment Sizing Agent", "in_progress")
+
+                if "equipment_sizing_report" in chunk and chunk["equipment_sizing_report"]:
+                    message_buffer.update_report_section(
+                        "equipment_sizing_report", chunk["equipment_sizing_report"]
+                    )
+                    message_buffer.update_agent_status("Equipment Sizing Agent", "completed")
+                    message_buffer.update_agent_status("Safety Risk Analyst", "in_progress")
+
+                if "safety_risk_analyst_report" in chunk and chunk["safety_risk_analyst_report"]:
+                    message_buffer.update_report_section(
+                        "safety_risk_analyst_report", chunk["safety_risk_analyst_report"]
+                    )
+                    message_buffer.update_agent_status("Safety Risk Analyst", "completed")
+                    message_buffer.update_agent_status("Project Manager", "in_progress")
+
+                if "project_manager_report" in chunk and chunk["project_manager_report"]:
+                    message_buffer.update_report_section(
+                        "project_manager_report", chunk["project_manager_report"]
+                    )
+                    message_buffer.update_agent_status("Project Manager", "completed")
                 
                 # Update display
                 update_display(layout)
             
             trace.append(chunk)
 
+        # Display final report
+        final_state = trace[-1]
+        
+        # Update all agent statuses to completed
+        for agent in message_buffer.agents_status:
+            message_buffer.update_agent_status(agent, "completed")
+        
+        message_buffer.add_message(
+            "Analysis", "Completed!"
+        )
+        
+        # Update final report section
+        for section in message_buffer.report_sections.keys():
+            if section in final_state:
+                message_buffer.update_report_section(section, final_state[section])
+    
+        # Display the complete Final report
+        display_complete_report(final_state)
+        
+        update_display(layout)
         
         
 @app.command()

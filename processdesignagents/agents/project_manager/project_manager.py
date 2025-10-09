@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.markdown_validators import require_sections, require_table_headers
 from dotenv import load_dotenv
 import json
 import re
@@ -9,7 +10,7 @@ import re
 load_dotenv()
 
 
-def create_project_manager(deep_think_llm: str, llm):
+def create_project_manager(llm):
     def project_manager(state: DesignState) -> DesignState:
         """Project Manager: Reviews design for approval and generates implementation plan."""
         print("\n=========================== Project Review ===========================\n")
@@ -17,9 +18,8 @@ def create_project_manager(deep_think_llm: str, llm):
         requirements_markdown = _extract_markdown(state.get("requirements", {}))
         flowsheet_markdown = _extract_markdown(state.get("flowsheet", {}))
         validation_markdown = _extract_markdown(state.get("validation_results", {}))
-        safety_and_risk_markdown = _extract_markdown(state.get("safety_and_risk_assessment", {}))
 
-        system_message = system_prompt(requirements_markdown, flowsheet_markdown, validation_markdown, safety_and_risk_markdown)
+        system_message = system_prompt(requirements_markdown, flowsheet_markdown, validation_markdown)
 
         prompt = ChatPromptTemplate.from_messages([
             ("system", "{system_message}"),
@@ -30,16 +30,34 @@ def create_project_manager(deep_think_llm: str, llm):
         response = chain.invoke(state.get("messages", []))
 
         approval_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        require_sections(
+            approval_markdown,
+            ["Executive Summary", "Financial Outlook", "Implementation Plan", "Final Notes"],
+            "Project manager approval report",
+        )
+        require_table_headers(
+            approval_markdown,
+            ["Metric", "Estimate"],
+            "Project financial outlook table",
+        )
         approval_status = _extract_status(approval_markdown)
 
         print(f"Project review completed. Status: {approval_status or 'Unknown'}")
         print(approval_markdown)
 
+        existing_approval = state.get("approval", {})
+        if not isinstance(existing_approval, dict):
+            existing_approval = {}
+
+        updated_approval = {
+            **existing_approval,
+            "markdown": approval_markdown,
+            "status": approval_status,
+        }
+
         return {
-            "approval": {
-                "markdown": approval_markdown,
-                "status": approval_status,
-            },
+            "approval": updated_approval,
+            "project_manager_report": approval_markdown,
             "messages": [response],
         }
 
@@ -48,8 +66,19 @@ def create_project_manager(deep_think_llm: str, llm):
 
 def _extract_markdown(section: object) -> str:
     if isinstance(section, dict):
-        if "markdown" in section and isinstance(section["markdown"], str):
-            return section["markdown"]
+        collected = []
+        for key, title in (
+            ("markdown", "Summary"),
+            ("stream_summary_markdown", "Stream Summary"),
+            ("design_basis_markdown", "Design Basis"),
+            ("equipment_sizing_markdown", "Equipment Sizing"),
+            ("risk_assessment_markdown", "Risk Assessment"),
+        ):
+            value = section.get(key)
+            if isinstance(value, str):
+                collected.append(f"## {title}\n{value}")
+        if collected:
+            return "\n\n".join(collected)
         return json.dumps(section, indent=2, default=str)
     if isinstance(section, str):
         return section
@@ -63,7 +92,7 @@ def _extract_status(markdown_text: str) -> str | None:
     return None
 
 
-def system_prompt(requirements_markdown: str, flowsheet_markdown: str, validation_markdown: str, safety_and_risk_markdown: str) -> str:
+def system_prompt(requirements_markdown: str, flowsheet_markdown: str, validation_markdown: str) -> str:
     return f"""
 # ROLE
 You are the project manager responsible for final stage-gate approval of the process design.
@@ -105,9 +134,6 @@ Return a Markdown report with the following structure:
 
 **VALIDATION RESULTS (Markdown):**
 {validation_markdown}
-
-**SAFETY AND RISK ASSESSMENT (Markdown):**
-{safety_and_risk_markdown}
 
 # FINAL MARKDOWN OUTPUT:
 """

@@ -9,7 +9,7 @@ import re
 load_dotenv()
 
 
-def create_conservative_researcher(quick_think_llm: str, llm):
+def create_conservative_researcher(llm):
     def conservative_researcher(state: DesignState) -> DesignState:
         """Conservative Researcher: Critiques concepts for practicality using LLM."""
         print("\n=========================== Conservatively Critiqued Concepts ===========================\n")
@@ -27,13 +27,28 @@ def create_conservative_researcher(quick_think_llm: str, llm):
 
         critique_markdown = response.content if isinstance(response.content, str) else str(response.content)
         concept_blocks = _split_concept_sections(critique_markdown)
+        if not concept_blocks:
+            raise ValueError("Conservative critique report must include at least one concept section.")
 
         print("Applied conservative critiques to research concepts.")
         if not concept_blocks:
             print("- No concept sections detected")
         for title, block in concept_blocks.items():
-            score = _extract_score(block)
-            risks = _extract_bullets(block, heading="Risks")
+            normalized_block = block
+            missing_sections = []
+            if "### Risks" not in normalized_block:
+                missing_sections.append("Risks")
+                normalized_block += "\n\n### Risks\n- Not provided by conservative reviewer.\n"
+            if "### Recommendations" not in normalized_block:
+                missing_sections.append("Recommendations")
+                normalized_block += "\n\n### Recommendations\n- Not provided by conservative reviewer.\n"
+            if missing_sections:
+                print(
+                    f"[!] Concept '{title}' missing sections: {', '.join(missing_sections)}. Added default placeholders."
+                )
+                concept_blocks[title] = normalized_block
+            score = _extract_score(normalized_block)
+            risks = _extract_bullets(normalized_block, heading="Risks")
             print(f"---\nConcept: {title}")
             print(f"Risks: {', '.join(risks) if risks else 'N/A'}")
             print(f"Feasibility Score: {score if score is not None else 'N/A'}")
@@ -43,6 +58,7 @@ def create_conservative_researcher(quick_think_llm: str, llm):
                 "markdown": critique_markdown,
                 "concepts": concept_blocks,
             },
+            "conservative_research_report": critique_markdown,
             "messages": [response],
         }
 

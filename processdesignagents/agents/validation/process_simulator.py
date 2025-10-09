@@ -4,6 +4,7 @@ from typing import Dict, Any
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.markdown_validators import require_sections, require_table_headers
 from dotenv import load_dotenv
 import json
 import re
@@ -11,7 +12,7 @@ import re
 load_dotenv()
 
 
-def create_process_simulator(deep_think_llm: str, llm):
+def create_process_simulator(llm):
     def process_simulator(state: DesignState) -> DesignState:
         """Process Simulator: Generates preliminary Heat and Material Balance (H&MB) from flowsheet."""
         print("\n=========================== Create Prelim H&MB ===========================")
@@ -29,13 +30,26 @@ def create_process_simulator(deep_think_llm: str, llm):
         response = chain.invoke(state.get("messages", []))
 
         simulation_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        require_sections(simulation_markdown, ["Stream Summary"], "Heat & Material Balance")
+        require_table_headers(
+            simulation_markdown,
+            [("Property", "Parameter", "Condition"), "Stream"],
+            "Heat & Material Balance table",
+        )
 
         print(simulation_markdown)
 
+        existing_validation = state.get("validation_results", {})
+        if not isinstance(existing_validation, dict):
+            existing_validation = {}
+        updated_validation = {
+            **existing_validation,
+            "stream_summary_markdown": simulation_markdown,
+        }
+
         return {
-            "validation_results": {
-                "stream_summary_markdown": simulation_markdown,
-            },
+            "validation_results": updated_validation,
+            "process_simulator_report": simulation_markdown,
             "messages": [response],
         }
 
