@@ -30,23 +30,15 @@ def create_process_requiruments_analyst(llm):
       # response = llm.invoke(system_message, model=quick_think_llm, temperature=0.7)
       
       requirements_markdown = response.content if isinstance(response.content, str) else str(response.content)
-      require_sections(
-          requirements_markdown,
-          ["Objective", "Capacity", "Components", "Purity Target", "Constraints & Assumptions"],
-          "Requirements briefing",
-      )
-      require_table_headers(
-          requirements_markdown,
-          ["Parameter", "Value", "Units", "Basis"],
-          "Requirements capacity table",
-      )
 
       print(f"Extracted requirements (markdown).\n{requirements_markdown}")
+      
+      messages_to_return = response
       
       return {
         "requirements": {"markdown": requirements_markdown},
         "process_requirements_report": requirements_markdown,
-        "messages": [response]
+        "messages": ["Process Requirement Analyst - Completed"]
       }
   return process_requirements_analyst
 
@@ -56,7 +48,7 @@ def system_prompt(problem_statement: str) -> str:
 You are an expert Senior Process Engineer with 20 years of experience in conceptual process design and requirement analysis. Your task is to meticulously analyze a chemical process design problem and extract key parameters.
 
 # TASK:
-Your goal is to act as a Process Requirement Analyst. You must read the provided problem statement, identify all critical process parameters, and structure them into a concise Markdown briefing.
+Your goal is to act as a Process Requirements Analyst. You must read the provided problem statement, identify all critical process parameters enough for design basis, and structure them into a concise Markdown briefing.
 
 # INSTRUCTIONS:
 1.  **Analyze Carefully:** Read the entire 'PROBLEM STATEMENT' below. Identify all specified and implied process requirements.
@@ -72,8 +64,7 @@ Your goal is to act as a Process Requirement Analyst. You must read the provided
 
 # NEGATIVES:
     * **Capacity** row must always include a numeric value; if absent, estimate a reasonable default and note the assumption.
-    * **Purity Target** should never be left blank—use `Not specified` and explain why if no data exists.
-    * Do not output the compound name, e.g. Air, instead report the chemical compostion names, e.g. Hydrogen, Oxygen, Carbon Dioxide, etc.
+    * **Components** do not output the compound name, e.g. Air, instead report the chemical compostion names, e.g. Hydrogen, Oxygen, Carbon Dioxide, etc.
     
 # MARKDOWN TEMPLATE:
 Your Markdown output must follow this structure:
@@ -82,16 +73,15 @@ Your Markdown output must follow this structure:
 - Key drivers: <text or `Not specified`>
 
 ## Capacity
-| Parameter | Value | Units | Basis |
-|-----------|-------|-------|-------|
-| Throughput | <value or `Not specified`> | kg/h | <basis or `Not specified`> |
+The design capacity of <process unit> is <value or `Not specified`> <unit of measurement or `Not specified`> <basis or `Not specified`>.
 
 ## Components
+The chemical components involved in the process are:
 - <Component 1>
 - <Component 2>
 - ...
 
-## Purity Target
+## Purity Target <Optional>
 - Component: <name or `Not specified`>
 - Value: <percentage or `Not specified`>
 
@@ -110,16 +100,15 @@ Your Markdown output must follow this structure:
 - Key drivers: Maintain catalyst activity (Sulfuric Acid) while maximizing conversion
 
 ## Capacity
-| Parameter | Value | Units | Basis |
-|-----------|-------|-------|-------|
-| Throughput | 1500.0 | kg/h | Ethyl Acetate product sent to storage |
+The design capacity of high-purity Ethyl Acetate plant is 1500.0 kg/h based on EA product to storage tank.
 
 ## Components
-- Ethanol — Reactant
-- Acetic Acid — Reactant
-- Ethyl Acetate — Product
-- Water — Byproduct
-- Sulfuric Acid — Catalyst
+The chemical components involved in the process are:
+- Ethanol
+- Acetic Acid
+- Ethyl Acetate
+- Water
+- Sulfuric Acid
 
 ## Purity Target
 - Component: Ethyl Acetate

@@ -51,7 +51,7 @@ class GraphSetup:
         
         # Set entry point
         graph.set_entry_point("process_requirements_analyst")
-        graph.add_edge("process_requirements_analyst", "literature_data_analyst")
+        # graph.add_edge("process_requirements_analyst", "literature_data_analyst")
         graph.add_edge("literature_data_analyst", "innovative_researcher")
         graph.add_edge("innovative_researcher", "conservative_researcher")
         graph.add_edge("conservative_researcher", "designer_agent")
@@ -62,7 +62,7 @@ class GraphSetup:
         graph.add_edge("safety_risk_analyst", "project_manager")
         graph.add_edge("project_manager", END)
         
-        # graph.add_edge("process_requirements_analyst", END)
+        graph.add_edge("process_requirements_analyst", END)
         # graph.add_edge("literature_data_analyst", END)
         # graph.add_edge("innovative_researcher", END)
         # graph.add_edge("conservative_researcher", END)

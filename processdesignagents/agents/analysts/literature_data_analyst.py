@@ -66,11 +66,13 @@ def create_literature_data_analyst(llm):
             "component_data": literature_data,
             "markdown": response_markdown,
         }
+        
+        messages_to_return = response
 
         return {
             "literature_data": literature_payload,
             "literature_data_report": response_markdown,
-            "messages": [response],
+            "messages": ["Literature Data Analyst - Completed"],
         }
 
     return literature_data_analyst
