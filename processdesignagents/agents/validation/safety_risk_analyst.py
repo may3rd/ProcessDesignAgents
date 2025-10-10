@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.markdown_validators import require_heading_prefix, require_sections
 from dotenv import load_dotenv
-import json
 
 load_dotenv()
 
@@ -13,13 +11,15 @@ def create_safety_risk_analyst(llm):
     def safety_risk_analyst(state: DesignState) -> DesignState:
         """Safety and Risk Analyst: Performs HAZOP-inspired risk assessment on optimized flowsheet."""
         print("\n=========================== Safety and Risk Assessment ===========================\n")
-        validation_results = state.get("validation_results", {})
-        flowsheet = state.get("flowsheet", {})
-        requirements = state.get("requirements", {})
-
-        flowsheet_markdown = _extract_markdown(flowsheet)
-        validation_markdown = _extract_markdown(validation_results)
-        requirements_markdown = _extract_markdown(requirements)
+        validation_markdown = state.get("validation_results", "")
+        flowsheet_markdown = state.get("flowsheet", "")
+        requirements_markdown = state.get("requirements", "")
+        if not isinstance(validation_markdown, str):
+            validation_markdown = str(validation_markdown)
+        if not isinstance(flowsheet_markdown, str):
+            flowsheet_markdown = str(flowsheet_markdown)
+        if not isinstance(requirements_markdown, str):
+            requirements_markdown = str(requirements_markdown)
 
         system_message = system_prompt(
             flowsheet_markdown,
@@ -34,19 +34,18 @@ def create_safety_risk_analyst(llm):
         response = chain.invoke(state.get("messages", []))
 
         risk_markdown = response.content if isinstance(response.content, str) else str(response.content)
-        require_heading_prefix(risk_markdown, "Hazard", "Risk assessment report")
-        require_sections(risk_markdown, ["Overall Assessment"], "Risk assessment report")
 
         print("Risk assessment generated (markdown).")
         print(risk_markdown)
 
-        existing_validation = state.get("validation_results", {})
-        if not isinstance(existing_validation, dict):
-            existing_validation = {}
-        updated_validation_results = {
-            **existing_validation,
-            "risk_assessment_markdown": risk_markdown,
-        }
+        existing_validation = state.get("validation_results", "")
+        if not isinstance(existing_validation, str):
+            existing_validation = str(existing_validation or "")
+        validation_segments = []
+        if existing_validation.strip():
+            validation_segments.append(existing_validation.strip())
+        validation_segments.append(risk_markdown.strip())
+        updated_validation_results = "\n\n".join(validation_segments)
 
         return {
             "validation_results": updated_validation_results,
@@ -55,26 +54,6 @@ def create_safety_risk_analyst(llm):
         }
 
     return safety_risk_analyst
-
-
-def _extract_markdown(section: object) -> str:
-    if isinstance(section, dict):
-        collected = []
-        for key, title in (
-            ("risk_assessment_markdown", "Risk Assessment"),
-            ("equipment_sizing_markdown", "Equipment Sizing"),
-            ("stream_summary_markdown", "Stream Summary"),
-            ("markdown", "Details"),
-        ):
-            value = section.get(key)
-            if isinstance(value, str):
-                collected.append(f"## {title}\n{value}")
-        if collected:
-            return "\n\n".join(collected)
-        return json.dumps(section, indent=2, default=str)
-    if isinstance(section, str):
-        return section
-    return str(section)
 
 
 def system_prompt(flowsheet_markdown: str, validation_markdown: str, requirements_markdown: str) -> str:

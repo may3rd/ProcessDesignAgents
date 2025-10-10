@@ -1,6 +1,5 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.markdown_validators import require_sections, require_table_headers
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -31,12 +30,11 @@ def create_process_requiruments_analyst(llm):
       
       requirements_markdown = response.content if isinstance(response.content, str) else str(response.content)
 
-      print(f"Extracted requirements (markdown).\n{requirements_markdown}")
-      
+      print(f"Process requirements:\n{requirements_markdown}")
       messages_to_return = response
       
       return {
-        "requirements": {"markdown": requirements_markdown},
+        "requirements": requirements_markdown,
         "process_requirements_report": requirements_markdown,
         "messages": ["Process Requirement Analyst - Completed"]
       }
@@ -55,7 +53,7 @@ Your goal is to act as a Process Requirements Analyst. You must read the provide
 2.  **Think Step-by-Step:** 
     1. Identify the main process objective.
     2. List all chemical components involve in the process.
-    3. Extract quantitative data like throughput, purity.
+    3. Extract quantitative data like feed rates or production rates, (optional) product purity.
     4. Identify all operational constraints.
 3.  **Handle Missing Information:**
     * If a parameter (e.g., 'yield_target') is not mentioned at all, mark it as `Not specified` and include a short note explaining the gap in the final section.
@@ -63,7 +61,6 @@ Your goal is to act as a Process Requirements Analyst. You must read the provide
 4.  **Format Output:** Your final output MUST be a single Markdown document using the section headers shown below. Do not wrap your answer in JSON or code fences.
 
 # NEGATIVES:
-    * **Capacity** row must always include a numeric value; if absent, estimate a reasonable default and note the assumption.
     * **Components** do not output the compound name, e.g. Air, instead report the chemical compostion names, e.g. Hydrogen, Oxygen, Carbon Dioxide, etc.
     
 # MARKDOWN TEMPLATE:

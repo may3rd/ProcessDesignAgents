@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict, Any
-
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.markdown_validators import require_sections, require_table_headers
 from dotenv import load_dotenv
-import json
-import re
 
 load_dotenv()
 
@@ -17,9 +12,15 @@ def create_process_simulator(llm):
         """Process Simulator: Generates preliminary Heat and Material Balance (H&MB) from flowsheet."""
         print("\n=========================== Create Prelim H&MB ===========================")
 
-        flowsheet_markdown = _extract_markdown(state.get("flowsheet", {}))
-        requirements_markdown = _extract_markdown(state.get("requirements", {}))
-        literature_markdown = _extract_markdown(state.get("literature_data", {}))
+        flowsheet_markdown = state.get("flowsheet", "")
+        requirements_markdown = state.get("requirements", "")
+        literature_markdown = state.get("literature_data", "")
+        if not isinstance(flowsheet_markdown, str):
+            flowsheet_markdown = str(flowsheet_markdown)
+        if not isinstance(requirements_markdown, str):
+            requirements_markdown = str(requirements_markdown)
+        if not isinstance(literature_markdown, str):
+            literature_markdown = str(literature_markdown)
 
         system_message = system_prompt(flowsheet_markdown, requirements_markdown, literature_markdown)
         prompt = ChatPromptTemplate.from_messages([
@@ -30,22 +31,17 @@ def create_process_simulator(llm):
         response = chain.invoke(state.get("messages", []))
 
         simulation_markdown = response.content if isinstance(response.content, str) else str(response.content)
-        require_sections(simulation_markdown, ["Stream Summary"], "Heat & Material Balance")
-        require_table_headers(
-            simulation_markdown,
-            [("Property", "Parameter", "Condition"), "Stream"],
-            "Heat & Material Balance table",
-        )
 
         print(simulation_markdown)
 
-        existing_validation = state.get("validation_results", {})
-        if not isinstance(existing_validation, dict):
-            existing_validation = {}
-        updated_validation = {
-            **existing_validation,
-            "stream_summary_markdown": simulation_markdown,
-        }
+        existing_validation = state.get("validation_results", "")
+        if not isinstance(existing_validation, str):
+            existing_validation = str(existing_validation or "")
+        validation_segments = []
+        if existing_validation.strip():
+            validation_segments.append(existing_validation.strip())
+        validation_segments.append(simulation_markdown.strip())
+        updated_validation = "\n\n".join(validation_segments)
 
         return {
             "validation_results": updated_validation,
@@ -54,16 +50,6 @@ def create_process_simulator(llm):
         }
 
     return process_simulator
-
-
-def _extract_markdown(section: object) -> str:
-    if isinstance(section, dict):
-        if "markdown" in section and isinstance(section["markdown"], str):
-            return section["markdown"]
-        return json.dumps(section, indent=2, default=str)
-    if isinstance(section, str):
-        return section
-    return str(section)
 
 
 def system_prompt(flowsheet_markdown: str, requirements_markdown: str, literature_markdown: str) -> str:

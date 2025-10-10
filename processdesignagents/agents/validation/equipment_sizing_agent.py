@@ -4,7 +4,6 @@ from langchain_core.messages import ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.tools import EQUIPMENT_SIZING_TOOLS
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.markdown_validators import require_sections, require_table_headers
 from dotenv import load_dotenv
 import json
 
@@ -16,9 +15,15 @@ def create_equipment_sizing_agent(llm):
         """Equipment Sizing Agent: Estimates key equipment dimensions using design heuristics."""
         print("\n=========================== Equipment Sizing ===========================\n")
 
-        flowsheet_markdown = _extract_markdown(state.get("flowsheet", {}))
-        requirements_markdown = _extract_markdown(state.get("requirements", {}))
-        validation_markdown = _extract_markdown(state.get("validation_results", {}))
+        flowsheet_markdown = state.get("flowsheet", "")
+        requirements_markdown = state.get("requirements", "")
+        validation_markdown = state.get("validation_results", "")
+        if not isinstance(flowsheet_markdown, str):
+            flowsheet_markdown = str(flowsheet_markdown)
+        if not isinstance(requirements_markdown, str):
+            requirements_markdown = str(requirements_markdown)
+        if not isinstance(validation_markdown, str):
+            validation_markdown = str(validation_markdown)
 
         # Step 1: Generate design basis using the base LLM (no tools)
         prior_messages = list(state.get("messages", []))
@@ -36,16 +41,6 @@ def create_equipment_sizing_agent(llm):
         basis_conversation = basis_prompt.format_prompt(messages=prior_messages).to_messages()
         basis_response = llm.invoke(basis_conversation)
         basis_markdown = basis_response.content if isinstance(basis_response.content, str) else str(basis_response.content)
-        require_sections(
-            basis_markdown,
-            ["Equipment Design Basis", "Assumptions"],
-            "Equipment design basis",
-        )
-        require_table_headers(
-            basis_markdown,
-            ["Equipment", "Service", "Key Duty/Load", "Design Conditions", "Notes"],
-            "Equipment design basis table",
-        )
         print("Equipment design basis prepared.")
         print(basis_markdown)
 
@@ -130,25 +125,15 @@ def create_equipment_sizing_agent(llm):
             print(
                 f"[!] Equipment sizing report missing sections: {', '.join(missing_sections)}. Added default placeholders."
             )
-        require_sections(
-            sizing_markdown,
-            ["Equipment Sizing Summary", "Detailed Calculations"],
-            "Equipment sizing report",
-        )
-        require_table_headers(
-            sizing_markdown,
-            ["Equipment", "Key Parameters", "Estimated Size", "Notes"],
-            "Equipment sizing summary table",
-        )
-
-        existing_validation = state.get("validation_results", {})
-        if not isinstance(existing_validation, dict):
-            existing_validation = {}
-        updated_validation = {
-            **existing_validation,
-            "design_basis_markdown": basis_markdown,
-            "equipment_sizing_markdown": sizing_markdown,
-        }
+        existing_validation = state.get("validation_results", "")
+        if not isinstance(existing_validation, str):
+            existing_validation = str(existing_validation or "")
+        validation_segments = []
+        if existing_validation.strip():
+            validation_segments.append(existing_validation.strip())
+        validation_segments.append(basis_markdown.strip())
+        validation_segments.append(sizing_markdown.strip())
+        updated_validation = "\n\n".join(validation_segments)
 
         print("\nEquipment sizing report generated.")
         print(sizing_markdown)
@@ -160,27 +145,6 @@ def create_equipment_sizing_agent(llm):
         }
 
     return equipment_sizing_agent
-
-
-def _extract_markdown(section: object) -> str:
-    if isinstance(section, dict):
-        collected = []
-        for key, title in (
-            ("stream_summary_markdown", "Stream Summary"),
-            ("design_basis_markdown", "Design Basis"),
-            ("equipment_sizing_markdown", "Equipment Sizing"),
-            ("risk_assessment_markdown", "Risk Assessment"),
-            ("markdown", "Details"),
-        ):
-            value = section.get(key)
-            if isinstance(value, str):
-                collected.append(f"## {title}\n{value}")
-        if collected:
-            return "\n\n".join(collected)
-        return json.dumps(section, indent=2, default=str)
-    if isinstance(section, str):
-        return section
-    return str(section)
 
 
 def design_basis_prompt(

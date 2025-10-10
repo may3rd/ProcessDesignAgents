@@ -3,10 +3,12 @@ from .utils.chat_openrouter import ChatOpenRouter
 from .utils.json_utils import extract_json_from_response
 
 from .analysts.process_requirements_analyst import create_process_requiruments_analyst
+from .analysts.design_basis_analyst import create_design_basis_analyst
 from .analysts.literature_data_analyst import create_literature_data_analyst
 from .researchers.innovative_researcher import create_innovative_researcher
 from .researchers.conservative_researcher import create_conservative_researcher
-from .designer.designer_agent import create_designer_agent
+from .researchers.concept_detailer import create_concept_detailer
+from .designer.basic_pdf_designer import create_basic_pdf_designer
 from .validation.process_simulator import create_process_simulator
 from .validation.equipment_sizing_agent import create_equipment_sizing_agent
 # from .validation.optimizer import create_optimizer
@@ -19,10 +21,12 @@ __all__ = [
     "ChatOpenRouter",
     "extract_json_from_response",
     "create_process_requiruments_analyst",
+    "create_design_basis_analyst",
     "create_literature_data_analyst",
     "create_innovative_researcher",
     "create_conservative_researcher",
-    "create_designer_agent",
+    "create_concept_detailer",
+    "create_basic_pdf_designer",
     "create_process_simulator",
     "create_equipment_sizing_agent",
     "create_safety_risk_analyst",

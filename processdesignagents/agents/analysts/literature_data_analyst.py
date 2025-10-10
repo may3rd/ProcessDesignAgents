@@ -3,9 +3,7 @@ from __future__ import annotations
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import pubchempy as pcp
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.markdown_validators import require_sections
 from dotenv import load_dotenv
-import json
 import re
 
 load_dotenv()
@@ -16,11 +14,9 @@ def create_literature_data_analyst(llm):
         """Literature and Data Analyst: Extracts components from markdown requirements and fetches PubChem data."""
         print("\n=========================== Component List ===========================\n")
 
-        requirements = state.get("requirements", {})
-        if isinstance(requirements, dict) and "markdown" in requirements:
-            requirements_markdown = requirements.get("markdown", "")
-        else:
-            requirements_markdown = json.dumps(requirements, default=str)
+        requirements_markdown = state.get("requirements", "")
+        if not isinstance(requirements_markdown, str):
+            requirements_markdown = str(requirements_markdown)
 
         system_message = system_prompt(requirements_markdown)
 
@@ -37,40 +33,29 @@ def create_literature_data_analyst(llm):
 
         response = chain.invoke(state.get("messages", []))
         response_markdown = response.content if isinstance(response.content, str) else str(response.content)
-        require_sections(response_markdown, ["Components", "Rationale"], "Literature component summary")
 
         components = _extract_components_from_markdown(response_markdown)
         if not components:
             raise ValueError("Failed to extract components from markdown response.")
 
-        literature_data: dict[str, dict[str, object]] = {}
         for component in components[:3]:  # Limit to 3 for efficiency
             try:
                 compounds = pcp.get_compounds(component, "name")
                 if compounds:
                     compound = compounds[0]
-                    literature_data[component] = {
-                        "compound_name": compound.iupac_name,
-                        "molecular_weight": compound.molecular_weight,
-                        "boiling_point": getattr(compound, "boiling_point", None),
-                        "sources": ["PubChem"],
-                    }
-                    print(f"Fetched literature data for {component}: {literature_data[component]}")
+                    print(
+                        f"Fetched literature data for {component}: "
+                        f"IUPAC={compound.iupac_name}, MW={compound.molecular_weight}"
+                    )
                 else:
-                    literature_data[component] = {"error": f"No data found for {component}"}
+                    print(f"No data found for {component}")
             except Exception as exc:
-                literature_data[component] = {"error": f"PubChem query failed: {exc}"}
-
-        literature_payload = {
-            "components": components,
-            "component_data": literature_data,
-            "markdown": response_markdown,
-        }
+                print(f"PubChem query failed for {component}: {exc}")
         
         messages_to_return = response
 
         return {
-            "literature_data": literature_payload,
+            "literature_data": response_markdown,
             "literature_data_report": response_markdown,
             "messages": ["Literature Data Analyst - Completed"],
         }

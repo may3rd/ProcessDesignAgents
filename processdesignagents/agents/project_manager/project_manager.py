@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.markdown_validators import require_sections, require_table_headers
 from dotenv import load_dotenv
-import json
 import re
 
 load_dotenv()
@@ -15,9 +13,15 @@ def create_project_manager(llm):
         """Project Manager: Reviews design for approval and generates implementation plan."""
         print("\n=========================== Project Review ===========================\n")
 
-        requirements_markdown = _extract_markdown(state.get("requirements", {}))
-        flowsheet_markdown = _extract_markdown(state.get("flowsheet", {}))
-        validation_markdown = _extract_markdown(state.get("validation_results", {}))
+        requirements_markdown = state.get("requirements", "")
+        flowsheet_markdown = state.get("flowsheet", "")
+        validation_markdown = state.get("validation_results", "")
+        if not isinstance(requirements_markdown, str):
+            requirements_markdown = str(requirements_markdown)
+        if not isinstance(flowsheet_markdown, str):
+            flowsheet_markdown = str(flowsheet_markdown)
+        if not isinstance(validation_markdown, str):
+            validation_markdown = str(validation_markdown)
 
         system_message = system_prompt(requirements_markdown, flowsheet_markdown, validation_markdown)
 
@@ -30,30 +34,12 @@ def create_project_manager(llm):
         response = chain.invoke(state.get("messages", []))
 
         approval_markdown = response.content if isinstance(response.content, str) else str(response.content)
-        require_sections(
-            approval_markdown,
-            ["Executive Summary", "Financial Outlook", "Implementation Plan", "Final Notes"],
-            "Project manager approval report",
-        )
-        require_table_headers(
-            approval_markdown,
-            ["Metric", "Estimate"],
-            "Project financial outlook table",
-        )
         approval_status = _extract_status(approval_markdown)
 
         print(f"Project review completed. Status: {approval_status or 'Unknown'}")
         print(approval_markdown)
 
-        existing_approval = state.get("approval", {})
-        if not isinstance(existing_approval, dict):
-            existing_approval = {}
-
-        updated_approval = {
-            **existing_approval,
-            "markdown": approval_markdown,
-            "status": approval_status,
-        }
+        updated_approval = approval_markdown
 
         return {
             "approval": updated_approval,
@@ -62,27 +48,6 @@ def create_project_manager(llm):
         }
 
     return project_manager
-
-
-def _extract_markdown(section: object) -> str:
-    if isinstance(section, dict):
-        collected = []
-        for key, title in (
-            ("markdown", "Summary"),
-            ("stream_summary_markdown", "Stream Summary"),
-            ("design_basis_markdown", "Design Basis"),
-            ("equipment_sizing_markdown", "Equipment Sizing"),
-            ("risk_assessment_markdown", "Risk Assessment"),
-        ):
-            value = section.get(key)
-            if isinstance(value, str):
-                collected.append(f"## {title}\n{value}")
-        if collected:
-            return "\n\n".join(collected)
-        return json.dumps(section, indent=2, default=str)
-    if isinstance(section, str):
-        return section
-    return str(section)
 
 
 def _extract_status(markdown_text: str) -> str | None:

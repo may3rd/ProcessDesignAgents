@@ -85,7 +85,7 @@ class ProcessDesignGraph:
         else:
             # Run the graph
             final_state = self.graph.invoke(init_agent_state, **args)
-            print(f"=========================== Finish Line ===========================")
+            print(f"\n=========================== Finish Line ===========================")
         
         # Store current state for reflection
         self.curr_state = final_state
@@ -99,13 +99,16 @@ class ProcessDesignGraph:
     def _log_state(self, final_state):
         """Log the final state to a JSON file."""
         self.log_state_dict = {
-            "problem_statement": final_state["problem_statement"],
-            "requirements": final_state["requirements"],
-            "literature_data": final_state["literature_data"],
-            "research_concepts": final_state["research_concepts"],
-            "flowsheet": final_state["flowsheet"],
-            "validation_results": final_state["validation_results"],
-            "approval": final_state["approval"],
+            "problem_statement": final_state.get("problem_statement", ""),
+            "requirements": final_state.get("requirements", ""),
+            "design_basis": final_state.get("design_basis", ""),
+            "literature_data": final_state.get("literature_data", ""),
+            "research_concepts": final_state.get("research_concepts", ""),
+            "selected_concept_details": final_state.get("selected_concept_details", ""),
+            "selected_concept_name": final_state.get("selected_concept_name", ""),
+            "flowsheet": final_state.get("flowsheet", ""),
+            "validation_results": final_state.get("validation_results", ""),
+            "approval": final_state.get("approval", ""),
         }
         
         # Save to file

@@ -3,7 +3,6 @@ from __future__ import annotations
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
 from dotenv import load_dotenv
-import json
 import re
 
 load_dotenv()
@@ -14,8 +13,12 @@ def create_conservative_researcher(llm):
         """Conservative Researcher: Critiques concepts for practicality using LLM."""
         print("\n=========================== Conservatively Critiqued Concepts ===========================\n")
 
-        concepts_markdown = _extract_markdown(state.get("research_concepts", {}))
-        requirements_markdown = _extract_markdown(state.get("requirements", {}))
+        concepts_markdown = state.get("research_concepts", "")
+        requirements_markdown = state.get("requirements", "")
+        if not isinstance(concepts_markdown, str):
+            concepts_markdown = str(concepts_markdown)
+        if not isinstance(requirements_markdown, str):
+            requirements_markdown = str(requirements_markdown)
         system_message = system_prompt(concepts_markdown, requirements_markdown)
 
         prompt = ChatPromptTemplate.from_messages([
@@ -36,10 +39,18 @@ def create_conservative_researcher(llm):
         for title, block in concept_blocks.items():
             normalized_block = block
             missing_sections = []
+            no_risk = False
+            no_recommendation = False
             if "### Risks" not in normalized_block:
+                no_risk = True
+            if "### Recommendations" not in normalized_block:
+                no_recommendation = True
+            if no_risk and no_recommendation:
+                continue
+            if no_risk:
                 missing_sections.append("Risks")
                 normalized_block += "\n\n### Risks\n- Not provided by conservative reviewer.\n"
-            if "### Recommendations" not in normalized_block:
+            if no_recommendation:
                 missing_sections.append("Recommendations")
                 normalized_block += "\n\n### Recommendations\n- Not provided by conservative reviewer.\n"
             if missing_sections:
@@ -49,31 +60,17 @@ def create_conservative_researcher(llm):
                 concept_blocks[title] = normalized_block
             score = _extract_score(normalized_block)
             risks = _extract_bullets(normalized_block, heading="Risks")
-            print(f"---\nConcept: {title}")
+            print(f"---\n{title}")
             print(f"Risks: {', '.join(risks) if risks else 'N/A'}")
             print(f"Feasibility Score: {score if score is not None else 'N/A'}")
 
         return {
-            "research_concepts": {
-                "markdown": critique_markdown,
-                "concepts": concept_blocks,
-            },
+            "research_concepts": critique_markdown,
             "conservative_research_report": critique_markdown,
-            "messages": [response],
+            "messages": ["Conservative Researcher - Completed"],
         }
 
     return conservative_researcher
-
-
-def _extract_markdown(section: object) -> str:
-    if isinstance(section, dict):
-        if "markdown" in section and isinstance(section["markdown"], str):
-            return section["markdown"]
-        return json.dumps(section, indent=2, default=str)
-    if isinstance(section, str):
-        return section
-    return str(section)
-
 
 def _split_concept_sections(markdown_text: str) -> dict[str, str]:
     sections: dict[str, str] = {}
@@ -145,6 +142,10 @@ For each concept, produce a section with the following structure:
 - ...
 ```
 Include exactly the same number of concept sections as provided in the input.
+
+# NEGATIVES
+
+* DO NOT output any other section, only evaluation report
 
 # DATA FOR ANALYSIS
 ---
