@@ -26,9 +26,11 @@ if __name__ == "__main__":
     print(result)
     
     # Generate and save design outputs
-    hmb = generate_hmb(result['flowsheet'], result['validation_results'])
-    pfd = generate_pfd(result['flowsheet'], result['validation_results'])
-    equipment = generate_equipment_list(result['flowsheet'])
+    basic_pdf = result.get('basic_pdf', '')
+    basic_hmb = result.get('basic_hmb_results', '')
+    hmb = generate_hmb(basic_pdf, basic_hmb)
+    pfd = generate_pfd(basic_pdf, basic_hmb)
+    equipment = generate_equipment_list(basic_pdf)
     
     hmb.to_csv('reports/hmb.csv', index=False)
     pfd.render('reports/pfd', format='png', view=False)

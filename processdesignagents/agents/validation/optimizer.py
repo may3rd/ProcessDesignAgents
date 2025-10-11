@@ -6,10 +6,12 @@ class DesignState:
     pass  # Placeholder for TypedDict alignment
 
 def optimizer(state: DesignState) -> DesignState:
-    """Optimizer: Refines flowsheet parameters to maximize yield using linear programming."""
-    validation_results = state.get("validation_results", {})
+    """Optimizer: Refines process parameters to maximize yield using linear programming."""
+    hmb_results = state.get("basic_hmb_results", {})
+    if not isinstance(hmb_results, dict):
+        hmb_results = {}
+        state["basic_hmb_results"] = hmb_results
     requirements = state.get("requirements", {})
-    flowsheet = state.get("flowsheet", {})
     
     # Create LP model
     prob = LpProblem("Process_Optimization", LpMaximize)
@@ -36,8 +38,8 @@ def optimizer(state: DesignState) -> DesignState:
         energy = 1.5 * T_val
     else:
         # Fallback to simulation values
-        optimized_yield = validation_results.get("simulated_yield", 63.2)
-        energy = validation_results.get("energy_consumption_kwh", 1500)
+        optimized_yield = hmb_results.get("simulated_yield", 63.2)
+        energy = hmb_results.get("energy_consumption_kwh", 1500)
         T_val = 1000  # Default
         S_val = 20
     
@@ -52,7 +54,7 @@ def optimizer(state: DesignState) -> DesignState:
     }
     
     # Update existing validation results
-    state["validation_results"].update(optimized_results)
+    state["basic_hmb_results"].update(optimized_results)
     print(f"Optimization results: Yield {optimized_results['optimized_yield']:.1f}%, Status: {optimized_results['optimization_status']}")
     
     # Add report saving

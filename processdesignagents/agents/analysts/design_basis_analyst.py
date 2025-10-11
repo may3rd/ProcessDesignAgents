@@ -11,7 +11,7 @@ load_dotenv()
 def create_design_basis_analyst(llm):
     def design_basis_analyst(state: DesignState) -> DesignState:
         """Design Basis Analyst: Converts requirements into a structured design basis summary."""
-        print("\n=========================== Design Basis ===========================\n")
+        print("\n# Design Basis\n")
 
         problem_statement = state.get("problem_statement", "")
         requirements_markdown = state.get("requirements", "")
@@ -77,6 +77,7 @@ Prepare a concise design basis that can guide downstream process simulation and 
 3. **Highlight Constraints:** Separate contractual/mandatory constraints from working assumptions.
 4. **Mark Unknowns:** If information is missing, state `Not specified` and explain how it affects the design.
 5. **Leverage Concept Brief:** Use the supplied concept detail to anchor feed/product definitions, major process steps, and design scope. Do not contradict the chosen concept unless the requirements force an adjustment—if they do, state the conflict in Notes & Data Gaps.
+6. **Extract Components:** List the chemical components than involve in the process, e.g. Hydrogen (H2), Oxygen (O2), Carbon Dioxide (CO2), etc.
 
 # OUTPUT FORMAT:
 Your Markdown must follow this exact structure:
@@ -100,6 +101,11 @@ Your Markdown must follow this exact structure:
 | Stream | Description | Production Rate | Quality Targets | Delivery Conditions |
 |--------|-------------|-----------------|-----------------|---------------------|
 | ... | ... | ... | ... | ... |
+
+## Components
+- <Component 1>
+- <Component 2>
+- ...
 
 ## Assumptions & Constraints
 - <Assumption or constraint 1>

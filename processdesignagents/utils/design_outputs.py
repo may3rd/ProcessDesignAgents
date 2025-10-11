@@ -1,40 +1,52 @@
 import pandas as pd
 import graphviz
-from typing import Dict, Any
-import numpy as np  # For any lingering type conversions
+from typing import Any
 
-def generate_hmb(flowsheet: Dict[str, Any], validation_results: Dict[str, Any]) -> pd.DataFrame:
-    """Generate Heat and Material Balance table."""
-    # Placeholder data derived from state (customize based on simulation)
+
+def _safe_get_numeric(source: Any, key: str, default: float) -> float:
+    if isinstance(source, dict):
+        value = source.get(key)
+        if isinstance(value, (int, float)):
+            return float(value)
+    return float(default)
+
+
+def generate_hmb(basic_pdf: Any, basic_hmb_results: Any) -> pd.DataFrame:
+    """Generate a simple Heat and Material Balance table from markdown inputs."""
+    optimized_yield = _safe_get_numeric(basic_hmb_results, "optimized_yield", 90.8)
+
     hmb_data = {
-        'Stream': ['Ethane Feed', 'Reactor Outlet', 'Product Ethylene', 'Byproducts'],
-        'Mass Flow (kg/h)': [1000, 1000, round(validation_results.get('optimized_yield', 90.8)), 92],
-        'Temperature (°C)': [25, 1200, 100, 100],
-        'Enthalpy (kJ/h)': [0, 1500000, 90000, 1410000]  # Derived from energy estimates
+        "Stream": [
+            "Feed Stream",
+            "Process Outlet",
+            "Target Product",
+            "Byproducts",
+        ],
+        "Mass Flow (kg/h)": [1000.0, 1000.0, round(optimized_yield, 1), 1000.0 - round(optimized_yield, 1)],
+        "Temperature (°C)": [25.0, 200.0, 35.0, 120.0],
+        "Pressure (bar)": [1.1, 5.0, 3.0, 1.5],
     }
+
     return pd.DataFrame(hmb_data)
 
-def generate_pfd(flowsheet: Dict[str, Any], validation_results: Dict[str, Any]) -> graphviz.Digraph:
-    """Generate preliminary PFD as Graphviz DOT graph."""
-    dot = graphviz.Digraph(comment='Preliminary PFD')
-    for unit in flowsheet.get('units', []):
-        dot.node(unit['name'], f"{unit['type']}\n{unit['specs']}")
-    for conn in flowsheet.get('connections', []):
-        dot.edge(conn['from'], conn['to'])
-    # Add feed and product nodes
-    dot.node('Feed', 'Ethane Feed\n1000 kg/h')
-    dot.node('Prod', f'Ethylene Product\nYield {validation_results.get("optimized_yield", 90.8)}%')
-    dot.edge('Feed', flowsheet['units'][0]['name'] if flowsheet.get('units') else 'R1')
-    dot.edge(flowsheet['units'][-1]['name'] if flowsheet.get('units') else 'S1', 'Prod')
+
+def generate_pfd(basic_pdf: Any, basic_hmb_results: Any) -> graphviz.Digraph:
+    """Generate a placeholder PFD graph using available markdown descriptions."""
+    dot = graphviz.Digraph(comment="Preliminary PFD")
+    dot.node("Feed", "Feed Stream\n1000 kg/h")
+    dot.node("Process", "Process Block\nDerived from Basic PDF")
+    yield_percent = _safe_get_numeric(basic_hmb_results, "optimized_yield", 90.8)
+    dot.node("Product", f"Product Stream\nYield {yield_percent:.1f}%")
+    dot.node("Waste", "Byproducts")
+    dot.edge("Feed", "Process")
+    dot.edge("Process", "Product")
+    dot.edge("Process", "Waste")
     return dot
 
-def generate_equipment_list(flowsheet: Dict[str, Any]) -> pd.DataFrame:
-    """Generate equipment list."""
-    equipment = []
-    for unit in flowsheet.get('units', []):
-        equipment.append({
-            'Unit': unit['name'],
-            'Type': unit['type'],
-            'Specs': str(unit['specs'])
-        })
+
+def generate_equipment_list(basic_pdf: Any) -> pd.DataFrame:
+    """Generate a simple equipment list placeholder."""
+    equipment = [
+        {"Unit": "Unit-100", "Type": "Placeholder", "Specs": "Derived from basic PDF description."}
+    ]
     return pd.DataFrame(equipment)

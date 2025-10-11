@@ -49,7 +49,9 @@ class MessageBuffer:
             "Innovative Researcher": "pending",
             "Conservative Researcher": "pending",
             # Designer Team
-            "Designer Agent": "pending",
+            "Basic PDF Designer": "pending",
+            "Stream Data Builder": "pending",
+            "Equipment List Builder": "pending",
             "Process Simulator": "pending",
             "Equipment Sizing Agent": "pending",
             # Lead Process Design Engineer
@@ -62,7 +64,9 @@ class MessageBuffer:
             "literature_data_report": None,
             "innovative_research_report": None,
             "conservative_research_report": None,
-            "designer_report": None,
+            "basic_pdf_report": None,
+            "basic_equipment_report": None,
+            "basic_stream_report": None,
             "process_simulator_report": None,
             "equipment_sizing_report": None,
             "safety_risk_analyst_report": None,
@@ -106,7 +110,9 @@ class MessageBuffer:
                 "literature_data_report": "Literature Data Report",
                 "innovative_research_report": "Innovative Research Report",
                 "conservative_research_report": "Conservative Research Report",
-                "designer_report": "Designer Report",
+                "basic_pdf_report": "Basic PDF Report",
+                "basic_equipment_report": "Equipment Template",
+                "basic_stream_report": "Stream Data Template",
                 "process_simulator_report": "Process Simulator Report",
                 "equipment_sizing_report": "Equipment Sizing Report",
                 "safety_risk_analyst_report": "Safety Risk Analyst Report",
@@ -162,15 +168,25 @@ class MessageBuffer:
         if any(
             self.report_sections[section]
             for section in [
-                "designer_report",
+                "basic_pdf_report",
+                "basic_equipment_report",
+                "basic_stream_report",
                 "process_simulator_report",
                 "equipment_sizing_report",
             ]
         ):
             report_parts.append("## Designer Team Reports")
-            if self.report_sections["designer_report"]:
+            if self.report_sections["basic_pdf_report"]:
                 report_parts.append(
-                    f"### Designer Report\n{self.report_sections['designer_report']}"
+                    f"### Basic PDF Report\n{self.report_sections['basic_pdf_report']}"
+                )
+            if self.report_sections["basic_equipment_report"]:
+                report_parts.append(
+                    f"### Equipment Template\n{self.report_sections['basic_equipment_report']}"
+                )
+            if self.report_sections["basic_stream_report"]:
+                report_parts.append(
+                    f"### Stream Data Template\n{self.report_sections['basic_stream_report']}"
                 )
             if self.report_sections["process_simulator_report"]:
                 report_parts.append(
@@ -251,7 +267,7 @@ def update_display(layout, snippet_text=None):
     teams = {
         "Analyst Team": ["Process Requirement Analyst", "Literature Data Analyst"],
         "Research Team": ["Innovative Researcher", "Conservative Researcher"],
-        "Designer Team": ["Designer Agent", "Process Simulator", "Equipment Sizing Agent"],
+        "Designer Team": ["Basic PDF Designer", "Process Simulator", "Equipment Sizing Agent"],
         "Lead Process Design Engineer": ["Safety Risk Analyst", "Project Manager"],
     }
     
@@ -498,7 +514,8 @@ def display_complete_report(final_state):
         (
             "Designer Team Reports",
             [
-                ("designer_report", "Designer Report"),
+                ("basic_pdf_report", "Basic PDF Report"),
+                ("basic_stream_report", "Stream Data Template"),
                 ("process_simulator_report", "Process Simulator Report"),
                 ("equipment_sizing_report", "Equipment Sizing Report"),
             ],
@@ -558,7 +575,9 @@ def update_research_team_status(status):
     research_team = [
         "Innovative Researcher",
         "Conservative Researcher",
-        "Designer Agent",
+        "Basic PDF Designer",
+        "Stream Data Builder",
+        "Equipment List Builder",
         "Process Simulator",
         "Equipment Sizing Agent",
         "Safety Risk Analyst",
@@ -743,13 +762,20 @@ def run_analysis():
                         "conservative_research_report", chunk["conservative_research_report"]
                     )
                     message_buffer.update_agent_status("Conservative Researcher", "completed")
-                    message_buffer.update_agent_status("Designer Agent", "in_progress")
+                    message_buffer.update_agent_status("Basic PDF Designer", "in_progress")
 
-                if "designer_report" in chunk and chunk["designer_report"]:
+                if "basic_pdf_report" in chunk and chunk["basic_pdf_report"]:
                     message_buffer.update_report_section(
-                        "designer_report", chunk["designer_report"]
+                        "basic_pdf_report", chunk["basic_pdf_report"]
                     )
-                    message_buffer.update_agent_status("Designer Agent", "completed")
+                    message_buffer.update_agent_status("Basic PDF Designer", "completed")
+                    message_buffer.update_agent_status("Stream Data Builder", "in_progress")
+
+                if "basic_stream_report" in chunk and chunk["basic_stream_report"]:
+                    message_buffer.update_report_section(
+                        "basic_stream_report", chunk["basic_stream_report"]
+                    )
+                    message_buffer.update_agent_status("Stream Data Builder", "completed")
                     message_buffer.update_agent_status("Process Simulator", "in_progress")
 
                 if "process_simulator_report" in chunk and chunk["process_simulator_report"]:
@@ -757,6 +783,13 @@ def run_analysis():
                         "process_simulator_report", chunk["process_simulator_report"]
                     )
                     message_buffer.update_agent_status("Process Simulator", "completed")
+                    message_buffer.update_agent_status("Equipment List Builder", "in_progress")
+
+                if "basic_equipment_report" in chunk and chunk["basic_equipment_report"]:
+                    message_buffer.update_report_section(
+                        "basic_equipment_report", chunk["basic_equipment_report"]
+                    )
+                    message_buffer.update_agent_status("Equipment List Builder", "completed")
                     message_buffer.update_agent_status("Equipment Sizing Agent", "in_progress")
 
                 if "equipment_sizing_report" in chunk and chunk["equipment_sizing_report"]:

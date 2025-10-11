@@ -106,8 +106,10 @@ class ProcessDesignGraph:
             "research_concepts": final_state.get("research_concepts", ""),
             "selected_concept_details": final_state.get("selected_concept_details", ""),
             "selected_concept_name": final_state.get("selected_concept_name", ""),
-            "flowsheet": final_state.get("flowsheet", ""),
-            "validation_results": final_state.get("validation_results", ""),
+            "basic_pdf": final_state.get("basic_pdf", ""),
+            "basic_hmb_results": final_state.get("basic_hmb_results", ""),
+            "basic_equipment_template": final_state.get("basic_equipment_template", ""),
+            "basic_stream_data": final_state.get("basic_stream_data", ""),
             "approval": final_state.get("approval", ""),
         }
         

@@ -9,6 +9,8 @@ from .researchers.innovative_researcher import create_innovative_researcher
 from .researchers.conservative_researcher import create_conservative_researcher
 from .researchers.concept_detailer import create_concept_detailer
 from .designer.basic_pdf_designer import create_basic_pdf_designer
+from .validation.stream_data_builder import create_stream_data_builder
+from .validation.equipment_list_builder import create_equipment_list_builder
 from .validation.process_simulator import create_process_simulator
 from .validation.equipment_sizing_agent import create_equipment_sizing_agent
 # from .validation.optimizer import create_optimizer
@@ -27,6 +29,8 @@ __all__ = [
     "create_conservative_researcher",
     "create_concept_detailer",
     "create_basic_pdf_designer",
+    "create_stream_data_builder",
+    "create_equipment_list_builder",
     "create_process_simulator",
     "create_equipment_sizing_agent",
     "create_safety_risk_analyst",

@@ -11,19 +11,31 @@ load_dotenv()
 def create_project_manager(llm):
     def project_manager(state: DesignState) -> DesignState:
         """Project Manager: Reviews design for approval and generates implementation plan."""
-        print("\n=========================== Project Review ===========================\n")
+        print("\n# Project Review\n")
 
         requirements_markdown = state.get("requirements", "")
-        flowsheet_markdown = state.get("flowsheet", "")
-        validation_markdown = state.get("validation_results", "")
+        basic_pdf_markdown = state.get("basic_pdf", "")
+        validation_markdown = state.get("basic_hmb_results", "")
+        equipment_table = state.get("basic_equipment_template", "")
+        safety_report = state.get("safety_risk_analyst_report", "")
         if not isinstance(requirements_markdown, str):
             requirements_markdown = str(requirements_markdown)
-        if not isinstance(flowsheet_markdown, str):
-            flowsheet_markdown = str(flowsheet_markdown)
+        if not isinstance(basic_pdf_markdown, str):
+            basic_pdf_markdown = str(basic_pdf_markdown)
         if not isinstance(validation_markdown, str):
             validation_markdown = str(validation_markdown)
+        if not isinstance(equipment_table, str):
+            equipment_table = str(equipment_table)
+        if not isinstance(safety_report, str):
+            safety_report = str(safety_report)
 
-        system_message = system_prompt(requirements_markdown, flowsheet_markdown, validation_markdown)
+        system_message = system_prompt(
+            requirements_markdown,
+            basic_pdf_markdown,
+            validation_markdown,
+            equipment_table,
+            safety_report,
+        )
 
         prompt = ChatPromptTemplate.from_messages([
             ("system", "{system_message}"),
@@ -57,13 +69,19 @@ def _extract_status(markdown_text: str) -> str | None:
     return None
 
 
-def system_prompt(requirements_markdown: str, flowsheet_markdown: str, validation_markdown: str) -> str:
+def system_prompt(
+    requirements_markdown: str,
+    basic_pdf_markdown: str,
+    validation_markdown: str,
+    equipment_table: str,
+    safety_markdown: str,
+) -> str:
     return f"""
 # ROLE
 You are the project manager responsible for final stage-gate approval of the process design.
 
 # TASK
-Review the provided requirements, flowsheet summary, validation results, and safety and risk results. Decide whether to approve, conditionally approve, or reject the project. Summarize financial estimates and outline the immediate implementation plan.
+Review the provided requirements, basic process description, H&MB results, equipment sizing summary, and safety/risk findings. Decide whether to approve, conditionally approve, or reject the project. Summarize financial estimates and outline the immediate implementation plan.
 
 # OUTPUT FORMAT
 Return a Markdown report with the following structure:
@@ -94,11 +112,17 @@ Return a Markdown report with the following structure:
 **REQUIREMENTS SUMMARY (Markdown):**
 {requirements_markdown}
 
-**FLOWSHEET SUMMARY (Markdown):**
-{flowsheet_markdown}
+**BASIC PROCESS DESCRIPTION (Markdown):**
+{basic_pdf_markdown}
 
-**VALIDATION RESULTS (Markdown):**
+**H&MB RESULTS (Markdown):**
 {validation_markdown}
+
+**EQUIPMENT SIZING (Markdown):**
+{equipment_table}
+
+**SAFETY & RISK SUMMARY (Markdown):**
+{safety_markdown}
 
 # FINAL MARKDOWN OUTPUT:
 """

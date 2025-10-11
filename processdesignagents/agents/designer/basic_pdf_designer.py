@@ -11,7 +11,7 @@ load_dotenv()
 def create_basic_pdf_designer(llm):
     def basic_pdf_designer(state: DesignState) -> DesignState:
         """Basic PDF Designer: Synthesizes preliminary flowsheet consistent with the detailed concept and design basis."""
-        print("\n=========================== Basic PDF Design ===========================\n")
+        print("\n# Basic PDF Design\n")
 
         requirements_markdown = state.get("requirements", "")
         selected_concept_name = state.get("selected_concept_name", "")
@@ -44,17 +44,17 @@ def create_basic_pdf_designer(llm):
         chain = prompt.partial(system_message=system_message) | llm
         response = chain.invoke(state.get("messages", []))
 
-        flowsheet_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        basic_pdf_markdown = response.content if isinstance(response.content, str) else str(response.content)
 
-        print(f"Synthesized flowsheet for {selected_concept_title}.")
+        print(f"Synthesized basic process description for {selected_concept_title}.")
         print("---")
-        print(flowsheet_markdown)
+        print(basic_pdf_markdown)
         print("---")
 
         return {
-            "flowsheet": flowsheet_markdown,
-            "designer_report": flowsheet_markdown,
-            "messages": [response],
+            "basic_pdf": basic_pdf_markdown,
+            "basic_pdf_report": basic_pdf_markdown,
+            "messages": ["Basic PDF Designer - Completed"],
         }
 
     return basic_pdf_designer

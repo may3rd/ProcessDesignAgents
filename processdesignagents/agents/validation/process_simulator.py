@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
 from processdesignagents.agents.utils.agent_states import DesignState
 from dotenv import load_dotenv
 
@@ -9,86 +10,101 @@ load_dotenv()
 
 def create_process_simulator(llm):
     def process_simulator(state: DesignState) -> DesignState:
-        """Process Simulator: Generates preliminary Heat and Material Balance (H&MB) from flowsheet."""
-        print("\n=========================== Create Prelim H&MB ===========================")
+        """Process Simulator: Generates stream and H&MB tables with estimated conditions."""
+        print("\n=========================== Preliminary H&MB ===========================\n")
 
-        flowsheet_markdown = state.get("flowsheet", "")
-        requirements_markdown = state.get("requirements", "")
-        literature_markdown = state.get("literature_data", "")
-        if not isinstance(flowsheet_markdown, str):
-            flowsheet_markdown = str(flowsheet_markdown)
-        if not isinstance(requirements_markdown, str):
-            requirements_markdown = str(requirements_markdown)
-        if not isinstance(literature_markdown, str):
-            literature_markdown = str(literature_markdown)
+        basic_pdf_markdown = _coerce_str(state.get("basic_pdf", ""))
+        requirements_markdown = _coerce_str(state.get("requirements", ""))
+        design_basis_markdown = _coerce_str(state.get("design_basis", ""))
+        concept_details_markdown = _coerce_str(state.get("selected_concept_details", ""))
+        stream_template = _coerce_str(state.get("basic_stream_data", ""))
 
-        system_message = system_prompt(flowsheet_markdown, requirements_markdown, literature_markdown)
+        if not stream_template.strip():
+            raise ValueError("Stream template not available. Ensure stream_data_builder executed successfully.")
+
+        system_message = system_prompt(
+            basic_pdf_markdown,
+            requirements_markdown,
+            design_basis_markdown,
+            concept_details_markdown,
+            stream_template,
+        )
         prompt = ChatPromptTemplate.from_messages([
             ("system", "{system_message}"),
             MessagesPlaceholder(variable_name="messages"),
         ])
-        chain = prompt.partial(system_message=system_message) | llm
-        response = chain.invoke(state.get("messages", []))
+        response = (prompt.partial(system_message=system_message) | llm).invoke(state.get("messages", []))
 
-        simulation_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        markdown_output = response.content if isinstance(response.content, str) else str(response.content)
 
-        print(simulation_markdown)
-
-        existing_validation = state.get("validation_results", "")
-        if not isinstance(existing_validation, str):
-            existing_validation = str(existing_validation or "")
-        validation_segments = []
-        if existing_validation.strip():
-            validation_segments.append(existing_validation.strip())
-        validation_segments.append(simulation_markdown.strip())
-        updated_validation = "\n\n".join(validation_segments)
+        print(markdown_output)
 
         return {
-            "validation_results": updated_validation,
-            "process_simulator_report": simulation_markdown,
+            "basic_stream_data": markdown_output,
+            "basic_stream_report": markdown_output,
+            "basic_hmb_results": markdown_output,
+            "process_simulator_report": markdown_output,
             "messages": [response],
         }
 
     return process_simulator
 
 
-def system_prompt(flowsheet_markdown: str, requirements_markdown: str, literature_markdown: str) -> str:
+def system_prompt(
+    basic_pdf_markdown: str,
+    requirements_markdown: str,
+    design_basis_markdown: str,
+    concept_details_markdown: str,
+    stream_template: str,
+) -> str:
     return f"""
 # ROLE
-You are a Senior Process Simulation Engineer. Your task is to complete a preliminary, steady-state Heat and Material Balance (H&MB) using the provided flowsheet summary, requirements, and literature data.
+You are a Senior Process Simulation Engineer. Generate estimated operating conditions for every process stream and summarize the overall heat and material balance.
 
 # TASK
-Create a markdown table that summarizes the thermodynamic conditions and compositions for each process stream. Present the data in a clear, engineer-friendly format suitable for downstream validation.
+Using the provided information and the stream template, replace `<value>` placeholders with realistic estimates (include units). Highlight assumptions in notes. Present results strictly as Markdown.
 
-# OUTPUT FORMAT
-Structure your Markdown exactly as follows:
+# REQUIRED OUTPUT STRUCTURE
 ```
 ## Stream Summary
-| Property | Stream 1 | Stream 2 | Stream 3 |
-|----------|----------|----------|----------|
-| Temperature (°C) | ... | ... | ... |
-| Pressure (bar) | ... | ... | ... |
-| Mass Flow (kg/h) | ... | ... | ... |
-| Composition: Component A | ... | ... | ... |
-| Composition: Component B | ... | ... | ... |
-| Composition: Component C | ... | ... | ... |
-| Notes | ... | ... | ... |
+| Stream ID | Name / Description | From | To | Phase | Mass Flow | Temperature | Pressure | Key Components | Notes |
+|-----------|--------------------|------|----|-------|-----------|-------------|----------|----------------|-------|
+| ... | ... | ... | ... | ... | ... | ... | ... | ... | ... |
+
+## Heat & Material Balance
+| Property | Stream 1 | Stream 2 | Stream 3 | ... |
+|----------|----------|----------|----------|-----|
+| Temperature (°C) | ... | ... | ... | ... |
+| Pressure (barg) | ... | ... | ... | ... |
+| Mass Flow (kg/h) | ... | ... | ... | ... |
+| Key Component A (mol %) | ... | ... | ... | ... |
+| Notes | ... | ... | ... | ... |
 ```
-- The first column lists properties. Subsequent columns correspond to each stream (use the stream IDs from the flowsheet connections).
-- Include all relevant components mentioned in the requirements or literature.
-- Add a “Notes” row with key assumptions or balances.
-- If a value is unknown, provide a reasonable engineering estimate and mark it with `(est.)`.
+- Ensure stream IDs and names align with the template below.
+- Keep component listings within cells separated by semicolons.
+- Add additional properties/rows as needed for clarity.
 
-# DATA FOR ANALYSIS
+# STREAM TEMPLATE
+{stream_template}
+
+# REFERENCE MATERIAL
 ---
-**FLOWSHEET SUMMARY (Markdown):**
-{flowsheet_markdown}
+**BASIC PROCESS DESCRIPTION:**
+{basic_pdf_markdown}
 
-**REQUIREMENTS SUMMARY (Markdown):**
+**DESIGN BASIS:**
+{design_basis_markdown}
+
+**REQUIREMENTS SUMMARY:**
 {requirements_markdown}
 
-**LITERATURE SUMMARY (Markdown):**
-{literature_markdown}
-
-# FINAL MARKDOWN OUTPUT:
+**CONCEPT DETAIL:**
+{concept_details_markdown}
 """
+
+
+def _coerce_str(value: object) -> str:
+    if isinstance(value, str):
+        return value
+    return str(value or "")
+

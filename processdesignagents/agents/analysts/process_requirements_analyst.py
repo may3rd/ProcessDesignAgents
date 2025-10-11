@@ -7,7 +7,7 @@ load_dotenv()
 def create_process_requiruments_analyst(llm):
   def process_requirements_analyst(state: DesignState) -> DesignState:
       """Process Requirements Analyst: Extracts key design requirements using LLM."""
-      print("\n=========================== Problem ===========================\n")
+      print("\n# Process Requirements Analysis\n")
       # llm = ChatOpenRouter()
       system_message = system_prompt(state['problem_statement'])
       

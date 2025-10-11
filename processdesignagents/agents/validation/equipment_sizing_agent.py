@@ -1,75 +1,57 @@
 from __future__ import annotations
 
+import json
+
 from langchain_core.messages import ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
 from processdesignagents.agents.tools import EQUIPMENT_SIZING_TOOLS
 from processdesignagents.agents.utils.agent_states import DesignState
 from dotenv import load_dotenv
-import json
 
 load_dotenv()
 
 
 def create_equipment_sizing_agent(llm):
     def equipment_sizing_agent(state: DesignState) -> DesignState:
-        """Equipment Sizing Agent: Estimates key equipment dimensions using design heuristics."""
+        """Equipment Sizing Agent: populates the equipment table using tool-assisted estimates."""
         print("\n=========================== Equipment Sizing ===========================\n")
 
-        flowsheet_markdown = state.get("flowsheet", "")
-        requirements_markdown = state.get("requirements", "")
-        validation_markdown = state.get("validation_results", "")
-        if not isinstance(flowsheet_markdown, str):
-            flowsheet_markdown = str(flowsheet_markdown)
-        if not isinstance(requirements_markdown, str):
-            requirements_markdown = str(requirements_markdown)
-        if not isinstance(validation_markdown, str):
-            validation_markdown = str(validation_markdown)
+        requirements_markdown = _coerce_str(state.get("requirements", ""))
+        design_basis_markdown = _coerce_str(state.get("design_basis", ""))
+        basic_pdf_markdown = _coerce_str(state.get("basic_pdf", ""))
+        basic_hmb_markdown = _coerce_str(state.get("basic_hmb_results", ""))
+        stream_table = _coerce_str(state.get("basic_stream_data", ""))
+        equipment_table_template = _coerce_str(state.get("basic_equipment_template", ""))
 
-        # Step 1: Generate design basis using the base LLM (no tools)
-        prior_messages = list(state.get("messages", []))
-        basis_prompt = ChatPromptTemplate.from_messages([
-            ("system", "{system_message}"),
-            MessagesPlaceholder(variable_name="messages"),
-        ])
-        basis_prompt = basis_prompt.partial(
-            system_message=design_basis_prompt(
-                requirements_markdown,
-                flowsheet_markdown,
-                validation_markdown,
-            )
-        )
-        basis_conversation = basis_prompt.format_prompt(messages=prior_messages).to_messages()
-        basis_response = llm.invoke(basis_conversation)
-        basis_markdown = basis_response.content if isinstance(basis_response.content, str) else str(basis_response.content)
-        print("Equipment design basis prepared.")
-        print(basis_markdown)
+        if not equipment_table_template.strip():
+            raise ValueError("Equipment template is missing. Run the equipment list builder before sizing.")
 
-        extended_messages = prior_messages + [basis_response]
-
-        # Step 2: Perform sizing with tool support
-        tool_enabled_llm = llm.bind_tools(EQUIPMENT_SIZING_TOOLS)
-        system_message = system_prompt(
+        system_message = equipment_sizing_prompt(
             requirements_markdown,
-            flowsheet_markdown,
-            validation_markdown,
-            basis_markdown,
+            design_basis_markdown,
+            basic_pdf_markdown,
+            basic_hmb_markdown,
+            stream_table,
+            equipment_table_template,
         )
 
+        tool_enabled_llm = llm.bind_tools(EQUIPMENT_SIZING_TOOLS)
         prompt = ChatPromptTemplate.from_messages([
             ("system", "{system_message}"),
             MessagesPlaceholder(variable_name="messages"),
         ])
-        partial_prompt = prompt.partial(system_message=system_message)
+        conversation = prompt.partial(system_message=system_message).format_prompt(
+            messages=list(state.get("messages", []))
+        ).to_messages()
 
-        conversation = partial_prompt.format_prompt(messages=extended_messages).to_messages()
-        new_messages = [basis_response]
-
+        new_messages: list = []
         response = tool_enabled_llm.invoke(conversation)
         conversation.append(response)
         new_messages.append(response)
 
         iteration_count = 0
-        max_iterations = 5
+        max_iterations = 8
 
         while getattr(response, "tool_calls", None):
             if iteration_count >= max_iterations:
@@ -103,138 +85,70 @@ def create_equipment_sizing_agent(llm):
             conversation.append(response)
             new_messages.append(response)
 
-        sizing_markdown = response.content if isinstance(response.content, str) else str(response.content)
-        missing_sections = [
-            section
-            for section in ["Equipment Sizing Summary", "Detailed Calculations"]
-            if f"## {section}" not in sizing_markdown
-        ]
-        if "Equipment Sizing Summary" in missing_sections:
-            sizing_markdown += (
-                "\n\n## Equipment Sizing Summary\n"
-                "| Equipment | Key Parameters | Estimated Size | Notes |\n"
-                "|-----------|----------------|----------------|-------|\n"
-                "| TBD | Not provided | Not provided | Placeholder generated automatically |\n"
-            )
-        if "Detailed Calculations" in missing_sections:
-            sizing_markdown += (
-                "\n\n## Detailed Calculations\n"
-                "- Detailed calculations were not provided by the sizing step. Placeholder added automatically.\n"
-            )
-        if missing_sections:
-            print(
-                f"[!] Equipment sizing report missing sections: {', '.join(missing_sections)}. Added default placeholders."
-            )
-        existing_validation = state.get("validation_results", "")
-        if not isinstance(existing_validation, str):
-            existing_validation = str(existing_validation or "")
-        validation_segments = []
-        if existing_validation.strip():
-            validation_segments.append(existing_validation.strip())
-        validation_segments.append(basis_markdown.strip())
-        validation_segments.append(sizing_markdown.strip())
-        updated_validation = "\n\n".join(validation_segments)
+        markdown_output = response.content if isinstance(response.content, str) else str(response.content)
 
-        print("\nEquipment sizing report generated.")
-        print(sizing_markdown)
+        print(markdown_output)
 
         return {
-            "validation_results": updated_validation,
-            "equipment_sizing_report": sizing_markdown,
+            "basic_equipment_template": markdown_output,
+            "basic_equipment_report": markdown_output,
+            "equipment_sizing_report": markdown_output,
             "messages": new_messages,
         }
 
     return equipment_sizing_agent
 
 
-def design_basis_prompt(
+def equipment_sizing_prompt(
     requirements_markdown: str,
-    flowsheet_markdown: str,
-    validation_markdown: str,
+    design_basis_markdown: str,
+    basic_pdf_markdown: str,
+    basic_hmb_markdown: str,
+    stream_table: str,
+    equipment_table_template: str,
 ) -> str:
     return f"""
 # ROLE
-You are a process engineer preparing design bases for equipment sizing.
+You are the lead equipment engineer completing preliminary sizing calculations for a conceptual design.
 
 # TASK
-Analyze the requirements, flowsheet, and stream data to estimate key design duties and conditions for major equipment. Provide a Markdown table summarizing the duty/conditions that will serve as inputs to sizing calculations.
+Update the equipment table with quantitative estimates. When helpful, call the available sizing tools. Capture key parameters (e.g., heat-transfer area, vessel diameter/length/orientation, pump/compressor power). Present the final results as a MARKDOWN TABLE plus brief notes.
 
-# OUTPUT FORMAT
+# REQUIRED OUTPUT STRUCTURE
 ```
-## Equipment Design Basis
-| Equipment | Service | Key Duty/Load | Design Conditions | Notes |
-|-----------|---------|---------------|-------------------|-------|
-| ... | ... | ... | ... | ... |
+## Equipment Sizing Table
+| Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
+|--------------|------|---------|------|------------|-------------|-------------|----------------|-------|
+| ... | ... | ... | ... | ... | ... | ... | ... | ... |
 
-## Assumptions
-- <assumption 1>
-- <assumption 2>
+## Detailed Notes
+- E-101: Referenced heat_exchanger_sizing – area = ... m²; assumptions ...
+- V-101: Used vessel_volume_estimate – diameter = ... m; length = ... m; orientation = ...
 ```
-Include estimated heat duties (kW), volumetric holdup (m³), or vapor loads (kg/h) where appropriate. Make reasonable engineering assumptions if data is missing, flagging them clearly.
-
-# DATA
----
-**REQUIREMENTS SUMMARY (Markdown):**
-{requirements_markdown}
-
-**FLOWSHEET SUMMARY (Markdown):**
-{flowsheet_markdown}
-
-**STREAM SUMMARY (Markdown):**
-{validation_markdown}
-
-# FINAL MARKDOWN OUTPUT:
-"""
-
-
-def system_prompt(
-    requirements_markdown: str,
-    flowsheet_markdown: str,
-    validation_markdown: str,
-    basis_markdown: str,
-) -> str:
-    return f"""
-# ROLE
-You are a senior process equipment engineer. Your task is to estimate preliminary equipment sizes using design heuristics and the provided sizing tools.
-
-# TASK
-Review the requirements, flowsheet, stream data, and the provided design basis. For each major piece of equipment (reactors, columns, heat exchangers, vessels, pump, compressor), propose sizing estimates. Call the provided tools to compute quantitative values where applicable, then summarize the sizing in Markdown.
-
-# OUTPUT FORMAT
-Produce Markdown with the structure:
-```
-## Equipment Sizing Summary
-| Equipment | Key Parameters | Estimated Size | Notes |
-|-----------|----------------|----------------|-------|
-| ... | ... | ... | ... |
-
-## Detailed Calculations
-- <equipment>: <brief explanation and reference to tool outputs>
-- ...
-```
-Include references to the tool calculations you performed.
+- Replace `<value>` placeholders with estimates including units.
+- Ensure vessel entries explicitly state orientation, diameter, and length/height.
+- Reference stream IDs exactly as listed.
+- Summarize tool usage in the “Detailed Notes” section.
 
 # AVAILABLE TOOLS
-- heat_exchanger_sizing(duty_kw, overall_u_kw_m2_k, lmt_delta_t_k)
-- vessel_volume_estimate(volumetric_flow_m3_per_hr, residence_time_min, holdup_fraction=0.75)
-- distillation_column_diameter(vapor_mass_flow_kg_per_hr, vapor_density_kg_per_m3, design_velocity_m_per_s=1.5)
+{', '.join(tool.name for tool in EQUIPMENT_SIZING_TOOLS)}
 
-# DESIGN DATA
+# REFERENCE DATA
 ---
-**REQUIREMENTS SUMMARY (Markdown):**
-{requirements_markdown}
-
-**FLOWSHEET SUMMARY (Markdown):**
-{flowsheet_markdown}
-
-**STREAM SUMMARY (Markdown):**
-{validation_markdown}
-
-**DESIGN BASIS (Markdown):**
-{basis_markdown}
-
-# FINAL MARKDOWN OUTPUT:
+**REQUIREMENTS SUMMARY:**\n{requirements_markdown}\n
+**DESIGN BASIS:**\n{design_basis_markdown}\n
+**BASIC PROCESS DESCRIPTION:**\n{basic_pdf_markdown}\n
+**STREAM TABLE:**\n{stream_table}\n
+**PRELIMINARY H&MB:**\n{basic_hmb_markdown}\n
+**EQUIPMENT TEMPLATE:**\n{equipment_table_template}\n
 """
+
+
+def _coerce_str(value: object) -> str:
+    if isinstance(value, str):
+        return value
+    return str(value or "")
 
 
 _TOOL_REGISTRY = {tool.name: tool for tool in EQUIPMENT_SIZING_TOOLS}
+

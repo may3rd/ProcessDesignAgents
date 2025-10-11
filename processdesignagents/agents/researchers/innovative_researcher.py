@@ -11,7 +11,7 @@ load_dotenv()
 def create_innovative_researcher(llm):
     def innovative_researcher(state: DesignState) -> DesignState:
         """Innovative Researcher: Proposes novel process concepts using LLM."""
-        print("\n=========================== Innovative Research Concepts ===========================\n")
+        print("\n# Innovative Research Concepts\n")
 
         requirements_summary = state.get("requirements", "")
         literature_summary = state.get("literature_data", "")
