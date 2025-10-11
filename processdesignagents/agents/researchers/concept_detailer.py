@@ -50,8 +50,7 @@ def create_concept_detailer(llm):
         return {
             "selected_concept_details": detail_markdown,
             "selected_concept_name": best_title,
-            "concept_detail_report": detail_markdown,
-            "messages": ["Concept Detailer - Completed"],
+            "messages": [response],
         }
 
     return concept_detailer
@@ -116,7 +115,7 @@ Using the chosen concept description and the overarching requirements, elaborate
 Respond with Markdown using the exact structure below:
 ```
 ## Concept Summary
-- Name: {concept_name}
+- Name: {concept_name} <without "Concept #" prefix>
 - Intent: <succinct value proposition>
 - Feasibility Score (from review): <value or `Not provided`>
 
@@ -153,4 +152,3 @@ Ensure every list or table entry is specific and actionable. If data is missing,
 
 # FINAL MARKDOWN OUTPUT:
 """
-

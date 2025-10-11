@@ -8,10 +8,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def create_process_simulator(llm):
-    def process_simulator(state: DesignState) -> DesignState:
-        """Process Simulator: Generates stream and H&MB tables with estimated conditions."""
-        print("\n=========================== Preliminary H&MB ===========================\n")
+def create_stream_data_estimator(llm):
+    def stream_data_estimator(state: DesignState) -> DesignState:
+        """Stream Data Estimator: Generates stream and H&MB tables with estimated conditions."""
+        print("\n# Stream Data Estimator\n")
 
         basic_pdf_markdown = _coerce_str(state.get("basic_pdf", ""))
         requirements_markdown = _coerce_str(state.get("requirements", ""))
@@ -41,13 +41,11 @@ def create_process_simulator(llm):
 
         return {
             "basic_stream_data": markdown_output,
-            "basic_stream_report": markdown_output,
             "basic_hmb_results": markdown_output,
-            "process_simulator_report": markdown_output,
             "messages": [response],
         }
 
-    return process_simulator
+    return stream_data_estimator
 
 
 def system_prompt(
@@ -62,27 +60,36 @@ def system_prompt(
 You are a Senior Process Simulation Engineer. Generate estimated operating conditions for every process stream and summarize the overall heat and material balance.
 
 # TASK
-Using the provided information and the stream template, replace `<value>` placeholders with realistic estimates (include units). Highlight assumptions in notes. Present results strictly as Markdown.
+Using the provided information and the 'STREAM TEMPLATE', replace `<value>` placeholders with realistic estimates (include units). Highlight assumptions in notes. Present results strictly as Markdown.
 
-# REQUIRED OUTPUT STRUCTURE
-```
-## Stream Summary
-| Stream ID | Name / Description | From | To | Phase | Mass Flow | Temperature | Pressure | Key Components | Notes |
-|-----------|--------------------|------|----|-------|-----------|-------------|----------|----------------|-------|
-| ... | ... | ... | ... | ... | ... | ... | ... | ... | ... |
+# INSTRUCTIONS
+- For every unit operation implied by the stream connectivity, ensure total mass flow entering equals the total leaving.
+- Reconcile component balances so key species entering a unit match the sum leaving that unit, accounting for accumulation or loss only when explicitly justified.
+- Confirm the overall process inputs equal outputs across the full flowsheet; highlight any reconciliation assumptions in the Notes section.
+- When balance adjustments are required, document the rationale and affected streams directly in the Notes entries.
+- Ensure stream IDs and names align with the template below.
+- Ensure that summation of mol% for each component equals 100%.
+- Add additional properties/rows as needed for clarity.
 
-## Heat & Material Balance
-| Property | Stream 1 | Stream 2 | Stream 3 | ... |
-|----------|----------|----------|----------|-----|
+# MARKDOWN TEMPLATE:
+Your Markdown output must follow this structure:
+|          | 1001 | 1002 | 1003 | ... | <only show stream ID>
+| Description | ------ | ------ | ------ | ----- |
+| ---------- | ------ | ------ | ------ | ----- |
 | Temperature (°C) | ... | ... | ... | ... |
 | Pressure (barg) | ... | ... | ... | ... |
 | Mass Flow (kg/h) | ... | ... | ... | ... |
-| Key Component A (mol %) | ... | ... | ... | ... |
-| Notes | ... | ... | ... | ... |
-```
-- Ensure stream IDs and names align with the template below.
-- Keep component listings within cells separated by semicolons.
-- Add additional properties/rows as needed for clarity.
+| Key Component | (mol %) | (mol %) | (mol %) | ... |
+| Component A | ... | ... | ... | ... | ... |
+| Component B | ... | ... | ... | ... | ... |
+| Component C | ... | ... | ... | ... | ... |
+
+## Notes
+- <note 1>
+- <note 2>
+- ...
+
+---
 
 # STREAM TEMPLATE
 {stream_template}
@@ -107,4 +114,3 @@ def _coerce_str(value: object) -> str:
     if isinstance(value, str):
         return value
     return str(value or "")
-

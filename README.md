@@ -17,7 +17,7 @@ ProcessDesignAgents/
 ├─ requirements.txt
 ├─ main.py
 ├─ processdesignagents/
-│  ├─ agents/              # Analyst, researcher, designer, validation, and PM agents
+│  ├─ agents/              # Analyst, researcher, designer, and PM agents
 │  ├─ graph/               # Graph wiring and propagator
 │  ├─ utils/               # Shared helpers and LLM utilities
 │  └─ default_config.py
@@ -72,7 +72,7 @@ The CLI streams agent progress, tool invocations, and compiled reports using Ric
 4. **Design Basis Analyst** – Writes the design basis referencing the concept detail.
 5. **Basic PDF Designer** – Produces the conceptual flowsheet in Markdown.
 6. **Stream Data Builder** – Creates a stream summary table with placeholders.
-7. **Process Simulator** – Populates stream and H&MB tables with estimated conditions.
+7. **Stream Data Estimator** – Populates stream and H&MB tables with estimated conditions.
 8. **Equipment List Builder** – Generates an equipment template table tied to streams.
 9. **Equipment Sizing Agent** – Calls sizing tools and fills equipment details & notes.
 10. **Safety & Risk Analyst** – Performs a HAZOP-style review.

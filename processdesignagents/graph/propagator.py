@@ -18,7 +18,6 @@ class Propagator:
             "messages": [HumanMessage(content=problem_statement)],
             "problem_statement": problem_statement,
             "requirements": "",
-            "literature_data": "",
             "research_concepts": "",
             "selected_concept_details": "",
             "selected_concept_name": "",

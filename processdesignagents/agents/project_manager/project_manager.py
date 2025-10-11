@@ -14,6 +14,7 @@ def create_project_manager(llm):
         print("\n# Project Review\n")
 
         requirements_markdown = state.get("requirements", "")
+        design_basis = state.get("design_basis", "")
         basic_pdf_markdown = state.get("basic_pdf", "")
         validation_markdown = state.get("basic_hmb_results", "")
         equipment_table = state.get("basic_equipment_template", "")
@@ -32,6 +33,7 @@ def create_project_manager(llm):
 
         system_message = system_prompt(
             requirements_markdown,
+            design_basis,
             basic_pdf_markdown,
             validation_markdown,
             equipment_table,
@@ -52,10 +54,8 @@ def create_project_manager(llm):
         print(f"Project review completed. Status: {approval_status or 'Unknown'}")
         print(approval_markdown)
 
-        updated_approval = approval_markdown
-
         return {
-            "approval": updated_approval,
+            "approval": approval_status or "",
             "project_manager_report": approval_markdown,
             "messages": [response],
         }
@@ -72,6 +72,7 @@ def _extract_status(markdown_text: str) -> str | None:
 
 def system_prompt(
     requirements_markdown: str,
+    design_basis: str,
     basic_pdf_markdown: str,
     validation_markdown: str,
     equipment_table: str,
@@ -82,7 +83,7 @@ def system_prompt(
 You are the project manager responsible for final stage-gate approval of the process design.
 
 # TASK
-Review the provided requirements, basic process description, H&MB results, equipment sizing summary, and safety/risk findings. Decide whether to approve, conditionally approve, or reject the project. Summarize financial estimates and outline the immediate implementation plan.
+Review the provided requirements, design basis, process description, H&MB results, equipment sizing summary, and safety/risk findings. Decide whether to approve, conditionally approve, or reject the project. Summarize financial estimates and outline the immediate implementation plan.
 
 # OUTPUT FORMAT
 Return a Markdown report with the following structure:
@@ -112,6 +113,9 @@ Return a Markdown report with the following structure:
 ---
 **REQUIREMENTS SUMMARY (Markdown):**
 {requirements_markdown}
+
+**DESIGN BASIS (Markdown):**
+{design_basis}
 
 **BASIC PROCESS DESCRIPTION (Markdown):**
 {basic_pdf_markdown}

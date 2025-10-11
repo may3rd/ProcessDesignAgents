@@ -17,12 +17,12 @@ def create_equipment_sizing_agent(llm):
         """Equipment Sizing Agent: populates the equipment table using tool-assisted estimates."""
         print("\n# Equipment Sizing\n")
 
-        requirements_markdown = _coerce_str(state.get("requirements", ""))
-        design_basis_markdown = _coerce_str(state.get("design_basis", ""))
-        basic_pdf_markdown = _coerce_str(state.get("basic_pdf", ""))
-        basic_hmb_markdown = _coerce_str(state.get("basic_hmb_results", ""))
-        stream_table = _coerce_str(state.get("basic_stream_data", ""))
-        equipment_table_template = _coerce_str(state.get("basic_equipment_template", ""))
+        requirements_markdown = state.get("requirements", "")
+        design_basis_markdown = state.get("design_basis", "")
+        basic_pdf_markdown = state.get("basic_pdf", "")
+        basic_hmb_markdown = state.get("basic_hmb_results", "")
+        stream_table = state.get("basic_stream_data", "")
+        equipment_table_template = state.get("basic_equipment_template", "")
 
         if not equipment_table_template.strip():
             raise ValueError("Equipment template is missing. Run the equipment list builder before sizing.")
@@ -91,8 +91,6 @@ def create_equipment_sizing_agent(llm):
 
         return {
             "basic_equipment_template": markdown_output,
-            "basic_equipment_report": markdown_output,
-            "equipment_sizing_report": markdown_output,
             "messages": new_messages,
         }
 
@@ -114,41 +112,49 @@ You are the lead equipment engineer completing preliminary sizing calculations f
 # TASK
 Update the equipment table with quantitative estimates. When helpful, call the available sizing tools. Capture key parameters (e.g., heat-transfer area, vessel diameter/length/orientation, pump/compressor power). Present the final results as a MARKDOWN TABLE plus brief notes.
 
-# REQUIRED OUTPUT STRUCTURE
-```
-## Equipment Sizing Table
+# INSTRUCTIONS
+- For each equipment entry, verify the flowsheet context (streams, duty expectations) using the stream table, H&MB results, and design basis before sizing.
+- When quantitative data is required, first attempt a calculation with the provided sizing tools (`heat_exchanger_sizing`, `vessel_volume_estimate`, etc.); only estimate manually if a suitable tool is unavailable.
+- Replace every `<value>` placeholder in the template with a numeric estimate and unit; note any assumptions or calculation shortcuts directly in the Notes column.
+- If tool output reveals missing or inconsistent inputs, document the issue in the Notes section and leave a clear `TBD` or follow-up action.
+- Summarize how each tool was used (inputs, outputs, assumptions) in the Detailed Notes section to aid downstream verification.
+- Group equipment by type (e.g., reactors, exchangers, vessels, rotating equipment) so related items appear together.
+
+# MARKDOWN TEMPLATE:
+Your Markdown output must follow this structure:
 | Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
 |--------------|------|---------|------|------------|-------------|-------------|----------------|-------|
 | ... | ... | ... | ... | ... | ... | ... | ... | ... |
 
 ## Detailed Notes
-- E-101: Referenced heat_exchanger_sizing – area = ... m²; assumptions ...
+- E-101: Referenced heat_exchanger_sizing – heat duty = ... kW, heat transfer area = ... m²; assumptions ...
 - V-101: Used vessel_volume_estimate – diameter = ... m; length = ... m; orientation = ...
-```
-- Replace `<value>` placeholders with estimates including units.
-- Ensure vessel entries explicitly state orientation, diameter, and length/height.
-- Reference stream IDs exactly as listed.
-- Summarize tool usage in the “Detailed Notes” section.
 
 # AVAILABLE TOOLS
 {', '.join(tool.name for tool in EQUIPMENT_SIZING_TOOLS)}
 
 # REFERENCE DATA
 ---
-**REQUIREMENTS SUMMARY:**\n{requirements_markdown}\n
-**DESIGN BASIS:**\n{design_basis_markdown}\n
-**BASIC PROCESS DESCRIPTION:**\n{basic_pdf_markdown}\n
-**STREAM TABLE:**\n{stream_table}\n
-**PRELIMINARY H&MB:**\n{basic_hmb_markdown}\n
-**EQUIPMENT TEMPLATE:**\n{equipment_table_template}\n
+**REQUIREMENTS SUMMARY:**
+{requirements_markdown}
+
+**DESIGN BASIS:**
+{design_basis_markdown}
+
+**BASIC PROCESS DESCRIPTION:**
+{basic_pdf_markdown}
+
+**STREAM TABLE:**
+{stream_table}
+
+**PRELIMINARY H&MB:**
+{basic_hmb_markdown}
+
+**EQUIPMENT TABLE TEMPLATE:**
+{equipment_table_template}
+---
+# FINAL MARKDOWN OUTPUT:
 """
 
 
-def _coerce_str(value: object) -> str:
-    if isinstance(value, str):
-        return value
-    return str(value or "")
-
-
 _TOOL_REGISTRY = {tool.name: tool for tool in EQUIPMENT_SIZING_TOOLS}
-

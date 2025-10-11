@@ -13,13 +13,10 @@ def create_equipment_list_builder(llm):
         """Equipment List Builder: Produces a markdown equipment template with sizing placeholders."""
         print("\n# Equipment List Template\n")
 
-        basic_pdf_markdown = _coerce_str(state.get("basic_pdf", ""))
-        design_basis_markdown = _coerce_str(state.get("design_basis", ""))
-        requirements_markdown = _coerce_str(state.get("requirements", ""))
-        stream_table = _coerce_str(state.get("basic_stream_data", ""))
-
-        if not stream_table.strip():
-            raise ValueError("Stream data is missing. Run the stream data builder first.")
+        basic_pdf_markdown = state.get("basic_pdf", "")
+        design_basis_markdown = state.get("design_basis", "")
+        requirements_markdown = state.get("requirements", "")
+        stream_table = state.get("basic_stream_data", "")
 
         system_message = system_prompt(
             basic_pdf_markdown,
@@ -36,12 +33,10 @@ def create_equipment_list_builder(llm):
         response = (prompt.partial(system_message=system_message) | llm).invoke(state.get("messages", []))
         table_output = response.content if isinstance(response.content, str) else str(response.content)
 
-        print("Equipment template prepared (markdown table).")
         print(table_output)
 
         return {
             "basic_equipment_template": table_output,
-            "basic_equipment_report": table_output,
             "messages": [response],
         }
 
@@ -61,17 +56,18 @@ You are a process equipment engineer compiling the master equipment list for a p
 # TASK
 Use the process description, design basis, requirements, and stream summary to list every major unit (vessels, reactors, exchangers, towers, pumps, compressors, etc.). Provide clear placeholders for sizing data that will be filled in later.
 
-# OUTPUT FORMAT
-Respond with Markdown containing:
-```
+# INSTRUCTIONS
+- Read through the process description, design basis, and requirement summary to note every major operation or utility.
+- Map stream IDs from the provided stream table to determine inlet/outlet connectivity for each unit.
+- Group equipment by type (e.g., reactors, exchangers, vessels, rotating equipment) so related items appear together.
+- Populate each row with the best known identifiers and leave `<value>` placeholders for any data not yet available; include units in the placeholder string.
+- Capture any assumptions, open questions, or dependencies in the Notes column to guide the sizing step.
+
+# MARKDOWN TEMPLATE:
+Your Markdown output must follow this structure:
 | Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
 |--------------|------|---------|------|------------|-------------|-------------|----------------|-------|
 | V-101 | Feed Surge Drum | Buffer upstream of pump | Vessel (Vertical) | 1001 | 1002 | <value> kW | Holdup: <value> m³; Orientation: Vertical | <assumptions or TBD items> |
-```
-- Keep placeholder values as `<value>` with units where appropriate.
-- Reference stream IDs exactly as given in the stream table.
-- Include all critical equipment implied by the current design.
-- Grouping the equipment by type.
 
 # INPUT DATA
 ---
@@ -86,6 +82,8 @@ Respond with Markdown containing:
 
 **STREAM TABLE (Markdown):**
 {stream_table}
+
+# FINAL MARKDOWN OUTPUT:
 """
 
 
@@ -93,4 +91,3 @@ def _coerce_str(value: object) -> str:
     if isinstance(value, str):
         return value
     return str(value or "")
-

@@ -14,12 +14,9 @@ def create_innovative_researcher(llm):
         print("\n# Innovative Research Concepts\n")
 
         requirements_summary = state.get("requirements", "")
-        literature_summary = state.get("literature_data", "")
         if not isinstance(requirements_summary, str):
             requirements_summary = str(requirements_summary)
-        if not isinstance(literature_summary, str):
-            literature_summary = str(literature_summary)
-        system_message = system_prompt(requirements_summary, literature_summary)
+        system_message = system_prompt(requirements_summary)
 
         prompt = ChatPromptTemplate.from_messages([
             ("system", "{system_message}"),
@@ -44,8 +41,7 @@ def create_innovative_researcher(llm):
 
         return {
             "research_concepts": research_markdown,
-            "innovative_research_report": research_markdown,
-            "messages": ["Innovative Researcher - Completed"],
+            "messages": [response],
         }
 
     return innovative_researcher
@@ -60,19 +56,19 @@ def _extract_concept_names(markdown_text: str) -> list[str]:
     return names
 
 
-def system_prompt(requirements_markdown: str, literature_markdown: str) -> str:
+def system_prompt(requirements_markdown: str) -> str:
     return f"""
 # ROLE
 You are a Senior R&D Process Engineer specializing in conceptual design and process innovation. Your expertise lies in brainstorming novel, sustainable, and efficient chemical processes.
 
 # TASK
-Based on the provided 'REQUIREMENTS' and 'LITERATURE DATA' summaries, generate 3 to 6 distinct process concepts. For each concept, provide a concise name, a clear description, the key unit operations involved, and its primary benefits.
+Based on the provided 'REQUIREMENTS' generating 3 to 6 distinct process concepts. For each concept, provide a concise name, a clear description, the key unit operations involved, and its primary benefits.
 
 The concepts you generate must includes the typical or standard process that widely used in refinery and petrochemical industy, more complex and innovative processes, and state-of-the-art processes.
 
 # INSTRUCTIONS
-1.  **Synthesize Data:** First, thoroughly analyze the 'REQUIREMENTS' and 'LITERATURE DATA' summaries to understand the core objective, key components, and known science.
-2.  **Brainstorm Process Ideas:** Consider both conventional and unconventional approaches that align with the requirements and literature insights.
+1.  **Synthesize Data:** First, thoroughly analyze the 'REQUIREMENTS', summaries to understand the core objective, key components, and known science.
+2.  **Brainstorm Process Ideas:** Consider both conventional and unconventional approaches that align with the requirements insights.
 3.  **Develop Concepts:** For each of your three ideas, structure it with a descriptive name, a compact paragraph explaining the concept, a list of the essential unit operations, and a list of its key advantages.
 4.  **Format Output:** Your final output MUST be Markdown with the following structure repeated for each concept:
     ```
@@ -91,9 +87,6 @@ The concepts you generate must includes the typical or standard process that wid
 ---
 **REQUIREMENTS SUMMARY (Markdown):**
 {requirements_markdown}
-
-**LITERATURE DATA SUMMARY (Markdown or JSON):**
-{literature_markdown}
 
 # FINAL MARKDOWN OUTPUT:
 """

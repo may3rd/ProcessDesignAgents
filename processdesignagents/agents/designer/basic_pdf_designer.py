@@ -53,8 +53,7 @@ def create_basic_pdf_designer(llm):
 
         return {
             "basic_pdf": basic_pdf_markdown,
-            "basic_pdf_report": basic_pdf_markdown,
-            "messages": ["Basic PDF Designer - Completed"],
+            "messages": [response],
         }
 
     return basic_pdf_designer
@@ -68,16 +67,16 @@ def system_prompt(
 ) -> str:
     return f"""
 # ROLE
-You are a senior process design engineer. Your task is to create a conceptual process flowsheet based on a selected design concept, technical requirements, and supporting literature.
+You are a senior process design engineer with 20 years of experience in drafting process flow diagram (PDF) that represent the sequence of process steps of the selected concept. Your task is to create a conceptual process flowsheet based on a selected design concept, technical requirements, and design basis.
 
 # TASK
-Synthesize a preliminary process flowsheet for the selected concept: '{concept_name}'. The flowsheet must align with the approved design basis and highlight how the concept executes that basis.
+Synthesize a preliminary process flowsheet for the selected concept, 'SELECTED CONCEPT' with the 'DETAILED CONCEPT', using the provided 'TECHNICAL REQUIREMENTS' and 'DESIGN BASIS'. The flowsheet must align with the approved design basis and highlight how the concept executes that basis.
 
 # FORMAT
 Structure your Markdown exactly as follows:
 ```
 ## Flowsheet Summary
-- Concept: <concept name>
+- Concept: <concept name without 'Concept #' prefix>
 - Objective: <one-sentence objective>
 - Key Drivers: <one sentence>
 
@@ -93,6 +92,12 @@ Structure your Markdown exactly as follows:
 
 ## Overall Description
 <Paragraphs describing the process flow>
+
+## Notes
+- <note 1>
+- <note 2>
+- ...
+
 ```
 Ensure the tables are complete and readable.
 
@@ -105,13 +110,13 @@ Reference any design basis assumptions directly in the summary or notes.
 **SELECTED CONCEPT:**
 {concept_name}
 
-**DETAILED CONCEPT BRIEF:**
+**DETAILED CONCEPT:**
 {concept_details}
 
-**REQUIREMENTS SUMMARY:**
+**REQUIREMENTS:**
 {requirements}
 
-**DESIGN BASIS (Markdown):**
+**DESIGN BASIS:**
 {design_basis}
 
 # FINAL MARKDOWN OUTPUT:

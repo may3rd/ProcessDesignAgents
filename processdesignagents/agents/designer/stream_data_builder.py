@@ -10,8 +10,8 @@ load_dotenv()
 
 def create_stream_data_builder(llm):
     def stream_data_builder(state: DesignState) -> DesignState:
-        """Stream Data Builder: Produces a markdown table template for process streams."""
-        print("\n=========================== Stream Data Template ===========================\n")
+        """Stream Data Builder: Produces a transposed markdown table template for process streams."""
+        print("\n# Stream Data Template\n")
 
         basic_pdf_markdown = _coerce_str(state.get("basic_pdf", ""))
         design_basis_markdown = _coerce_str(state.get("design_basis", ""))
@@ -32,12 +32,11 @@ def create_stream_data_builder(llm):
         response = (prompt.partial(system_message=system_message) | llm).invoke(state.get("messages", []))
         table_markdown = response.content if isinstance(response.content, str) else str(response.content)
 
-        print("Generated stream template (markdown table).")
+        print("Generated stream template (transposed markdown table).")
         print(table_markdown)
 
         return {
             "basic_stream_data": table_markdown,
-            "basic_stream_report": table_markdown,
             "messages": [response],
         }
 
@@ -58,15 +57,24 @@ You are a process engineer compiling preliminary stream definitions for a chemic
 For each stream, provide identifiers, origin/destination, qualitative description, and placeholder operating data that will later be filled by the simulator.
 
 # OUTPUT FORMAT
-Respond with a Markdown table only (no additional commentary) matching this structure:
+Respond with a Markdown table only (no additional commentary) using a structure where stream identifiers are columns and attributes are rows:
 ```
-| Stream ID | Name / Description | From | To | Phase | Mass Flow | Temperature | Pressure | Key Components | Notes |
-|-----------|--------------------|------|----|-------|-----------|-------------|----------|----------------|-------|
-| 1001 | Feed from T-101 | T-101 | E-101 | <value> | <value> kg/h | <value> °C | <value> barg | Nitrogen (N2) – <value> mol%; Oxygen (O2) – <value> mol% | <value> |
+| Attribute | 1001 | 1002 | ... |
+|-----------|-------------|-------------|-----|
+| Name / Description | Feed from T-101 | <value> | ... |
+| From | T-101 | <value> | ... |
+| To | E-101 | <value> | ... |
+| Phase | <value> | <value> | ... |
+| Mass Flow [kg/h] | <value> | <value> | ... |
+| Temperature [°C] | <value> | <value> | ... |
+| Pressure [barg] | <value> | <value> | ... |
+| Key Components | mol% | mol% | ... |
+| Nitrogen (N2) | <value> | <value> | ... |
+| Oxygen (O2) | <value> | <value> | ... |
+| Notes | <value> | <value> | ... |
 ```
 - Use `<value>` placeholders where numbers are unknown.
-- Include as many component entries in the “Key Components” cell as necessary, separated by semicolons.
-- Add additional rows for every stream implied by the concept (utilities, recycle, vent, product, etc.).
+- Add additional stream columns for every stream implied by the concept (utilities, recycle, vent, product, etc.).
 
 # DATA AVAILABLE
 ---
@@ -88,4 +96,3 @@ def _coerce_str(value: object) -> str:
     if isinstance(value, str):
         return value
     return str(value or "")
-

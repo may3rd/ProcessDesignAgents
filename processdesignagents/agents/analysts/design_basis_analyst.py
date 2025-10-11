@@ -51,8 +51,7 @@ def create_design_basis_analyst(llm):
 
         return {
             "design_basis": design_basis_markdown,
-            "design_basis_report": design_basis_markdown,
-            "messages": ["Design Basis Analyst - Completed"],
+            "messages": [response],
         }
 
     return design_basis_analyst
@@ -66,7 +65,7 @@ def system_prompt(
 ) -> str:
     return f"""
 # ROLE:
-You are a senior process engineer tasked with translating high-level requirements and process concepts into an actionable design basis.
+You are a senior process engineer with 20 years of experience in writing process design basis of various process unit and plant. Your role is translating high-level requirements and process concepts into an actionable design basis.
 
 # TASK:
 Prepare a concise design basis that can guide downstream process simulation and equipment sizing work. Reflect the original problem statement, the extracted process requirements, and the selected concept briefing provided by upstream analysts.

@@ -4,6 +4,7 @@ from processdesignagents.default_config import DEFAULT_CONNFIG
 config = DEFAULT_CONNFIG.copy()
 config["deep_think_llm"] = "x-ai/grok-4-fast"
 config["quick_think_llm"] = "google/gemini-2.5-flash"
+config["deep_think_llm"] = "google/gemini-2.5-flash"
 
 graph = ProcessDesignGraph(debug=False, config=config)
 

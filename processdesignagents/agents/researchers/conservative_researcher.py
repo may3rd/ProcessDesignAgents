@@ -66,8 +66,7 @@ def create_conservative_researcher(llm):
 
         return {
             "research_concepts": critique_markdown,
-            "conservative_research_report": critique_markdown,
-            "messages": ["Conservative Researcher - Completed"],
+            "messages": [response],
         }
 
     return conservative_researcher
