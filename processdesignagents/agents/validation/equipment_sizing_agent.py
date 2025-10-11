@@ -15,7 +15,7 @@ load_dotenv()
 def create_equipment_sizing_agent(llm):
     def equipment_sizing_agent(state: DesignState) -> DesignState:
         """Equipment Sizing Agent: populates the equipment table using tool-assisted estimates."""
-        print("\n=========================== Equipment Sizing ===========================\n")
+        print("\n# Equipment Sizing\n")
 
         requirements_markdown = _coerce_str(state.get("requirements", ""))
         design_basis_markdown = _coerce_str(state.get("design_basis", ""))

@@ -64,7 +64,7 @@ class ProcessDesignGraph:
         # Set up the graph
         self.graph = self.graph_setup.setup_graph()
         
-    def proagate(self, problem_statement: str=""):
+    def propagate(self, problem_statement: str = "", save_markdown: str | None = None):
         self.problem_statement = problem_statement
         
         init_agent_state = self.propagator.create_initial_state(problem_statement)
@@ -92,6 +92,9 @@ class ProcessDesignGraph:
         
         # Log state
         self._log_state(final_state)
+
+        if save_markdown:
+            self._write_markdown_report(final_state, save_markdown)
         
         # Return
         return final_state
@@ -122,3 +125,30 @@ class ProcessDesignGraph:
         ) as f:
             json.dump(self.log_state_dict, f, indent=4)
         
+    def _write_markdown_report(self, final_state: Dict[str, Any], filename: str) -> None:
+        sections = [
+            ("Problem Statement", final_state.get("problem_statement", "")),
+            ("Process Requirements", final_state.get("requirements", "")),
+            ("Concept Detail", final_state.get("selected_concept_details", "")),
+            ("Design Basis", final_state.get("design_basis", "")),
+            ("Basic Process Description", final_state.get("basic_pdf", "")),
+            ("Stream Summary", final_state.get("basic_stream_data", "")),
+            ("Heat & Material Balance", final_state.get("basic_hmb_results", "")),
+            ("Equipment Summary", final_state.get("basic_equipment_template", "")),
+            ("Safety & Risk Assessment", final_state.get("safety_risk_analyst_report", "")),
+            ("Project Manager Report", final_state.get("project_manager_report", "")),
+        ]
+
+        output_lines: list[str] = []
+        for title, content in sections:
+            if not content:
+                continue
+            output_lines.append(f"# {title}")
+            output_lines.append(content.strip())
+            output_lines.append("")  # Blank line separator
+
+        report_text = "\n".join(output_lines).rstrip() + "\n"
+
+        output_path = Path(filename)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(report_text, encoding="utf-8")

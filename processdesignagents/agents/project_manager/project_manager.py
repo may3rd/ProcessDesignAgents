@@ -18,6 +18,7 @@ def create_project_manager(llm):
         validation_markdown = state.get("basic_hmb_results", "")
         equipment_table = state.get("basic_equipment_template", "")
         safety_report = state.get("safety_risk_analyst_report", "")
+        
         if not isinstance(requirements_markdown, str):
             requirements_markdown = str(requirements_markdown)
         if not isinstance(basic_pdf_markdown, str):

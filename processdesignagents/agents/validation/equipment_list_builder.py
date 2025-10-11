@@ -11,7 +11,7 @@ load_dotenv()
 def create_equipment_list_builder(llm):
     def equipment_list_builder(state: DesignState) -> DesignState:
         """Equipment List Builder: Produces a markdown equipment template with sizing placeholders."""
-        print("\n=========================== Equipment List Template ===========================\n")
+        print("\n# Equipment List Template\n")
 
         basic_pdf_markdown = _coerce_str(state.get("basic_pdf", ""))
         design_basis_markdown = _coerce_str(state.get("design_basis", ""))
@@ -71,6 +71,7 @@ Respond with Markdown containing:
 - Keep placeholder values as `<value>` with units where appropriate.
 - Reference stream IDs exactly as given in the stream table.
 - Include all critical equipment implied by the current design.
+- Grouping the equipment by type.
 
 # INPUT DATA
 ---
