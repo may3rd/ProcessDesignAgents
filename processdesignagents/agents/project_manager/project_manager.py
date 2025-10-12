@@ -51,7 +51,7 @@ def create_project_manager(llm):
         approval_markdown = response.content if isinstance(response.content, str) else str(response.content)
         approval_status = _extract_status(approval_markdown)
 
-        print(f"Project review completed. Status: {approval_status or 'Unknown'}")
+        print(f"Project review completed. Status: **{approval_status or 'Unknown'}**\n")
         print(approval_markdown)
 
         return {
@@ -85,7 +85,18 @@ You are the project manager responsible for final stage-gate approval of the pro
 # TASK
 Review the provided requirements, design basis, process description, H&MB results, equipment sizing summary, and safety/risk findings. Decide whether to approve, conditionally approve, or reject the project. Summarize financial estimates and outline the immediate implementation plan.
 
-# OUTPUT FORMAT
+# INSTRUCTIONS
+1. **Assess alignment:** Cross-check requirements, design basis, equipment summary, and safety notes; highlight any conflicts or missing justifications in the rationale.
+2. **Decide approval:** Choose `Approved`, `Conditional`, or `Rejected`, stating the gating condition(s) that drive the decision.
+3. **Quantify economics:** Populate CAPEX, OPEX, and contingency with estimates (or `TBD` plus a short note) derived from the available data or reasonable scaling assumptions.
+4. **Plan execution:** Provide three concrete implementation steps, each actionable and sequenced; note timing or responsibility where possible.
+5. **Flag follow-ups:** Use Final Notes to capture open risks, compliance items, or data gaps, referencing the source document (streams, equipment tags, hazards) that triggered the concern.
+
+# CRITICALS
+- **follow** the MARKDOWN TEMPLATE strictly.
+- **always** return the full report in markdown format.
+
+# MARKDOWN TEMPLATE:
 Return a Markdown report with the following structure:
 ```
 ## Executive Summary
@@ -108,9 +119,35 @@ Return a Markdown report with the following structure:
 - <risk or follow-up item>
 - <compliance reminder>
 ```
+---
+# EXAMPLE
+If the package contains a single heat exchanger that cools ethanol from 80 C to 40 C using cooling water, ensure the summary references the utility demand, checks that safety measures cover loss of cooling, and ties the approval status to readiness of that cooler service.
+
+**EXPECTED MARKDOWN OUTPUT:**
+<md_output>
+## Executive Summary
+- Approval Status: Conditional
+- Key Rationale: Cooling water redundancy verification required prior to full approval
+
+## Financial Outlook
+| Metric | Estimate |
+|--------|----------|
+| CAPEX (USD millions) | 1.2 |
+| OPEX (USD millions per year) | 0.35 |
+| Contingency (%) | 15 |
+
+## Implementation Plan
+1. Finalise exchanger mechanical design and procurement (4 weeks).
+2. Install cooling water redundancy instrumentation and test interlocks (3 weeks).
+3. Commission cooler module with performance test and operator training (2 weeks).
+
+## Final Notes
+- Confirm corrosion coupon program before first ethanol run.
+- Align utility contract to guarantee 24,000 kg/h cooling water during summer peaks.
+</md_output>
 
 # DATA FOR REVIEW
----
+
 **REQUIREMENTS SUMMARY (Markdown):**
 {requirements_markdown}
 

@@ -13,6 +13,8 @@ def create_stream_data_estimator(llm):
         """Stream Data Estimator: Generates stream and H&MB tables with estimated conditions."""
         print("\n# Stream Data Estimator\n")
 
+        llm.temperature = 0.7
+        
         basic_pdf_markdown = _coerce_str(state.get("basic_pdf", ""))
         requirements_markdown = _coerce_str(state.get("requirements", ""))
         design_basis_markdown = _coerce_str(state.get("design_basis", ""))
@@ -62,6 +64,9 @@ You are a Senior Process Simulation Engineer. Generate estimated operating condi
 # TASK
 Using the provided information and the 'STREAM TEMPLATE', replace `<value>` placeholders with realistic estimates (include units). Highlight assumptions in notes. Present results strictly as Markdown.
 
+# EXAMPLE
+When refining a heat exchanger that cools ethanol from 80 C to 40 C with cooling water, estimate consistent temperatures and flow rates for the ethanol and cooling water streams, ensuring the heat removed from ethanol matches the heat absorbed by the utility and documenting any assumed specific heat values.
+
 # INSTRUCTIONS
 - For every unit operation implied by the stream connectivity, ensure total mass flow entering equals the total leaving.
 - Reconcile component balances so key species entering a unit match the sum leaving that unit, accounting for accumulation or loss only when explicitly justified.
@@ -70,6 +75,9 @@ Using the provided information and the 'STREAM TEMPLATE', replace `<value>` plac
 - Ensure stream IDs and names align with the template below.
 - Ensure that summation of mol% for each component equals 100%.
 - Add additional properties/rows as needed for clarity.
+
+# CRITICALS
+- **MUST** return the full stream data table in markdown format.
 
 # MARKDOWN TEMPLATE:
 Your Markdown output must follow this structure:
@@ -90,6 +98,24 @@ Your Markdown output must follow this structure:
 - ...
 
 ---
+
+**EXPECTED MARKDOWN OUTPUT:**
+<md_output>
+# Stream Data Table
+|          | 1001 | 1002 | 2001 | 2002 |
+| Description | Hot ethanol feed | Cooled ethanol product | Cooling water supply | Cooling water return |
+| ---------- | ------ | ------ | ------ | ------ |
+| Temperature (degC) | 80 | 40 | 25 | 35 |
+| Pressure (barg) | 1.5 | 1.3 | 2.5 | 2.3 |
+| Mass Flow (kg/h) | 10,000 | 10,000 | 24,000 | 24,000 |
+| Key Component | (mol %) | (mol %) | (mol %) | (mol %) |
+| Ethanol (C2H6O) | 93 | 93 | 0 | 0 |
+| Water (H2O) | 7 | 7 | 100 | 100 |
+
+## Notes
+- Cooling water duty balances ethanol heat removal at approx. 0.28 MW.
+- Monitoring differential pressure across E-101 ensures early fouling detection.
+</md_output>
 
 # STREAM TEMPLATE
 {stream_template}

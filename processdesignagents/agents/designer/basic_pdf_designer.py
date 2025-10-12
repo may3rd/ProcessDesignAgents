@@ -7,11 +7,10 @@ import re
 
 load_dotenv()
 
-
 def create_basic_pdf_designer(llm):
     def basic_pdf_designer(state: DesignState) -> DesignState:
         """Basic PDF Designer: Synthesizes preliminary flowsheet consistent with the detailed concept and design basis."""
-        print("\n# Basic PDF Design\n")
+        print("\n# Basic PDF Design")
 
         requirements_markdown = state.get("requirements", "")
         selected_concept_name = state.get("selected_concept_name", "")
@@ -27,11 +26,8 @@ def create_basic_pdf_designer(llm):
         if not isinstance(design_basis_markdown, str):
             design_basis_markdown = str(design_basis_markdown)
 
-        selected_concept_title = selected_concept_name.strip() or "Unnamed Concept"
-        print(f"Selected concept for design: {selected_concept_title}")
-
         system_message = system_prompt(
-            selected_concept_title,
+            selected_concept_name,
             concept_details_markdown,
             requirements_markdown,
             design_basis_markdown,
@@ -46,10 +42,7 @@ def create_basic_pdf_designer(llm):
 
         basic_pdf_markdown = response.content if isinstance(response.content, str) else str(response.content)
 
-        print(f"Synthesized basic process description for {selected_concept_title}.")
-        print("---")
         print(basic_pdf_markdown)
-        print("---")
 
         return {
             "basic_pdf": basic_pdf_markdown,
@@ -66,13 +59,32 @@ def system_prompt(
     design_basis: str,
 ) -> str:
     return f"""
+# CONTEXT
+You receive vetted concept documentation, design basis, and requirements assembled by upstream teams. The sponsor expects a state-of-the-art flowsheet that showcases advanced integration, modularisation, and smart instrumentation suitable for rapid deployment. Your deliverable seeds downstream stream definition, equipment sizing, safety assessment, and project approval.
+
 # ROLE
 You are a senior process design engineer with 20 years of experience in drafting process flow diagram (PDF) that represent the sequence of process steps of the selected concept. Your task is to create a conceptual process flowsheet based on a selected design concept, technical requirements, and design basis.
 
 # TASK
 Synthesize a preliminary process flowsheet for the selected concept, 'SELECTED CONCEPT' with the 'DETAILED CONCEPT', using the provided 'TECHNICAL REQUIREMENTS' and 'DESIGN BASIS'. The flowsheet must align with the approved design basis and highlight how the concept executes that basis.
 
-# FORMAT
+# INSTRUCTIONS
+1. **Digest inputs:** Extract boundary conditions, operating intent, and critical assumptions from the concept detail, requirements, and design basis.
+2. **Promote innovation:** Embed state-of-the-art features (high-efficiency units, modular skids, digital monitoring, heat-integration strategies) wherever they reinforce the concept without contradicting provided data.
+3. **Map operations:** Identify all major process units, utility systems, bypasses, and recycles; assign unique IDs consistent with plant conventions.
+4. **Define connectivity:** Populate Units and Connections tables fully, ensuring every stream has a clear source, destination, and purpose tied to the advanced concept.
+5. **Explain execution:** Use the narrative and notes to highlight innovative elements, automation hooks, and assumptions that downstream teams must honor.
+6. **Adhere to template:** Follow the Markdown structure exactly—no extra sections, no missing fields.
+
+# CRITICALS
+- **MUST** return the full flowsheet in markdown format.
+- Ensure the tables are complete and readable.
+- The ID must be followed:
+  *  Units ID, e.g. T-101, E-101, C-101, etc.
+  *  Connections ID, 1001, 1002, etc.
+- Reference any design basis assumptions directly in the summary or notes.
+
+# MARKDOWN TEMPLATE:
 Structure your Markdown exactly as follows:
 ```
 ## Flowsheet Summary
@@ -99,11 +111,40 @@ Structure your Markdown exactly as follows:
 - ...
 
 ```
-Ensure the tables are complete and readable.
 
-Units ID, e.g. T-101, E-101, C-101, etc.
-Connections ID, 1001, 1002, etc.
-Reference any design basis assumptions directly in the summary or notes.
+# EXAMPLE
+For a simple exchanger that cools ethanol from 80 C to 40 C using cooling water, include a single E-101 heat exchanger unit, show the warm ethanol feed entering and cooled ethanol product leaving, and note the cooling water supply and return connections.
+
+**EXPECTED MARKDOWN OUTPUT:**
+<md_output>
+## Flowsheet Summary
+- Concept: Ethanol Cooler Module
+- Objective: Reduce hot ethanol from 80 degC to 40 degC using plant cooling water
+- Key Drivers: Maintain storage temperature while minimising cooling water use
+
+## Units
+| ID | Name | Type | Description |
+|----|------|------|-------------|
+| E-101 | Ethanol Cooler | Shell-and-tube exchanger | Transfers heat from ethanol to cooling water |
+| P-101 | Product Pump | Centrifugal pump | Boosts cooled ethanol to storage |
+| U-201 | Cooling Water Loop | Utility header | Provides 25 degC cooling water supply |
+
+## Connections
+| ID | Stream | From | To | Description |
+| --- |--------|------|----|-------------|
+| 1001 | Hot ethanol feed | Upstream blender | E-101 | Ethanol at 80 degC and 1.5 barg |
+| 1002 | Cooled ethanol | E-101 | P-101 | Product leaving exchanger at 40 degC |
+| 1003 | Storage transfer | P-101 | Storage tank | Pumped ethanol to atmospheric tank |
+| 2001 | CW supply | CW header | E-101 | Cooling water enters at 25 degC |
+| 2002 | CW return | E-101 | CW header | Return water at 35 degC |
+
+## Overall Description
+Hot ethanol from the blender enters E-101 where heat is exchanged against plant cooling water. The cooled ethanol flows to P-101 for transfer to storage. Cooling water circulates from the utility header through E-101 and back to the return manifold.
+
+## Notes
+- Provide strainers on cooling water inlet to limit fouling.
+- Include bypass line around E-101 for maintenance.
+</md_output>
 
 # DATA FOR ANALYSIS
 ---
@@ -119,5 +160,4 @@ Reference any design basis assumptions directly in the summary or notes.
 **DESIGN BASIS:**
 {design_basis}
 
-# FINAL MARKDOWN OUTPUT:
 """

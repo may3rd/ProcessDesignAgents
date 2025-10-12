@@ -13,6 +13,8 @@ def create_equipment_list_builder(llm):
         """Equipment List Builder: Produces a markdown equipment template with sizing placeholders."""
         print("\n# Equipment List Template\n")
 
+        llm.temperature = 0.7
+
         basic_pdf_markdown = state.get("basic_pdf", "")
         design_basis_markdown = state.get("design_basis", "")
         requirements_markdown = state.get("requirements", "")
@@ -63,6 +65,9 @@ Use the process description, design basis, requirements, and stream summary to l
 - Populate each row with the best known identifiers and leave `<value>` placeholders for any data not yet available; include units in the placeholder string.
 - Capture any assumptions, open questions, or dependencies in the Notes column to guide the sizing step.
 
+# CRITICALS
+- **MUST** return the full equipment table in markdown format.
+
 # MARKDOWN TEMPLATE:
 Your Markdown output must follow this structure:
 | Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
@@ -84,6 +89,25 @@ Your Markdown output must follow this structure:
 {stream_table}
 
 # FINAL MARKDOWN OUTPUT:
+---
+# EXAMPLE
+For a cooler that drops ethanol from 80 C to 40 C using cooling water, list E-101 with ethanol feed and product stream IDs, cooling water in/out streams, a duty placeholder, and notes about assumed approach temperatures.
+
+**EXPECTED MARKDOWN OUTPUT:**
+<md_output>
+## Equipment Table
+
+### Heat Exchangers
+| Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
+|--------------|------|---------|------|------------|-------------|-------------|----------------|-------|
+| E-101 | Ethanol Cooler | Reduce ethanol temperature | Shell-and-tube exchanger | 1001, 2001 | 1002, 2002 | 0.28 MW | Area: <120 m2>; U: <450 W/m2-K>; Shell pass: 1 | Design for 5 degC approach; allow bundle pull |
+
+### Pumps
+| Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
+|--------------|------|---------|------|------------|-------------|-------------|----------------|-------|
+| P-101 | Product Pump | Transfer cooled ethanol to storage | Centrifugal pump | 1002 | 1003 | 45 kW | Flow: 10,000 kg/h; Head: 18 m | Include VFD for turndown control |
+</md_output>
+
 """
 
 

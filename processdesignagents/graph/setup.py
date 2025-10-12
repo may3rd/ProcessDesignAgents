@@ -1,4 +1,6 @@
 from typing import Dict, Any
+import time
+from functools import wraps
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph, START
 from langgraph.prebuilt import ToolNode
@@ -19,6 +21,15 @@ class GraphSetup:
         self.quick_thinking_llm = quick_thinking_llm
         self.deep_thinking_llm = deep_thinking_llm
         self.checkpointer = checkpointer
+
+    def _wrap_with_delay(self, agent_fn, delay: float = 0.5):
+        """Ensure each agent pauses briefly before yielding control."""
+        @wraps(agent_fn)
+        def wrapper(state: DesignState) -> DesignState:
+            result = agent_fn(state)
+            time.sleep(delay)
+            return result
+        return wrapper
         
     def setup_graph(
         self
@@ -26,19 +37,18 @@ class GraphSetup:
         """Set up and complie the agent graph."""
         graph = StateGraph(DesignState)
         
-        process_requirements_analyst = create_process_requiruments_analyst(self.quick_thinking_llm)
-        innovative_researcher = create_innovative_researcher(self.quick_thinking_llm)
-        conservative_researcher = create_conservative_researcher(self.deep_thinking_llm)
-        concept_detailer = create_concept_detailer(self.deep_thinking_llm)
-        design_basis_analyst = create_design_basis_analyst(self.quick_thinking_llm)
-        basic_pdf_designer = create_basic_pdf_designer(self.quick_thinking_llm)
-        stream_data_builder = create_stream_data_builder(self.quick_thinking_llm)
-        equipment_list_builder = create_equipment_list_builder(self.quick_thinking_llm)
-        stream_data_estimator = create_stream_data_estimator(self.deep_thinking_llm)
-        equipment_sizing_agent = create_equipment_sizing_agent(self.deep_thinking_llm)
-        # optimizer = create_optimizer(self.quick_thinking_llm)
-        safety_risk_analyst = create_safety_risk_analyst(self.deep_thinking_llm)
-        project_manager = create_project_manager(self.deep_thinking_llm)
+        process_requirements_analyst = self._wrap_with_delay(create_process_requiruments_analyst(self.quick_thinking_llm))
+        innovative_researcher = self._wrap_with_delay(create_innovative_researcher(self.quick_thinking_llm))
+        conservative_researcher = self._wrap_with_delay(create_conservative_researcher(self.quick_thinking_llm))
+        concept_detailer = self._wrap_with_delay(create_concept_detailer(self.deep_thinking_llm))
+        design_basis_analyst = self._wrap_with_delay(create_design_basis_analyst(self.quick_thinking_llm))
+        basic_pdf_designer = self._wrap_with_delay(create_basic_pdf_designer(self.quick_thinking_llm))
+        stream_data_builder = self._wrap_with_delay(create_stream_data_builder(self.quick_thinking_llm))
+        equipment_list_builder = self._wrap_with_delay(create_equipment_list_builder(self.quick_thinking_llm))
+        stream_data_estimator = self._wrap_with_delay(create_stream_data_estimator(self.deep_thinking_llm))
+        equipment_sizing_agent = self._wrap_with_delay(create_equipment_sizing_agent(self.deep_thinking_llm))
+        safety_risk_analyst = self._wrap_with_delay(create_safety_risk_analyst(self.deep_thinking_llm))
+        project_manager = self._wrap_with_delay(create_project_manager(self.deep_thinking_llm))
         
         # Add implemented nodes (expand as agents are developed)
         graph.add_node("process_requirements_analyst", process_requirements_analyst)
@@ -69,6 +79,7 @@ class GraphSetup:
         graph.add_edge("safety_risk_analyst", "project_manager")
         graph.add_edge("project_manager", END)
         
+        # graph.add_edge("basic_pdf_designer", END)
         # graph.add_edge("equipment_sizing_agent", END)
         
         if self.checkpointer is not None:

@@ -77,6 +77,7 @@ The chemical components involved in the process are:
 **PROBLEM STATEMENT:** "We need to design a plant to produce 1500 kg/h of high-purity Ethyl Acetate from the esterification of Ethanol and Acetic Acid using Sulfuric Acid as a catalyst. The target purity for the Ethyl Acetate product is 99.8%. The reaction should achieve at least a 92% yield based on the limiting reactant, which is Acetic Acid. The reactor must operate below 100°C."
 
 **EXPECTED MARKDOWN OUTPUT:**
+<md_output>
 ## Objective
 - Primary goal: Produce high-purity Ethyl Acetate via esterification of Ethanol and Acetic Acid
 - Key drivers: Maintain catalyst activity (Sulfuric Acid) while maximizing conversion
@@ -99,7 +100,9 @@ The chemical components involved in the process are:
 ## Constraints & Assumptions
 - Reactor operating temperature must remain below 100°C.
 - Achieve at least 92% yield based on Acetic Acid (limiting reactant).
----
+</md_output>
+
+#
 # NEGATIVES:
 
 * ENSURE the the capacity UOM conversion is done correctly.
@@ -107,5 +110,4 @@ The chemical components involved in the process are:
 # PROBLEM STATEMENT TO ANALYZE:
 {problem_statement}
 
-# FINAL MARKDOWN OUTPUT:
 """

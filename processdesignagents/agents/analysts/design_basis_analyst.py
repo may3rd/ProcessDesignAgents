@@ -78,7 +78,10 @@ Prepare a concise design basis that can guide downstream process simulation and 
 5. **Leverage Concept Brief:** Use the supplied concept detail to anchor feed/product definitions, major process steps, and design scope. Do not contradict the chosen concept unless the requirements force an adjustment—if they do, state the conflict in Notes & Data Gaps.
 6. **Extract Components:** List the chemical components than involve in the process, e.g. Hydrogen (H2), Oxygen (O2), Carbon Dioxide (CO2), etc.
 
-# OUTPUT FORMAT:
+# EXAMPLE:
+For a heat exchanger that cools an ethanol stream from 80 C to 40 C using cooling water, document the inlet and outlet temperatures, define ethanol and cooling water in the component list, and state any assumed flow rates or constraints you impose to close the basis.
+
+# MARKDOWN TEMPLATE:
 Your Markdown must follow this exact structure:
 ```
 ## Executive Summary
@@ -113,8 +116,43 @@ Your Markdown must follow this exact structure:
 ## Notes & Data Gaps
 - <Outstanding questions or data needs>
 ```
-# NEGATIVES
-* Try your best to estimate the missing information, such as the quantity of feed or product specifications.
+
+**EXPECTED MARKDOWN OUTPUT:**
+<md_output>
+## Executive Summary
+- Process objective: Cool 95 wt% ethanol feed from 80 degC to 40 degC before storage
+- Design strategy: Shell-and-tube exchanger using plant cooling water loop
+- Key risks: Thermal shock in downstream storage if duty spikes
+
+## Design Scope
+- Battery limits: From pump discharge (hot ethanol) to cooled ethanol storage nozzle
+- Operating mode: Continuous
+- Design horizon: 15-year service with 30% turndown capability
+
+## Feed Specifications
+| Stream | Description | Flow Rate | Composition | Key Conditions |
+|--------|-------------|-----------|-------------|----------------|
+| F-101 | Hot ethanol feed | 10,000 kg/h | Ethanol 95 wt%, Water 5 wt% | 80 degC, 1.5 barg |
+
+## Product Specifications
+| Stream | Description | Production Rate | Quality Targets | Delivery Conditions |
+|--------|-------------|-----------------|-----------------|---------------------|
+| P-101 | Cooled ethanol product | 10,000 kg/h | Ethanol >=95 wt% | 40 degC, 1.3 barg |
+
+## Components
+- Ethanol (C2H6O)
+- Water (H2O)
+- Cooling water (utility)
+
+## Assumptions & Constraints
+- Assume constant ethanol flow rate of 10,000 kg/h from upstream blender.
+- Cooling water supply available at 25 degC and max return of 35 degC.
+- Maintain minimum 5 degC approach temperature on hot side to avoid ice formation.
+
+## Notes & Data Gaps
+- Confirm upstream ethanol composition and any fouling inhibitors.
+- Need cooling water availability confirmation during summer design conditions.
+</md_output>
 
 # REFERENCE MATERIAL:
 ---
@@ -130,5 +168,4 @@ Your Markdown must follow this exact structure:
 **SELECTED CONCEPT DETAIL (Markdown):**
 {concept_details_markdown or "Not provided"}
 
-# FINAL MARKDOWN OUTPUT:
 """

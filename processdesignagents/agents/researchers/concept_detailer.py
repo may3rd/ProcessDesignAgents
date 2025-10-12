@@ -111,7 +111,7 @@ You are an experienced conceptual process designer. Your task is to prepare an i
 # TASK
 Using the chosen concept description and the overarching requirements, elaborate on the process flow, major equipment, operating envelopes, and key risks. Clarify the engineering rationale behind each element.
 
-# OUTPUT FORMAT
+# MARKDOWN TEMPLATE:
 Respond with Markdown using the exact structure below:
 ```
 ## Concept Summary
@@ -141,6 +141,39 @@ Respond with Markdown using the exact structure below:
 - <information still needed or assumptions made>
 ```
 Ensure every list or table entry is specific and actionable. If data is missing, flag it explicitly with `TBD` and add a short explanation.
+
+**EXPECTED MARKDOWN OUTPUT:**
+<md_output>
+## Concept Summary
+- Name: Ethanol Cooler Module
+- Intent: Reduce hot ethanol temperature ahead of storage using a compact exchanger skid
+- Feasibility Score (from review): 8
+
+## Process Narrative
+Hot ethanol at 95 wt% exits upstream blending at 80 degC and 1.5 barg. The stream is routed through a shell-and-tube exchanger where plant cooling water absorbs sensible heat, bringing the ethanol down to 40 degC before storage.
+
+Cooling water enters the exchanger at 25 degC from the utility header and leaves at roughly 35 degC. The cooled ethanol then flows to the atmospheric storage tank while the warmed cooling water returns to the utility loop.
+
+## Major Equipment & Roles
+| Equipment | Function | Critical Operating Notes |
+|-----------|----------|--------------------------|
+| E-101 Shell-and-tube exchanger | Remove sensible heat from ethanol | Maintain minimum 5 degC approach; monitor fouling on tube bundle |
+| T-201 Storage tank | Receive cooled ethanol | Blanketed with nitrogen to prevent oxygen ingress |
+
+## Operating Envelope
+- Design capacity: 10,000 kg/h ethanol (continuous)
+- Key pressure levels: 1.5 barg in, 1.3 barg out
+- Key temperature levels: Ethanol 80->40 degC; cooling water 25->35 degC
+- Special utilities / additives: Treated cooling water loop with corrosion inhibitor
+
+## Risks & Safeguards
+- Cooling water interruption — Dual supply pumps with automatic switchover
+- Tube leak cross-contamination — Differential pressure monitoring and quick-isolation valves
+
+## Data Gaps & Assumptions
+- Ethanol specific heat assumed 2.5 kJ/kg-K; verify real composition.
+- Cooling water quality limits pending utility documentation.
+</md_output>
 
 # SOURCE MATERIAL
 ---
