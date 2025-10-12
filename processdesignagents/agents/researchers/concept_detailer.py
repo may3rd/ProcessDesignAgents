@@ -12,7 +12,7 @@ load_dotenv()
 def create_concept_detailer(llm):
     def concept_detailer(state: DesignState) -> DesignState:
         """Concept Detailer: Picks the highest-feasibility concept and elaborates it for downstream design."""
-        print("\n# Concept Selection\n")
+        print("\n# Concept Selection")
 
         concepts_markdown = state.get("research_concepts", "")
         if not isinstance(concepts_markdown, str):

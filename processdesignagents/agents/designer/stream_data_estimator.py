@@ -21,9 +21,6 @@ def create_stream_data_estimator(llm):
         concept_details_markdown = _coerce_str(state.get("selected_concept_details", ""))
         stream_template = _coerce_str(state.get("basic_stream_data", ""))
 
-        if not stream_template.strip():
-            raise ValueError("Stream template not available. Ensure stream_data_builder executed successfully.")
-
         system_message = system_prompt(
             basic_pdf_markdown,
             requirements_markdown,
@@ -58,6 +55,14 @@ def system_prompt(
     stream_template: str,
 ) -> str:
     return f"""
+# CONTEXT
+You receive the templated stream inventory, concept summary, and governing requirements from earlier design stages. The project needs first-pass operating conditions and reconciled balances so downstream sizing and analysis teams can proceed with credible data.
+
+# TARGET AUDIENCE
+- Equipment sizing agent deriving preliminary dimensions and duties.
+- Process simulation specialists building detailed steady-state models.
+- Concept reviewers validating feasibility and identifying data gaps.
+
 # ROLE
 You are a Senior Process Simulation Engineer. Generate estimated operating conditions for every process stream and summarize the overall heat and material balance.
 
@@ -68,13 +73,13 @@ Using the provided information and the 'STREAM TEMPLATE', replace `<value>` plac
 When refining a heat exchanger that cools ethanol from 80 C to 40 C with cooling water, estimate consistent temperatures and flow rates for the ethanol and cooling water streams, ensuring the heat removed from ethanol matches the heat absorbed by the utility and documenting any assumed specific heat values.
 
 # INSTRUCTIONS
-- For every unit operation implied by the stream connectivity, ensure total mass flow entering equals the total leaving.
-- Reconcile component balances so key species entering a unit match the sum leaving that unit, accounting for accumulation or loss only when explicitly justified.
-- Confirm the overall process inputs equal outputs across the full flowsheet; highlight any reconciliation assumptions in the Notes section.
-- When balance adjustments are required, document the rationale and affected streams directly in the Notes entries.
-- Ensure stream IDs and names align with the template below.
-- Ensure that summation of mol% for each component equals 100%.
-- Add additional properties/rows as needed for clarity.
+1. Review the STREAM TEMPLATE alongside the process description, requirements, and design basis to understand intended unit operations, utilities, and performance targets.
+2. Replace every `<value>` placeholder with realistic estimates (include units) derived from energy and material balance reasoning; adjust temperatures, pressures, and flows so each unit operation is internally consistent.
+3. Enforce conservation: total mass and key component rates entering any unit must equal the totals leaving unless a justified accumulation/consumption is documented in the Notes.
+4. Cross-check the entire flowsheet so overall inputs equal overall outputs; when reconciling gaps, note the assumptions, calculation methods, or correction factors in the Notes and reference affected stream IDs.
+5. Ensure each stream retains its identifier, name, and intent from the template; expand the table with additional property rows or component rows if the scenario requires them.
+6. Confirm every composition row sums to 100 mol% (or 100 mass% if applicable) and highlight the chosen basis in the Notes when needed.
+7. Return the completed Markdown exactly in the required format, including the `## Notes` section with concise bullet entries.
 
 # CRITICALS
 - **MUST** return the full stream data table in markdown format.
@@ -131,8 +136,6 @@ Your Markdown output must follow this structure:
 **REQUIREMENTS SUMMARY:**
 {requirements_markdown}
 
-**CONCEPT DETAIL:**
-{concept_details_markdown}
 """
 
 

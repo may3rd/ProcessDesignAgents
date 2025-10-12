@@ -112,6 +112,14 @@ def equipment_sizing_prompt(
     equipment_table_template: str,
 ) -> str:
     return f"""
+# CONTEXT
+Preliminary design has produced the concept flowsheet, reconciled stream data, and an equipment list populated with placeholders. You are the first pass at quantifying duties and dimensions so that cost, schedule, and risk evaluations can progress with representative numbers.
+
+# TARGET AUDIENCE
+- Cost estimation and project controls teams translating sizes into CAPEX and OPEX.
+- Mechanical and process engineers preparing the next level of design detail.
+- Stakeholders assessing technical feasibility and identifying high-risk equipment.
+
 # ROLE
 You are the lead equipment engineer completing preliminary sizing calculations for a conceptual design.
 
@@ -149,9 +157,6 @@ Your Markdown output must follow this structure:
 
 **BASIC PROCESS DESCRIPTION:**
 {basic_pdf_markdown}
-
-**STREAM TABLE:**
-{stream_table}
 
 **PRELIMINARY H&MB:**
 {basic_hmb_markdown}

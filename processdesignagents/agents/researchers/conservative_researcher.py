@@ -11,7 +11,7 @@ load_dotenv()
 def create_conservative_researcher(llm):
     def conservative_researcher(state: DesignState) -> DesignState:
         """Conservative Researcher: Critiques concepts for practicality using LLM."""
-        print("\n# Conservatively Critiqued Concepts\n")
+        print("\n# Conservatively Critiqued Concepts")
 
         concepts_markdown = state.get("research_concepts", "")
         requirements_markdown = state.get("requirements", "")
@@ -19,6 +19,7 @@ def create_conservative_researcher(llm):
             concepts_markdown = str(concepts_markdown)
         if not isinstance(requirements_markdown, str):
             requirements_markdown = str(requirements_markdown)
+            
         system_message = system_prompt(concepts_markdown, requirements_markdown)
 
         prompt = ChatPromptTemplate.from_messages([
@@ -29,40 +30,9 @@ def create_conservative_researcher(llm):
         response = chain.invoke(state.get("messages", []))
 
         critique_markdown = response.content if isinstance(response.content, str) else str(response.content)
-        concept_blocks = _split_concept_sections(critique_markdown)
-        if not concept_blocks:
-            raise ValueError("Conservative critique report must include at least one concept section.")
-
-        print("Applied conservative critiques to research concepts.")
-        if not concept_blocks:
-            print("- No concept sections detected")
-        for title, block in concept_blocks.items():
-            normalized_block = block
-            missing_sections = []
-            no_risk = False
-            no_recommendation = False
-            if "### Risks" not in normalized_block:
-                no_risk = True
-            if "### Recommendations" not in normalized_block:
-                no_recommendation = True
-            if no_risk and no_recommendation:
-                continue
-            if no_risk:
-                missing_sections.append("Risks")
-                normalized_block += "\n\n### Risks\n- Not provided by conservative reviewer.\n"
-            if no_recommendation:
-                missing_sections.append("Recommendations")
-                normalized_block += "\n\n### Recommendations\n- Not provided by conservative reviewer.\n"
-            if missing_sections:
-                print(
-                    f"[!] Concept '{title}' missing sections: {', '.join(missing_sections)}. Added default placeholders."
-                )
-                concept_blocks[title] = normalized_block
-            score = _extract_score(normalized_block)
-            risks = _extract_bullets(normalized_block, heading="Risks")
-            print(f"---\n{title}")
-            print(f"Risks: {', '.join(risks) if risks else 'N/A'}")
-            print(f"Feasibility Score: {score if score is not None else 'N/A'}")
+        # concept_blocks = _split_concept_sections(critique_markdown)
+        
+        print(critique_markdown)
 
         return {
             "research_concepts": critique_markdown,
@@ -127,6 +97,14 @@ You are a Principal Technology Analyst at a chemical venture capital firm. Your 
 
 # TASK
 Critically evaluate each of the provided process concepts. For each one, augment the existing information with a detailed analysis of its risks, a calculated feasibility score, and clear, actionable recommendations. Your analysis must consider the given requirements and constraints. The output must be a Markdown report.
+
+# INSTRUCTIONS
+1. Review the REQUIREMENTS / CONSTRAINTS and the source CONCEPTS to understand performance targets, boundary conditions, and any hard show-stoppers.
+2. For each concept, test its claims against conservative assumptions: highlight technology maturity limits, scale-up hurdles, regulatory concerns, and hidden cost drivers.
+3. Assign a single integer Feasibility Score from 1 (very high risk) to 10 (ready for near-term deployment) based on technical robustness, economic viability, safety, and alignment with requirements.
+4. Populate the Risks subsection with at least three bullets covering technical, economic, and safety/operational themes; add more if material gaps exist.
+5. Provide actionable Recommendations that mitigate the highlighted risks or outline essential validation steps (pilot programs, vendor vetting, contingency designs).
+6. Preserve the section order and formatting exactly as defined in the Markdown template; do not add extra narrative outside the concept sections.
 
 # MARKDOWN TEMPLATE:
 For each concept, produce a section with the following structure:

@@ -52,6 +52,14 @@ def system_prompt(
     stream_table: str,
 ) -> str:
     return f"""
+# CONTEXT
+The conceptual flowsheet, requirements, and preliminary stream map are complete. Downstream teams now need a master list of equipment placeholders so sizing, costing, and safety reviews can proceed in parallel.
+
+# TARGET AUDIENCE
+- Equipment sizing agent who will replace placeholders with calculated values.
+- Cost estimation and procurement teams seeking an initial scope of supply.
+- Process safety reviewers checking that critical equipment is accounted for.
+
 # ROLE
 You are a process equipment engineer compiling the master equipment list for a preliminary design package. Create an EQUIPMENT SUMMARY in MARKDOWN TABLE form.
 
