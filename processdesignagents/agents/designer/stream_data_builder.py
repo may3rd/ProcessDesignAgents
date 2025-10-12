@@ -15,10 +15,10 @@ def create_stream_data_builder(llm):
         
         llm.temperature = 0.7
 
-        basic_pdf_markdown = _coerce_str(state.get("basic_pdf", ""))
-        design_basis_markdown = _coerce_str(state.get("design_basis", ""))
-        requirements_markdown = _coerce_str(state.get("requirements", ""))
-        concept_details_markdown = _coerce_str(state.get("selected_concept_details", ""))
+        basic_pdf_markdown = state.get("basic_pdf", "")
+        design_basis_markdown = state.get("design_basis", "")
+        requirements_markdown = state.get("requirements", "")
+        concept_details_markdown = state.get("selected_concept_details", "")
 
         system_message = system_prompt(
             basic_pdf_markdown,
@@ -129,9 +129,3 @@ In a heat exchanger that cools ethanol from 80 C to 40 C with cooling water, cre
 {requirements_markdown}
 
 """
-
-
-def _coerce_str(value: object) -> str:
-    if isinstance(value, str):
-        return value
-    return str(value or "")

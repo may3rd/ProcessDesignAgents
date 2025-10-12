@@ -117,9 +117,3 @@ For a cooler that drops ethanol from 80 C to 40 C using cooling water, list E-10
 </md_output>
 
 """
-
-
-def _coerce_str(value: object) -> str:
-    if isinstance(value, str):
-        return value
-    return str(value or "")

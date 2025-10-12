@@ -15,11 +15,11 @@ def create_stream_data_estimator(llm):
 
         llm.temperature = 0.7
         
-        basic_pdf_markdown = _coerce_str(state.get("basic_pdf", ""))
-        requirements_markdown = _coerce_str(state.get("requirements", ""))
-        design_basis_markdown = _coerce_str(state.get("design_basis", ""))
-        concept_details_markdown = _coerce_str(state.get("selected_concept_details", ""))
-        stream_template = _coerce_str(state.get("basic_stream_data", ""))
+        basic_pdf_markdown = state.get("basic_pdf", "")
+        requirements_markdown = state.get("requirements", "")
+        design_basis_markdown = state.get("design_basis", "")
+        concept_details_markdown = state.get("selected_concept_details", "")
+        stream_template = state.get("basic_stream_data", "")
 
         system_message = system_prompt(
             basic_pdf_markdown,
@@ -137,9 +137,3 @@ Your Markdown output must follow this structure:
 {requirements_markdown}
 
 """
-
-
-def _coerce_str(value: object) -> str:
-    if isinstance(value, str):
-        return value
-    return str(value or "")
