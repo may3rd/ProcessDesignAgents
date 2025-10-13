@@ -11,7 +11,7 @@ load_dotenv()
 def create_conservative_researcher(llm):
     def conservative_researcher(state: DesignState) -> DesignState:
         """Conservative Researcher: Critiques concepts for practicality using LLM."""
-        print("\n# Conservatively Critiqued Concepts")
+        print("\n---\n# Conservatively Critiqued Concepts")
 
         concepts_markdown = state.get("research_concepts", "")
         requirements_markdown = state.get("requirements", "")

@@ -67,16 +67,17 @@ The CLI streams agent progress, tool invocations, and compiled reports using Ric
 ## Agent Pipeline (Default Graph)
 
 1. **Process Requirements Analyst** – Extracts structured requirements from the problem statement.
-2. **Innovative & Conservative Researchers** – Brainstorm and refine potential process concepts.
-3. **Concept Detailer** – Selects the most feasible concept and builds a detailed brief.
-4. **Design Basis Analyst** – Writes the design basis referencing the concept detail.
-5. **Basic PDF Designer** – Produces the conceptual flowsheet in Markdown.
-6. **Stream Data Builder** – Creates a stream summary table with placeholders.
-7. **Stream Data Estimator** – Populates stream and H&MB tables with estimated conditions.
-8. **Equipment List Builder** – Generates an equipment template table tied to streams.
-9. **Equipment Sizing Agent** – Calls sizing tools and fills equipment details & notes.
-10. **Safety & Risk Analyst** – Performs a HAZOP-style review.
-11. **Project Manager** – Compiles the final approval report.
+2. **Innovative Researcher** – Brainstorms potential process concepts.
+3. **Conservative Researcher** – Refines and validates potential process concepts.
+4. **Concept Detailer** – Selects the most feasible concept and builds a detailed brief.
+5. **Design Basis Analyst** – Writes the design basis referencing the concept detail.
+6. **Basic PDF Designer** – Produces the conceptual flowsheet in Markdown.
+7. **Stream Data Builder** – Creates a stream summary table with placeholders.
+8. **Stream Data Estimator** – Populates stream and H&MB tables with estimated conditions.
+9. **Equipment List Builder** – Generates an equipment template table tied to streams.
+10. **Equipment Sizing Agent** – Calls sizing tools and fills equipment details & notes.
+11. **Safety & Risk Analyst** – Performs a HAZOP-style review.
+12. **Project Manager** – Compiles the final approval report.
 
 The graph wiring lives in `processdesignagents/graph/setup.py`. State fields are defined in `processdesignagents/agents/utils/agent_states.py`.
 

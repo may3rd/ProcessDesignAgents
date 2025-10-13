@@ -11,7 +11,7 @@ load_dotenv()
 def create_innovative_researcher(llm):
     def innovative_researcher(state: DesignState) -> DesignState:
         """Innovative Researcher: Proposes novel process concepts using LLM."""
-        print("\n# Innovative Research Concepts")
+        print("\n---\n# Innovative Research Concepts")
 
         requirements_summary = state.get("requirements", "")
         if not isinstance(requirements_summary, str):

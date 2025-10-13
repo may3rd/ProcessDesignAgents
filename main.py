@@ -14,9 +14,9 @@ graph = ProcessDesignGraph(debug=False, config=config)
 
 # problem_statement = "design generic compressed air unit for refinery with capacity 300 Nm3/h for plant air and instrument air."
 # problem_statement = "design carbon capture unit with capacity 100 ton per day of captured carbon product, the feed is flue gas with CO2 around 12.4 wt%."
-# problem_statement = "design MWCNT production, CVD of Methane in Fludized Bed Reactor, feed stock is LNG with 93% mole Methane, the H2 generated will be collected to be blue hydrogen. Target capacity is 37 kg/h of CNT production."
-# problem_statement = f"design the energy recovery from flue gas of LNG burner, 10,000 SCFD, 400°C, 0.1 barg and use it to produce electricity with 30% efficiency."
-problem_statement = "design the carbon capture modular package, the feed to the package can be flue gas from various burner type. The target CO2 purity is 99%"
+# problem_statement = "design MWCNT production, CVD of Methane in Fludized Bed Reactor, feed stock is LNG with 93% mole Methane, the by-product H2 generated will be collected to be blue hydrogen. Target capacity is 37 kg/h of CNT production."
+problem_statement = f"design the energy recovery from flue gas of LNG burner, 10,000 SCFD, 300°C, 0.1 barg and use it to produce electricity with 30% efficiency."
+# problem_statement = "design the carbon capture modular package, the feed to the package can be flue gas from various burner type. The target CO2 purity is 99%"
 
 result = graph.propagate(problem_statement=problem_statement, save_markdown="reports/latest_run.md")
 # print(result)

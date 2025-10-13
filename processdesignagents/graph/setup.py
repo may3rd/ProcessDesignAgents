@@ -79,7 +79,7 @@ class GraphSetup:
         graph.add_edge("safety_risk_analyst", "project_manager")
         graph.add_edge("project_manager", END)
         
-        # graph.add_edge("basic_pdf_designer", END)
+        # graph.add_edge("design_basis_analyst", END)
         # graph.add_edge("equipment_sizing_agent", END)
         
         if self.checkpointer is not None:
