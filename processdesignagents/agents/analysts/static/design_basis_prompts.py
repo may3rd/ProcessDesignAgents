@@ -160,7 +160,7 @@ You are an expert **Senior Process Design Engineer** with deep expertise in chem
 This document provides the preliminary basis for the design of a continuous Biodiesel (Fatty Acid Methyl Ester - FAME) production unit. The primary problem is converting high-Free Fatty Acid (FFA) content palm oil feed (4.5 wt% FFA) into a high-quality fuel that meets stringent international standards (EN 14214), while adhering to a minimal potable water consumption constraint at a humid site.
 
 ## 2. Key Design Assumptions and Exclusions
-* **Operating Factor:** 8,000 operating hours per year (91.3\% stream factor).
+* **Operating Factor:** 8,000 operating hours per year (91.3\\% stream factor).
 * **Process Technology:** A combination of pre-treatment (esterification) and main reaction (transesterification) is assumed necessary due to the high FFA content.
 * **Plant Lifespan:** Design life of 20 years.
 * **Location:** Design conditions assume tropical/high-humidity environment (e.g., ambient temperature up to $40^\circ\\text{{C}}$).
@@ -170,7 +170,7 @@ This document provides the preliminary basis for the design of a continuous Biod
 | Parameter | Value | Units | Basis |
 | :--- | :--- | :--- | :--- |
 | **Nameplate Capacity** | 50,000 | $\\text{{MTA}}$ | User Requirement |
-| **Design Capacity** | 55,000 | $\\text{{MTA}}$ | $10\%$ Safety Margin |
+| **Design Capacity** | 55,000 | $\\text{{MTA}}$ | $10\\%$ Safety Margin |
 | **Daily Production Rate** | 18.06 | $\\text{{Tons}}/\\text{{hr}}$ | 8000 $\\text{{hr}}/\\text{{yr}}$ Basis |
 | **Reaction Type** | Esterification & Transesterification | N/A | High FFA Feedstock |
 | **Typical Reactor Pressure** | Atmospheric to $5 \\text{{barg}}$ | $\\text{{barg}}$ | Preliminary Estimate |
@@ -178,14 +178,14 @@ This document provides the preliminary basis for the design of a continuous Biod
 ## 4. Feed and Product Specifications
 
 ### Feed Specification (Unrefined Palm Oil)
-* **FFA Content (Max):** $4.5 \\text{{wt}}\%$
-* **Moisture Content (Max):** $0.5 \\text{{wt}}\%$
-* **Impurity Basis:** $1.0 \\text{{wt}}\%$ (Maximum)
+* **FFA Content (Max):** $4.5 \\text{{wt}}\\%$
+* **Moisture Content (Max):** $0.5 \\text{{wt}}\\%$
+* **Impurity Basis:** $1.0 \\text{{wt}}\\%$ (Maximum)
 
 ### Product Specification (Grade A Biodiesel - FAME)
 * **Target Standard:** EN 14214
-* **Methyl Ester Content (Min):** $96.5 \\text{{wt}}\%$
-* **Glycerol (Total) (Max):** $0.25 \\text{{wt}}\%$
+* **Methyl Ester Content (Min):** $96.5 \\text{{wt}}\\%$
+* **Glycerol (Total) (Max):** $0.25 \\text{{wt}}\\%$
 * **Water Content (Max):** $500 \\text{{ppm}}$
 
 ## 5. Preliminary Utility Summary
@@ -200,7 +200,7 @@ This document provides the preliminary basis for the design of a continuous Biod
 * **Site Constraint:** Strict adherence to $100 \\text{{m}}^3/\\text{{day}}$ maximum potable water consumption is mandatory.
 
 ## 7. Process Selection Rationale (High-Level)
-The high FFA content mandates a two-step approach: **Acid-catalyzed Esterification** (to reduce FFA to $<1\%$) followed by **Alkali-catalyzed Transesterification** (for the bulk reaction). This is a robust, commercially proven pathway for multi-feedstock biodiesel plants.
+The high FFA content mandates a two-step approach: **Acid-catalyzed Esterification** (to reduce FFA to $<1\\%$) followed by **Alkali-catalyzed Transesterification** (for the bulk reaction). This is a robust, commercially proven pathway for multi-feedstock biodiesel plants.
 
 ## 8. Preliminary Material of Construction (MoC) Basis
 * **General Service:** Carbon Steel ($\\text{{CS}}$) for non-corrosive services (e.g., storage, utilities).
