@@ -71,7 +71,7 @@ The CLI streams agent progress, tool invocations, and compiled reports using Ric
 3. **Conservative Researcher** – Refines and validates potential process concepts.
 4. **Concept Detailer** – Selects the most feasible concept and builds a detailed brief.
 5. **Design Basis Analyst** – Writes the design basis referencing the concept detail.
-6. **Basic PDF Designer** – Produces the conceptual flowsheet in Markdown.
+6. **Basic PFD Designer** – Produces the conceptual flowsheet narrative in Markdown.
 7. **Stream Data Builder** – Creates a stream summary table with placeholders.
 8. **Stream Data Estimator** – Populates stream and H&MB tables with estimated conditions.
 9. **Equipment List Builder** – Generates an equipment template table tied to streams.

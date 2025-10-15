@@ -15,15 +15,15 @@ def create_project_manager(llm):
 
         requirements_markdown = state.get("requirements", "")
         design_basis = state.get("design_basis", "")
-        basic_pdf_markdown = state.get("basic_pdf", "")
+        basic_pfd_markdown = state.get("basic_pfd", "")
         validation_markdown = state.get("basic_hmb_results", "")
         equipment_table = state.get("basic_equipment_template", "")
         safety_report = state.get("safety_risk_analyst_report", "")
         
         if not isinstance(requirements_markdown, str):
             requirements_markdown = str(requirements_markdown)
-        if not isinstance(basic_pdf_markdown, str):
-            basic_pdf_markdown = str(basic_pdf_markdown)
+        if not isinstance(basic_pfd_markdown, str):
+            basic_pfd_markdown = str(basic_pfd_markdown)
         if not isinstance(validation_markdown, str):
             validation_markdown = str(validation_markdown)
         if not isinstance(equipment_table, str):
@@ -34,7 +34,7 @@ def create_project_manager(llm):
         system_message = system_prompt(
             requirements_markdown,
             design_basis,
-            basic_pdf_markdown,
+            basic_pfd_markdown,
             validation_markdown,
             equipment_table,
             safety_report,
@@ -73,7 +73,7 @@ def _extract_status(markdown_text: str) -> str | None:
 def system_prompt(
     requirements_markdown: str,
     design_basis: str,
-    basic_pdf_markdown: str,
+    basic_pfd_markdown: str,
     validation_markdown: str,
     equipment_table: str,
     safety_markdown: str,
@@ -154,8 +154,8 @@ If the package contains a single heat exchanger that cools ethanol from 80 C to 
 **DESIGN BASIS (Markdown):**
 {design_basis}
 
-**BASIC PROCESS DESCRIPTION (Markdown):**
-{basic_pdf_markdown}
+**BASIC PROCESS FLOW DIAGRAM (Markdown):**
+{basic_pfd_markdown}
 
 **H&MB RESULTS (Markdown):**
 {validation_markdown}

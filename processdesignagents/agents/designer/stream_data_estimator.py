@@ -15,14 +15,14 @@ def create_stream_data_estimator(llm):
 
         llm.temperature = 0.7
         
-        basic_pdf_markdown = state.get("basic_pdf", "")
+        basic_pfd_markdown = state.get("basic_pfd", "")
         requirements_markdown = state.get("requirements", "")
         design_basis_markdown = state.get("design_basis", "")
         concept_details_markdown = state.get("selected_concept_details", "")
         stream_template = state.get("basic_stream_data", "")
 
         system_message = system_prompt(
-            basic_pdf_markdown,
+            basic_pfd_markdown,
             requirements_markdown,
             design_basis_markdown,
             concept_details_markdown,
@@ -48,7 +48,7 @@ def create_stream_data_estimator(llm):
 
 
 def system_prompt(
-    basic_pdf_markdown: str,
+    basic_pfd_markdown: str,
     requirements_markdown: str,
     design_basis_markdown: str,
     concept_details_markdown: str,
@@ -127,8 +127,8 @@ Your Markdown output must follow this structure:
 
 # REFERENCE MATERIAL
 ---
-**BASIC PROCESS DESCRIPTION:**
-{basic_pdf_markdown}
+**BASIC PROCESS FLOW DIAGRAM:**
+{basic_pfd_markdown}
 
 **DESIGN BASIS:**
 {design_basis_markdown}

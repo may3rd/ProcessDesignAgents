@@ -21,7 +21,7 @@ def create_equipment_sizing_agent(llm):
 
         requirements_markdown = state.get("requirements", "")
         design_basis_markdown = state.get("design_basis", "")
-        basic_pdf_markdown = state.get("basic_pdf", "")
+        basic_pfd_markdown = state.get("basic_pfd", "")
         basic_hmb_markdown = state.get("basic_hmb_results", "")
         stream_table = state.get("basic_stream_data", "")
         equipment_table_template = state.get("basic_equipment_template", "")
@@ -32,7 +32,7 @@ def create_equipment_sizing_agent(llm):
         system_message = equipment_sizing_prompt(
             requirements_markdown,
             design_basis_markdown,
-            basic_pdf_markdown,
+            basic_pfd_markdown,
             basic_hmb_markdown,
             stream_table,
             equipment_table_template,
@@ -106,7 +106,7 @@ def create_equipment_sizing_agent(llm):
 def equipment_sizing_prompt(
     requirements_markdown: str,
     design_basis_markdown: str,
-    basic_pdf_markdown: str,
+    basic_pfd_markdown: str,
     basic_hmb_markdown: str,
     stream_table: str,
     equipment_table_template: str,
@@ -152,8 +152,8 @@ Update the equipment table with quantitative estimates. When helpful, call the a
 **DESIGN BASIS:**
 {design_basis_markdown}
 
-**BASIC PROCESS DESCRIPTION:**
-{basic_pdf_markdown}
+**BASIC PROCESS FLOW DIAGRAM:**
+{basic_pfd_markdown}
 
 **PRELIMINARY H&MB:**
 {basic_hmb_markdown}

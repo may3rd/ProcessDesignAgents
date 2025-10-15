@@ -21,7 +21,7 @@ class Propagator:
             "research_concepts": "",
             "selected_concept_details": "",
             "selected_concept_name": "",
-            "basic_pdf": "",
+            "basic_pfd": "",
             "basic_hmb_results": "",
             "basic_equipment_template": "",
             "basic_stream_data": "",

@@ -15,13 +15,13 @@ def create_safety_risk_analyst(llm):
         print("\n# Safety and Risk Assessment \n")
         requirements_markdown = state.get("requirements", "")
         design_basis_markdown = state.get("design_basis", "")
-        basic_pdf_markdown = state.get("basic_pdf", "")
+        basic_pfd_markdown = state.get("basic_pfd", "")
         equipment_json = state.get("basic_equipment_template", "")
         stream_data = state.get("basic_hmb_results", "")
         if not isinstance(stream_data, str):
             stream_data = str(stream_data)
-        if not isinstance(basic_pdf_markdown, str):
-            basic_pdf_markdown = str(basic_pdf_markdown)
+        if not isinstance(basic_pfd_markdown, str):
+            basic_pfd_markdown = str(basic_pfd_markdown)
         if not isinstance(requirements_markdown, str):
             requirements_markdown = str(requirements_markdown)
         if not isinstance(equipment_json, str):
@@ -32,7 +32,7 @@ def create_safety_risk_analyst(llm):
         system_message = system_prompt(
             requirements_markdown,
             design_basis_markdown,
-            basic_pdf_markdown,
+            basic_pfd_markdown,
             stream_data,
             equipment_json,
         )
@@ -58,7 +58,7 @@ def create_safety_risk_analyst(llm):
 def system_prompt(
     process_requirement: str,
     design_basis_markdown: str,
-    basic_pdf_markdown: str,
+    basic_pfd_markdown: str,
     stream_data: str,
     equipment_data: str,
 ) -> str:
@@ -169,8 +169,8 @@ Repeat for each hazard (Hazard 1, Hazard 2, etc.). After listing hazards, add:
 **DESIGN BASIS (Markdown):**
 {design_basis_markdown}
 
-**BASIC PROCESS DESCRIPTION (Markdown):**
-{basic_pdf_markdown}
+**BASIC PROCESS FLOW DIAGRAM (Markdown):**
+{basic_pfd_markdown}
 
 **STREAM CONDITIONS (Markdown Table):**
 {stream_data}

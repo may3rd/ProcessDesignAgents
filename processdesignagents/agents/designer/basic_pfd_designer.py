@@ -3,14 +3,14 @@ from __future__ import annotations
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from processdesignagents.agents.utils.agent_states import DesignState
 from dotenv import load_dotenv
-import re
 
 load_dotenv()
 
-def create_basic_pdf_designer(llm):
-    def basic_pdf_designer(state: DesignState) -> DesignState:
-        """Basic PDF Designer: Synthesizes preliminary flowsheet consistent with the detailed concept and design basis."""
-        print("\n# Basic PDF Design")
+
+def create_basic_pfd_designer(llm):
+    def basic_pfd_designer(state: DesignState) -> DesignState:
+        """Basic PFD Designer: synthesizes a preliminary process flow diagram consistent with the detailed concept and design basis."""
+        print("\n# Basic PFD Design")
 
         requirements_markdown = state.get("requirements", "")
         selected_concept_name = state.get("selected_concept_name", "")
@@ -40,16 +40,16 @@ def create_basic_pdf_designer(llm):
         chain = prompt.partial(system_message=system_message) | llm
         response = chain.invoke(state.get("messages", []))
 
-        basic_pdf_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        basic_pfd_markdown = response.content if isinstance(response.content, str) else str(response.content)
 
-        print(basic_pdf_markdown)
+        print(basic_pfd_markdown)
 
         return {
-            "basic_pdf": basic_pdf_markdown,
+            "basic_pfd": basic_pfd_markdown,
             "messages": [response],
         }
 
-    return basic_pdf_designer
+    return basic_pfd_designer
 
 
 def system_prompt(
@@ -68,7 +68,7 @@ You receive vetted concept documentation, design basis, and requirements assembl
 - Operations stakeholders needing clear visibility into unit operations and connectivity.
 
 # ROLE
-You are a senior process design engineer with 20 years of experience in drafting process flow diagram (PDF) that represent the sequence of process steps of the selected concept. Your task is to create a conceptual process flowsheet based on a selected design concept, technical requirements, and design basis.
+You are a senior process design engineer with 20 years of experience in drafting process flow diagrams (PFDs) that represent the sequence of process steps of the selected concept. Your task is to create a conceptual process flowsheet based on a selected design concept, technical requirements, and design basis.
 
 # TASK
 Synthesize a preliminary process flowsheet using the provided 'REQUIREMENTS' and 'DESIGN BASIS'. The flowsheet must align with the approved design basis and highlight how the concept executes that basis.

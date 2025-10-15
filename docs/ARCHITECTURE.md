@@ -4,7 +4,7 @@ ProcessDesignAgents uses a `langgraph` state machine to orchestrate a sequence o
 
 ```
 Problem Statement → Requirements Analyst → Concept Detailer → Design Basis →
-Basic PDF Designer → Stream Data Builder → Stream Data Estimator → Equipment List →
+Basic PFD Designer → Stream Data Builder → Stream Data Estimator → Equipment List →
 Equipment Sizing → Safety & Risk → Project Manager
 ```
 
@@ -15,7 +15,7 @@ Equipment Sizing → Safety & Risk → Project Manager
 | `requirements` | Markdown summary of objectives, constraints, components | Process Requirements Analyst |
 | `selected_concept_details`, `selected_concept_name` | Detailed concept brief and name | Concept Detailer |
 | `design_basis` | Markdown design basis for sizing/validation | Design Basis Analyst |
-| `basic_pdf` | Conceptual flowsheet narrative | Basic PDF Designer |
+| `basic_pfd` | Conceptual flowsheet narrative | Basic PFD Designer |
 | `basic_stream_data` | Stream summary markdown table | Stream Data Builder / Stream Data Estimator |
 | `basic_hmb_results` | Filled-in heat and material balance tables | Stream Data Estimator |
 | `basic_equipment_template` | Equipment list & sizing results (markdown) | Equipment List Builder & Equipment Sizing Agent |

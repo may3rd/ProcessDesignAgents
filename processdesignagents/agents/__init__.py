@@ -7,7 +7,7 @@ from .analysts.design_basis_analyst import create_design_basis_analyst
 from .researchers.innovative_researcher import create_innovative_researcher
 from .researchers.conservative_researcher import create_conservative_researcher
 from .researchers.concept_detailer import create_concept_detailer
-from .designer.basic_pdf_designer import create_basic_pdf_designer
+from .designer.basic_pfd_designer import create_basic_pfd_designer
 from .designer.stream_data_builder import create_stream_data_builder
 from .designer.equipment_list_builder import create_equipment_list_builder
 from .designer.stream_data_estimator import create_stream_data_estimator
@@ -26,7 +26,7 @@ __all__ = [
     "create_innovative_researcher",
     "create_conservative_researcher",
     "create_concept_detailer",
-    "create_basic_pdf_designer",
+    "create_basic_pfd_designer",
     "create_stream_data_builder",
     "create_equipment_list_builder",
     "create_stream_data_estimator",

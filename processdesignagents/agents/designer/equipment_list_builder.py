@@ -15,13 +15,13 @@ def create_equipment_list_builder(llm):
 
         llm.temperature = 0.7
 
-        basic_pdf_markdown = state.get("basic_pdf", "")
+        basic_pfd_markdown = state.get("basic_pfd", "")
         design_basis_markdown = state.get("design_basis", "")
         requirements_markdown = state.get("requirements", "")
         stream_table = state.get("basic_stream_data", "")
 
         system_message = system_prompt(
-            basic_pdf_markdown,
+            basic_pfd_markdown,
             design_basis_markdown,
             requirements_markdown,
             stream_table,
@@ -46,7 +46,7 @@ def create_equipment_list_builder(llm):
 
 
 def system_prompt(
-    basic_pdf_markdown: str,
+    basic_pfd_markdown: str,
     design_basis_markdown: str,
     requirements_markdown: str,
     stream_table: str,
@@ -84,8 +84,8 @@ Your Markdown output must follow this structure:
 
 # INPUT DATA
 ---
-**BASIC PROCESS DESCRIPTION:**
-{basic_pdf_markdown}
+**BASIC PROCESS FLOW DIAGRAM:**
+{basic_pfd_markdown}
 
 **DESIGN BASIS:**
 {design_basis_markdown}

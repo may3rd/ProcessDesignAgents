@@ -9,7 +9,7 @@ class DesignState(TypedDict):
     research_concepts: Annotated[str, ""]
     selected_concept_details: Annotated[str, ""]
     selected_concept_name: Annotated[str, ""]
-    basic_pdf: Annotated[str, ""]
+    basic_pfd: Annotated[str, ""]
     basic_hmb_results: Annotated[str, ""]
     basic_equipment_template: Annotated[str, ""]
     basic_stream_data: Annotated[str, ""]

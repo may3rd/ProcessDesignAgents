@@ -50,7 +50,7 @@ class MessageBuffer:
             "Conservative Researcher": "pending",
             "Concept Detailer": "pending",
             # Designer Team
-            "Basic PDF Designer": "pending",
+            "Basic PFD Designer": "pending",
             "Stream Data Builder": "pending",
             "Equipment List Builder": "pending",
             "Stream Data Estimator": "pending",
@@ -65,7 +65,7 @@ class MessageBuffer:
             "research_concepts": None,
             "selected_concept_details": None,
             "design_basis": None,
-            "basic_pdf": None,
+            "basic_pfd": None,
             "basic_stream_data": None,
             "basic_hmb_results": None,
             "basic_equipment_template": None,
@@ -110,7 +110,7 @@ class MessageBuffer:
                 "research_concepts": "Concept Portfolio",
                 "selected_concept_details": "Selected Concept Detail",
                 "design_basis": "Design Basis",
-                "basic_pdf": "Basic Process Description",
+                "basic_pfd": "Basic Process Flow Diagram",
                 "basic_stream_data": "Stream Data",
                 "basic_hmb_results": "Heat & Material Balance",
                 "basic_equipment_template": "Equipment Summary",
@@ -167,16 +167,16 @@ class MessageBuffer:
         if any(
             self.report_sections[section]
             for section in [
-                "basic_pdf",
+                "basic_pfd",
                 "basic_stream_data",
                 "basic_hmb_results",
                 "basic_equipment_template",
             ]
         ):
             report_parts.append("## Designer Team Reports")
-            if self.report_sections["basic_pdf"]:
+            if self.report_sections["basic_pfd"]:
                 report_parts.append(
-                    f"### Basic Process Description\n{self.report_sections['basic_pdf']}"
+                    f"### Basic Process Flow Diagram\n{self.report_sections['basic_pfd']}"
                 )
             if self.report_sections["basic_stream_data"]:
                 report_parts.append(
@@ -262,7 +262,7 @@ def update_display(layout, snippet_text=None):
         "Analyst Team": ["Process Requirement Analyst", "Design Basis Analyst"],
         "Research Team": ["Innovative Researcher", "Conservative Researcher", "Concept Detailer"],
         "Designer Team": [
-            "Basic PDF Designer",
+            "Basic PFD Designer",
             "Stream Data Builder",
             "Stream Data Estimator",
             "Equipment List Builder",
@@ -514,7 +514,7 @@ def display_complete_report(final_state):
         (
             "Designer Team Reports",
             [
-                ("basic_pdf", "Basic Process Description"),
+                ("basic_pfd", "Basic Process Flow Diagram"),
                 ("basic_stream_data", "Stream Data"),
                 ("basic_hmb_results", "Heat & Material Balance"),
                 ("basic_equipment_template", "Equipment Summary"),
@@ -577,7 +577,7 @@ def update_research_team_status(status):
         "Conservative Researcher",
         "Concept Detailer",
         "Design Basis Analyst",
-        "Basic PDF Designer",
+        "Basic PFD Designer",
         "Stream Data Builder",
         "Equipment List Builder",
         "Stream Data Estimator",
@@ -744,7 +744,7 @@ def run_analysis():
                 if chunk.get("design_basis"):
                     message_buffer.update_report_section("design_basis", chunk["design_basis"])
                     message_buffer.update_agent_status("Design Basis Analyst", "completed")
-                    message_buffer.update_agent_status("Basic PDF Designer", "in_progress")
+                    message_buffer.update_agent_status("Basic PFD Designer", "in_progress")
 
                 # Research Team Outputs
                 if chunk.get("research_concepts"):
@@ -766,9 +766,9 @@ def run_analysis():
                     message_buffer.update_agent_status("Design Basis Analyst", "in_progress")
 
                 # Designer Team Outputs
-                if chunk.get("basic_pdf"):
-                    message_buffer.update_report_section("basic_pdf", chunk["basic_pdf"])
-                    message_buffer.update_agent_status("Basic PDF Designer", "completed")
+                if chunk.get("basic_pfd"):
+                    message_buffer.update_report_section("basic_pfd", chunk["basic_pfd"])
+                    message_buffer.update_agent_status("Basic PFD Designer", "completed")
                     message_buffer.update_agent_status("Stream Data Builder", "in_progress")
 
                 if chunk.get("basic_stream_data"):

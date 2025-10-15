@@ -15,13 +15,13 @@ def create_stream_data_builder(llm):
         
         llm.temperature = 0.7
 
-        basic_pdf_markdown = state.get("basic_pdf", "")
+        basic_pfd_markdown = state.get("basic_pfd", "")
         design_basis_markdown = state.get("design_basis", "")
         requirements_markdown = state.get("requirements", "")
         concept_details_markdown = state.get("selected_concept_details", "")
 
         system_message = system_prompt(
-            basic_pdf_markdown,
+            basic_pfd_markdown,
             design_basis_markdown,
             requirements_markdown,
             concept_details_markdown,
@@ -45,7 +45,7 @@ def create_stream_data_builder(llm):
 
 
 def system_prompt(
-    basic_pdf_markdown: str,
+    basic_pfd_markdown: str,
     design_basis_markdown: str,
     requirements_markdown: str,
     concept_details_markdown: str,
@@ -66,7 +66,7 @@ You are a process engineer compiling preliminary stream definitions for a chemic
 For each stream, provide identifiers, origin/destination, qualitative description, and placeholder operating data that will later be filled by the simulator.
 
 # INSTRUCTIONS
-1. Review the BASIC PDF description, design basis, requirements, and concept details to extract every stream mentioned or implied.
+1. Review the BASIC PFD description, design basis, requirements, and concept details to extract every stream mentioned or implied.
 2. Preserve existing stream identifiers; when an ID is missing, assign a new sequential number (1001, 1002, ...) that follows plant conventions.
 3. For each stream column, complete all attribute rows—use descriptive text where known and `<value>` placeholders (include units, e.g., `<8500 kg/h>`) for numeric data that will be estimated later.
 4. Add extra attribute or component rows if the process description requires them, keeping the table transposed with attributes as rows.
@@ -119,8 +119,8 @@ In a heat exchanger that cools ethanol from 80 C to 40 C with cooling water, cre
 
 # DATA AVAILABLE
 ---
-**BASIC PDF DESCRIPTION:**
-{basic_pdf_markdown}
+**BASIC PFD DESCRIPTION:**
+{basic_pfd_markdown}
 
 **DESIGN BASIS (Markdown):**
 {design_basis_markdown}

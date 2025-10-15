@@ -9,13 +9,13 @@ Below is a concise reference for each agent, its inputs, outputs, and key prompt
 | Conservative Researcher | `agents/researchers/conservative_researcher.py` | `research_concepts`, `requirements` | Refined `research_concepts` (overwrites prior concepts) | Stress-tests concepts and adds feasibility commentary. |
 | Concept Detailer | `agents/researchers/concept_detailer.py` | `research_concepts`, `requirements` | `selected_concept_details`, `selected_concept_name` | Selects the best concept and elaborates it for downstream agents. |
 | Design Basis Analyst | `agents/analysts/design_basis_analyst.py` | `problem_statement`, `requirements`, concept detail | `design_basis` | Produces the formal design basis document. |
-| Basic PDF Designer | `agents/designer/basic_pdf_designer.py` | `selected_concept_details`, `design_basis`, `requirements` | `basic_pdf` | Generates the conceptual flowsheet narrative. |
-| Stream Data Builder | `agents/designer/stream_data_builder.py` | `basic_pdf`, `design_basis`, `requirements`, concept detail | `basic_stream_data` | Builds the stream summary template as a markdown table. |
-| Stream Data Estimator | `agents/designer/stream_data_estimator.py` | Stream template, `basic_pdf`, `design_basis`, `requirements`, concept detail | Updated stream/H&MB tables (`basic_stream_data`, `basic_hmb_results`) | Estimates temperatures, pressures, flows, and compositions. |
-| Equipment List Builder | `agents/designer/equipment_list_builder.py` | Stream table, `basic_pdf`, `design_basis`, `requirements` | `basic_equipment_template` | Lists major equipment and placeholders for sizing data. |
+| Basic PFD Designer | `agents/designer/basic_pfd_designer.py` | `selected_concept_details`, `design_basis`, `requirements` | `basic_pfd` | Generates the conceptual flowsheet narrative. |
+| Stream Data Builder | `agents/designer/stream_data_builder.py` | `basic_pfd`, `design_basis`, `requirements`, concept detail | `basic_stream_data` | Builds the stream summary template as a markdown table. |
+| Stream Data Estimator | `agents/designer/stream_data_estimator.py` | Stream template, `basic_pfd`, `design_basis`, `requirements`, concept detail | Updated stream/H&MB tables (`basic_stream_data`, `basic_hmb_results`) | Estimates temperatures, pressures, flows, and compositions. |
+| Equipment List Builder | `agents/designer/equipment_list_builder.py` | Stream table, `basic_pfd`, `design_basis`, `requirements` | `basic_equipment_template` | Lists major equipment and placeholders for sizing data. |
 | Equipment Sizing Agent | `agents/designer/equipment_sizing_agent.py` | Equipment template, stream table, `basic_hmb_results`, requirements, design basis | Updated equipment table (`basic_equipment_template`) | Uses built-in sizing tools to populate duty/size fields and notes. |
-| Safety & Risk Analyst | `agents/analysts/safety_risk_analyst.py` | `basic_pdf`, `basic_hmb_results`, `basic_equipment_template`, `requirements` | `basic_hmb_results`, `safety_risk_analyst_report` | Performs a HAZOP-style hazard assessment. |
-| Project Manager | `agents/project_manager/project_manager.py` | `requirements`, `basic_pdf`, `basic_hmb_results`, `basic_equipment_template`, `safety_risk_analyst_report` | `approval`, `project_manager_report` | Issues the final gate decision and implementation plan. |
+| Safety & Risk Analyst | `agents/analysts/safety_risk_analyst.py` | `basic_pfd`, `basic_hmb_results`, `basic_equipment_template`, `requirements` | `basic_hmb_results`, `safety_risk_analyst_report` | Performs a HAZOP-style hazard assessment. |
+| Project Manager | `agents/project_manager/project_manager.py` | `requirements`, `basic_pfd`, `basic_hmb_results`, `basic_equipment_template`, `safety_risk_analyst_report` | `approval`, `project_manager_report` | Issues the final gate decision and implementation plan. |
 
 ## Tool Catalogue
 
