@@ -65,7 +65,7 @@ class ProcessDesignGraph:
         # Set up the graph
         self.graph = self.graph_setup.setup_graph()
         
-    def propagate(self, problem_statement: str = "", save_markdown: str | None = None):
+    async def propagate(self, problem_statement: str = "", save_markdown: str | None = None):
         self.problem_statement = problem_statement
         
         init_agent_state = self.propagator.create_initial_state(problem_statement)
@@ -75,7 +75,7 @@ class ProcessDesignGraph:
         if self.debug:
             # Debug mode with tracing
             trace = []
-            for chunk in self.graph.stream(init_agent_state, **args):
+            async for chunk in self.graph.astream(init_agent_state, **args):
                 if len(chunk["messages"]) == 0:
                     pass
                 else:
@@ -85,7 +85,7 @@ class ProcessDesignGraph:
             final_state = trace[-1]
         else:
             # Run the graph
-            final_state = self.graph.invoke(init_agent_state, **args)
+            final_state = await self.graph.ainvoke(init_agent_state, **args)
             print(f"\n=========================== Finish Line ===========================")
         
         # Store current state for reflection

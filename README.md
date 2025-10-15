@@ -27,7 +27,7 @@ ProcessDesignAgents/
    └─ AGENTS.md            # Responsibilities and prompts for each agent
 ```
 
-Additional documentation is available under `docs/`.
+Additional documentation is available under `docs/`. Contributor-specific practices are captured in `AGENTS.md`.
 
 ## Getting Started
 
