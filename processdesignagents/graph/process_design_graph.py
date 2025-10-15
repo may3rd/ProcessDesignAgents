@@ -86,7 +86,7 @@ class ProcessDesignGraph:
         else:
             # Run the graph
             final_state = await self.graph.ainvoke(init_agent_state, **args)
-            print(f"\n=========================== Finish Line ===========================")
+            print(f"\n=========================== Finish Line ===========================", flush=True)
         
         # Store current state for reflection
         self.curr_state = final_state

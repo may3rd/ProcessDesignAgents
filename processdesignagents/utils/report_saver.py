@@ -29,7 +29,7 @@ def save_agent_report(agent_name: str, state_update: Dict[str, Any], summary: st
     with open(filepath, "w") as f:
         json.dump(report, f, indent=2, default=str)  # default=str handles non-serializable types like np.bool_
     
-    print(f"Saved report: {filepath}")
+    print(f"Saved report: {filepath}", flush=True)
     
     # Append to overall Markdown log
     md_filepath = REPORTS_DIR / "design_session.md"
@@ -48,4 +48,4 @@ def save_final_report(final_state: Dict[str, Any], session_id: str = None):
     with open(filepath, "w") as f:
         json.dump(final_state, f, indent=2, default=str)
     
-    print(f"Saved final report: {filepath}")
+    print(f"Saved final report: {filepath}", flush=True)

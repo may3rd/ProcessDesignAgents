@@ -24,7 +24,6 @@ For a heat exchanger that cools an ethanol stream from 80 C to 40 C using coolin
 
 # MARKDOWN TEMPLATE:
 Your Markdown must follow this exact structure:
-```
 ## Executive Summary
 - Process objective: <text>
 - Design strategy: <text or `Not specified`>
@@ -56,10 +55,9 @@ Your Markdown must follow this exact structure:
 
 ## Notes & Data Gaps
 - <Outstanding questions or data needs>
-```
 
-**EXPECTED MARKDOWN OUTPUT:**
-<md_output>
+
+# EXPECTED MARKDOWN OUTPUT:
 ## Executive Summary
 - Process objective: Cool 95 wt% ethanol feed from 80 degC to 40 degC before storage
 - Design strategy: Shell-and-tube exchanger using plant cooling water loop
@@ -93,7 +91,6 @@ Your Markdown must follow this exact structure:
 ## Notes & Data Gaps
 - Confirm upstream ethanol composition and any fouling inhibitors.
 - Need cooling water availability confirmation during summer design conditions.
-</md_output>
 
 # REFERENCE MATERIAL:
 ---
@@ -163,7 +160,7 @@ This document provides the preliminary basis for the design of a continuous Biod
 * **Operating Factor:** 8,000 operating hours per year (91.3\\% stream factor).
 * **Process Technology:** A combination of pre-treatment (esterification) and main reaction (transesterification) is assumed necessary due to the high FFA content.
 * **Plant Lifespan:** Design life of 20 years.
-* **Location:** Design conditions assume tropical/high-humidity environment (e.g., ambient temperature up to $40^\circ\\text{{C}}$).
+* **Location:** Design conditions assume tropical/high-humidity environment (e.g., ambient temperature up to $40^\\circ\\text{{C}}$).
 * **Exclusion:** Detailed Mechanical Design (vessel sizing, line lists) and Control Narrative are excluded from this preliminary BoD.
 
 ## 3. Design Capacity and Operating Conditions

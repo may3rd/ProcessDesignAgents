@@ -11,7 +11,7 @@ load_dotenv()
 def create_conservative_researcher(llm):
     def conservative_researcher(state: DesignState) -> DesignState:
         """Conservative Researcher: Critiques concepts for practicality using LLM."""
-        print("\n---\n# Conservatively Critiqued Concepts")
+        print("\n---\n# Conservatively Critiqued Concepts", flush=True)
 
         concepts_markdown = state.get("research_concepts", "")
         requirements_markdown = state.get("requirements", "")
@@ -27,12 +27,12 @@ def create_conservative_researcher(llm):
             MessagesPlaceholder(variable_name="messages"),
         ])
         chain = prompt.partial(system_message=system_message) | llm
-        response = chain.invoke(state.get("messages", []))
+        response = chain.invoke({"messages": list(state.get("messages", []))})
 
         critique_markdown = response.content if isinstance(response.content, str) else str(response.content)
         # concept_blocks = _split_concept_sections(critique_markdown)
         
-        print(critique_markdown)
+        print(critique_markdown, flush=True)
 
         return {
             "research_concepts": critique_markdown,
@@ -108,7 +108,6 @@ Critically evaluate each of the provided process concepts. For each one, augment
 
 # MARKDOWN TEMPLATE:
 For each concept, produce a section with the following structure:
-```
 ## <Concept Name>
 **Feasibility Score:** <integer 1-10>
 
@@ -120,11 +119,14 @@ For each concept, produce a section with the following structure:
 ### Recommendations
 - ...
 - ...
-```
+
+# CRITITALS
 Include exactly the same number of concept sections as provided in the input.
 
-**EXPECTED MARKDOWN OUTPUT:**
-<md_output>
+# NEGATIVES
+* DO NOT output any other section, only evaluation report
+
+# EXPECTED MARKDOWN OUTPUT
 ## Concept 1: Ethanol Cooling Exchanger Skid
 **Feasibility Score:** 7
 
@@ -136,10 +138,6 @@ Include exactly the same number of concept sections as provided in the input.
 ### Recommendations
 - Implement periodic backflush and water-side chemical treatment.
 - Install hydrocarbon detectors on cooling water return header.
-</md_output>
-
-# NEGATIVES
-* DO NOT output any other section, only evaluation report
 
 # DATA FOR ANALYSIS
 ---
@@ -150,4 +148,5 @@ Include exactly the same number of concept sections as provided in the input.
 {requirements_markdown}
 
 # FINAL MARKDOWN OUTPUT:
+
 """

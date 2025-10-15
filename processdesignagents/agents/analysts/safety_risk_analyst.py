@@ -12,7 +12,7 @@ load_dotenv()
 def create_safety_risk_analyst(llm):
     def safety_risk_analyst(state: DesignState) -> DesignState:
         """Safety and Risk Analyst: Performs HAZOP-inspired risk assessment on current concept."""
-        print("\n# Safety and Risk Assessment \n")
+        print("\n# Safety and Risk Assessment \n", flush=True)
         requirements_markdown = state.get("requirements", "")
         design_basis_markdown = state.get("design_basis", "")
         basic_pfd_markdown = state.get("basic_pfd", "")
@@ -41,11 +41,11 @@ def create_safety_risk_analyst(llm):
             MessagesPlaceholder(variable_name="messages"),
         ])
         chain = prompt.partial(system_message=system_message) | llm
-        response = chain.invoke(state.get("messages", []))
+        response = chain.invoke({"messages": list(state.get("messages", []))})
 
         risk_markdown = response.content if isinstance(response.content, str) else str(response.content)
 
-        print(risk_markdown)
+        print(risk_markdown, flush=True)
 
         return {
             "safety_risk_analyst_report": risk_markdown,

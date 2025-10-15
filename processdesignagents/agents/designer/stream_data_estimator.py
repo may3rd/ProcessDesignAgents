@@ -11,7 +11,7 @@ load_dotenv()
 def create_stream_data_estimator(llm):
     def stream_data_estimator(state: DesignState) -> DesignState:
         """Stream Data Estimator: Generates stream and H&MB tables with estimated conditions."""
-        print("\n# Stream Data Estimator\n")
+        print("\n# Stream Data Estimator\n", flush=True)
 
         llm.temperature = 0.7
         
@@ -32,11 +32,13 @@ def create_stream_data_estimator(llm):
             ("system", "{system_message}"),
             MessagesPlaceholder(variable_name="messages"),
         ])
-        response = (prompt.partial(system_message=system_message) | llm).invoke(state.get("messages", []))
+        response = (prompt.partial(system_message=system_message) | llm).invoke(
+            {"messages": list(state.get("messages", []))}
+        )
 
         markdown_output = response.content if isinstance(response.content, str) else str(response.content)
 
-        print(markdown_output)
+        print(markdown_output, flush=True)
 
         return {
             "basic_stream_data": markdown_output,
@@ -105,7 +107,6 @@ Your Markdown output must follow this structure:
 ---
 
 **EXPECTED MARKDOWN OUTPUT:**
-<md_output>
 # Stream Data Table
 |          | 1001 | 1002 | 2001 | 2002 |
 | Description | Hot ethanol feed | Cooled ethanol product | Cooling water supply | Cooling water return |
@@ -120,7 +121,6 @@ Your Markdown output must follow this structure:
 ## Notes
 - Cooling water duty balances ethanol heat removal at approx. 0.28 MW.
 - Monitoring differential pressure across E-101 ensures early fouling detection.
-</md_output>
 
 # STREAM TEMPLATE
 {stream_template}

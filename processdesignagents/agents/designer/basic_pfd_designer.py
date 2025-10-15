@@ -10,7 +10,7 @@ load_dotenv()
 def create_basic_pfd_designer(llm):
     def basic_pfd_designer(state: DesignState) -> DesignState:
         """Basic PFD Designer: synthesizes a preliminary process flow diagram consistent with the detailed concept and design basis."""
-        print("\n# Basic PFD Design")
+        print("\n# Basic PFD Design", flush=True)
 
         requirements_markdown = state.get("requirements", "")
         selected_concept_name = state.get("selected_concept_name", "")
@@ -38,11 +38,11 @@ def create_basic_pfd_designer(llm):
             MessagesPlaceholder(variable_name="messages"),
         ])
         chain = prompt.partial(system_message=system_message) | llm
-        response = chain.invoke(state.get("messages", []))
+        response = chain.invoke({"messages": list(state.get("messages", []))})
 
         basic_pfd_markdown = response.content if isinstance(response.content, str) else str(response.content)
 
-        print(basic_pfd_markdown)
+        print(basic_pfd_markdown, flush=True)
 
         return {
             "basic_pfd": basic_pfd_markdown,
@@ -91,7 +91,6 @@ Synthesize a preliminary process flowsheet using the provided 'REQUIREMENTS' and
 
 # MARKDOWN TEMPLATE:
 Structure your Markdown exactly as follows:
-```
 ## Flowsheet Summary
 - Concept: <concept name without 'Concept #' prefix>
 - Objective: <one-sentence objective>
@@ -115,13 +114,11 @@ Structure your Markdown exactly as follows:
 - <note 2>
 - ...
 
-```
-
-# EXAMPLE
+# EXAMPLE INPUT:
+---
 For a simple exchanger that cools ethanol from 80 C to 40 C using cooling water, include a single E-101 heat exchanger unit, show the warm ethanol feed entering and cooled ethanol product leaving, and note the cooling water supply and return connections.
 
-**EXPECTED MARKDOWN OUTPUT:**
-<md_output>
+# EXPECTED MARKDOWN OUTPUT:
 ## Flowsheet Summary
 - Concept: Ethanol Cooler Module
 - Objective: Reduce hot ethanol from 80 degC to 40 degC using plant cooling water
@@ -149,7 +146,6 @@ Hot ethanol from the blender enters E-101 where heat is exchanged against plant 
 ## Notes
 - Provide strainers on cooling water inlet to limit fouling.
 - Include bypass line around E-101 for maintenance.
-</md_output>
 
 # DATA FOR ANALYSIS
 ---

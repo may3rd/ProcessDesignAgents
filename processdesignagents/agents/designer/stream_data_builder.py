@@ -11,7 +11,7 @@ load_dotenv()
 def create_stream_data_builder(llm):
     def stream_data_builder(state: DesignState) -> DesignState:
         """Stream Data Builder: Produces a transposed markdown table template for process streams."""
-        print("\n# Stream Data Template\n")
+        print("\n# Stream Data Template\n", flush=True)
         
         llm.temperature = 0.7
 
@@ -31,10 +31,12 @@ def create_stream_data_builder(llm):
             MessagesPlaceholder(variable_name="messages"),
         ])
 
-        response = (prompt.partial(system_message=system_message) | llm).invoke(state.get("messages", []))
+        response = (prompt.partial(system_message=system_message) | llm).invoke(
+            {"messages": list(state.get("messages", []))}
+        )
         table_markdown = response.content if isinstance(response.content, str) else str(response.content)
 
-        print(table_markdown)
+        print(table_markdown, flush=True)
 
         return {
             "basic_stream_data": table_markdown,
@@ -96,11 +98,11 @@ Respond with a Markdown table only (no additional commentary) using a structure 
 # CRITICALS
 - **MUST** return the full stream data table in markdown format.
 
-# EXAMPLE
+---
+# EXAMPLE INPUT:
 In a heat exchanger that cools ethanol from 80 C to 40 C with cooling water, create streams for hot ethanol feed, cooled ethanol product, cooling water supply, and cooling water return, assigning IDs and placeholder temperatures that reflect the duty.
 
-**EXPECTED MARKDOWN OUTPUT:**
-<md_output>
+# EXPECTED MARKDOWN OUTPUT:
 # Stream Data Table
 | Attribute | 1001 | 1002 | 2001 | 2002 |
 |-----------|------|------|------|------|
@@ -115,9 +117,8 @@ In a heat exchanger that cools ethanol from 80 C to 40 C with cooling water, cre
 | Ethanol (C2H6O) | <95> | <95> | <0> | <0> |
 | Water (H2O) | <5> | <5> | <100> | <100> |
 | Notes | Tie-in from upstream blender | To fixed-roof storage | Shared cooling water header | Returned to utility system |
-</md_output>
 
-# DATA AVAILABLE
+# DATA FOR ANALYSIS
 ---
 **BASIC PFD DESCRIPTION:**
 {basic_pfd_markdown}

@@ -11,7 +11,7 @@ load_dotenv()
 def create_project_manager(llm):
     def project_manager(state: DesignState) -> DesignState:
         """Project Manager: Reviews design for approval and generates implementation plan."""
-        print("\n# Project Review\n")
+        print("\n# Project Review\n", flush=True)
 
         requirements_markdown = state.get("requirements", "")
         design_basis = state.get("design_basis", "")
@@ -46,13 +46,13 @@ def create_project_manager(llm):
         ])
 
         chain = prompt.partial(system_message=system_message) | llm
-        response = chain.invoke(state.get("messages", []))
+        response = chain.invoke({"messages": list(state.get("messages", []))})
 
         approval_markdown = response.content if isinstance(response.content, str) else str(response.content)
         approval_status = _extract_status(approval_markdown)
 
-        print(f"Project review completed. Status: **{approval_status or 'Unknown'}**\n")
-        print(approval_markdown)
+        print(f"Project review completed. Status: **{approval_status or 'Unknown'}**\n", flush=True)
+        print(approval_markdown, flush=True)
 
         return {
             "approval": approval_status or "",
@@ -118,13 +118,12 @@ Return a Markdown report with the following structure:
 ## Final Notes
 - <risk or follow-up item>
 - <compliance reminder>
-```
 ---
-# EXAMPLE
+
+# EXAMPLE INPUT:
 If the package contains a single heat exchanger that cools ethanol from 80 C to 40 C using cooling water, ensure the summary references the utility demand, checks that safety measures cover loss of cooling, and ties the approval status to readiness of that cooler service.
 
-**EXPECTED MARKDOWN OUTPUT:**
-<md_output>
+# EXPECTED MARKDOWN OUTPUT:
 ## Executive Summary
 - Approval Status: Conditional
 - Key Rationale: Cooling water redundancy verification required prior to full approval
@@ -144,7 +143,6 @@ If the package contains a single heat exchanger that cools ethanol from 80 C to 
 ## Final Notes
 - Confirm corrosion coupon program before first ethanol run.
 - Align utility contract to guarantee 24,000 kg/h cooling water during summer peaks.
-</md_output>
 
 # DATA FOR REVIEW
 

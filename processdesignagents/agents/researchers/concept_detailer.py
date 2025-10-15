@@ -12,7 +12,7 @@ load_dotenv()
 def create_concept_detailer(llm):
     def concept_detailer(state: DesignState) -> DesignState:
         """Concept Detailer: Picks the highest-feasibility concept and elaborates it for downstream design."""
-        print("\n---\n# Concept Selection")
+        print("\n---\n# Concept Selection", flush=True)
 
         concepts_markdown = state.get("research_concepts", "")
         if not isinstance(concepts_markdown, str):
@@ -26,26 +26,22 @@ def create_concept_detailer(llm):
             raise ValueError("Concept detailer could not find any concept sections to evaluate.")
 
         best_title, best_section, best_score = _select_best_concept(concepts)
-        print(f"Chosen concept: {best_title} (Feasibility Score: {best_score if best_score is not None else 'N/A'})")
+        print(f"Chosen concept: {best_title} (Feasibility Score: {best_score if best_score is not None else 'N/A'})", flush=True)
 
         system_message = system_prompt(best_title, best_section, requirements_markdown)
 
         prompt = ChatPromptTemplate.from_messages([
-            (
-                "system",
-                "You are a helpful AI Assistant, collaborating with other assistants."
-                "\n{system_message}",
-            ),
+            ("system", "{system_message}"),
             MessagesPlaceholder(variable_name="messages"),
         ])
 
         chain = prompt.partial(system_message=system_message) | llm
-        response = chain.invoke(state.get("messages", []))
+        response = chain.invoke({"messages": list(state.get("messages", []))})
 
         detail_markdown = response.content if isinstance(response.content, str) else str(response.content)
 
-        print("Prepared detailed concept brief.")
-        print(detail_markdown)
+        print("Prepared detailed concept brief.", flush=True)
+        print(detail_markdown, flush=True)
 
         return {
             "selected_concept_details": detail_markdown,
@@ -113,7 +109,6 @@ Using the chosen concept description and the overarching requirements, elaborate
 
 # MARKDOWN TEMPLATE:
 Respond with Markdown using the exact structure below:
-```
 ## Concept Summary
 - Name: {concept_name} <without "Concept #" prefix>
 - Intent: <succinct value proposition>
@@ -139,11 +134,10 @@ Respond with Markdown using the exact structure below:
 
 ## Data Gaps & Assumptions
 - <information still needed or assumptions made>
-```
+
 Ensure every list or table entry is specific and actionable. If data is missing, flag it explicitly with `TBD` and add a short explanation.
 
-**EXPECTED MARKDOWN OUTPUT:**
-<md_output>
+# EXPECTED MARKDOWN OUTPUT:
 ## Concept Summary
 - Name: Ethanol Cooler Module
 - Intent: Reduce hot ethanol temperature ahead of storage using a compact exchanger skid
@@ -173,9 +167,8 @@ Cooling water enters the exchanger at 25 degC from the utility header and leaves
 ## Data Gaps & Assumptions
 - Ethanol specific heat assumed 2.5 kJ/kg-K; verify real composition.
 - Cooling water quality limits pending utility documentation.
-</md_output>
 
-# SOURCE MATERIAL
+# DATA FOR ANALYSIS:
 ---
 **SELECTED CONCEPT (Markdown):**
 {concept_section}

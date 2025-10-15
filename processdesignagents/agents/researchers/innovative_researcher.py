@@ -11,7 +11,7 @@ load_dotenv()
 def create_innovative_researcher(llm):
     def innovative_researcher(state: DesignState) -> DesignState:
         """Innovative Researcher: Proposes novel process concepts using LLM."""
-        print("\n---\n# Innovative Research Concepts")
+        print("\n---\n# Innovative Research Concepts", flush=True)
 
         requirements_summary = state.get("requirements", "")
         if not isinstance(requirements_summary, str):
@@ -24,7 +24,7 @@ def create_innovative_researcher(llm):
         ])
 
         chain = prompt.partial(system_message=system_message) | llm
-        response = chain.invoke(state.get("messages", []))
+        response = chain.invoke({"messages": list(state.get("messages", []))})
 
         research_markdown = response.content if isinstance(response.content, str) else str(response.content)
         # concept_names = _extract_concept_names(research_markdown)
@@ -39,7 +39,7 @@ def create_innovative_researcher(llm):
         # else:
         #     print("- (No concept headings detected)")
 
-        print(research_markdown)
+        print(research_markdown, flush=True)
 
         return {
             "research_concepts": research_markdown,
@@ -93,7 +93,6 @@ The target audince of this prompt is an agentic llm that will critically evaluat
 ---
 
 **EXPECTED MARKDOWN OUTPUT:**
-<md_output>
 ## Concept 1: Shell-and-Tube Ethanol Cooler
 **Description:** Standard shell-and-tube exchanger cools hot ethanol from 80 degC to 40 degC using existing cooling water loop.
 **Unit Operations:**
@@ -125,9 +124,8 @@ The target audince of this prompt is an agentic llm that will critically evaluat
 **Key Benefits:**
 - Reduces cooling water consumption in summer peaks
 - Provides flexibility for future lower product temperature requirements
-</md_output>
 
-# DATA FOR ANALYSIS
+# DATA FOR ANALYSIS:
 ---
 **REQUIREMENTS SUMMARY (Markdown):**
 {requirements_markdown}

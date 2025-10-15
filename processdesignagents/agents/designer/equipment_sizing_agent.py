@@ -15,7 +15,7 @@ load_dotenv()
 def create_equipment_sizing_agent(llm):
     def equipment_sizing_agent(state: DesignState) -> DesignState:
         """Equipment Sizing Agent: populates the equipment table using tool-assisted estimates."""
-        print("\n# Equipment Sizing\n")
+        print("\n# Equipment Sizing\n", flush=True)
 
         llm.temperature = 0.7
 
@@ -93,7 +93,7 @@ def create_equipment_sizing_agent(llm):
 
         markdown_output = response.content if isinstance(response.content, str) else str(response.content)
 
-        print(markdown_output)
+        print(markdown_output, flush=True)
 
         return {
             "basic_equipment_template": markdown_output,

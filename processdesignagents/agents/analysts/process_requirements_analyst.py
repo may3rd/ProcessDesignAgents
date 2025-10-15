@@ -7,7 +7,7 @@ load_dotenv()
 def create_process_requiruments_analyst(llm):
     def process_requirements_analyst(state: DesignState) -> DesignState:
         """Process Requirements Analyst: Extracts key design requirements using LLM."""
-        print("\n# Process Requirements Analysis\n")
+        print("\n# Process Requirements Analysis\n", flush=True)
         system_message = system_prompt(state['problem_statement'])
         prompt = ChatPromptTemplate.from_messages([
             ("system", "{system_message}"),
@@ -15,9 +15,9 @@ def create_process_requiruments_analyst(llm):
         ])
         prompt = prompt.partial(system_message=system_message)
         chain = prompt | llm
-        response = chain.invoke(state.get("messages", []))
+        response = chain.invoke({"messages": list(state.get("messages", []))})
         requirements_markdown = response.content if isinstance(response.content, str) else str(response.content)
-        print(f"Process requirements:\n{requirements_markdown}")
+        print(f"Process requirements:\n{requirements_markdown}", flush=True)
         return {
             "requirements": requirements_markdown,
             "messages": [response],

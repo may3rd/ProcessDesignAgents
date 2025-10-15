@@ -11,7 +11,7 @@ load_dotenv()
 def create_equipment_list_builder(llm):
     def equipment_list_builder(state: DesignState) -> DesignState:
         """Equipment List Builder: Produces a markdown equipment template with sizing placeholders."""
-        print("\n# Equipment List Template\n")
+        print("\n# Equipment List Template\n", flush=True)
 
         llm.temperature = 0.7
 
@@ -32,10 +32,12 @@ def create_equipment_list_builder(llm):
             MessagesPlaceholder(variable_name="messages"),
         ])
 
-        response = (prompt.partial(system_message=system_message) | llm).invoke(state.get("messages", []))
+        response = (prompt.partial(system_message=system_message) | llm).invoke(
+            {"messages": list(state.get("messages", []))}
+        )
         table_output = response.content if isinstance(response.content, str) else str(response.content)
 
-        print(table_output)
+        print(table_output, flush=True)
 
         return {
             "basic_equipment_template": table_output,
@@ -98,11 +100,10 @@ Your Markdown output must follow this structure:
 
 # FINAL MARKDOWN OUTPUT:
 ---
-# EXAMPLE
+# EXAMPLE INPUT:
 For a cooler that drops ethanol from 80 C to 40 C using cooling water, list E-101 with ethanol feed and product stream IDs, cooling water in/out streams, a duty placeholder, and notes about assumed approach temperatures.
 
-**EXPECTED MARKDOWN OUTPUT:**
-<md_output>
+# EXPECTED MARKDOWN OUTPUT:
 ## Equipment Table
 
 ### Heat Exchangers
@@ -114,6 +115,5 @@ For a cooler that drops ethanol from 80 C to 40 C using cooling water, list E-10
 | Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
 |--------------|------|---------|------|------------|-------------|-------------|----------------|-------|
 | P-101 | Product Pump | Transfer cooled ethanol to storage | Centrifugal pump | 1002 | 1003 | 45 kW | Flow: 10,000 kg/h; Head: 18 m | Include VFD for turndown control |
-</md_output>
 
 """
