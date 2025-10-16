@@ -88,6 +88,7 @@ Synthesize a preliminary process flowsheet using the provided 'REQUIREMENTS' and
   *  Units ID, e.g. T-101, E-101, C-101, etc.
   *  Connections ID, 1001, 1002, etc.
 - Reference any design basis assumptions directly in the summary or notes.
+- **Output ONLY a valid markdown formatting text. Do not use code block.**
 
 # MARKDOWN TEMPLATE:
 Structure your Markdown exactly as follows:

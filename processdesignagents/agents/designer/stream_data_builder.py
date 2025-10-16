@@ -76,8 +76,6 @@ For each stream, provide identifiers, origin/destination, qualitative descriptio
 6. Output only the Markdown table; do not add commentary before or after the table.
 
 # MARKDOWN TEMPLATE:
-Respond with a Markdown table only (no additional commentary) using a structure where stream identifiers are columns and attributes are rows:
-```
 | Attribute | 1001 | 1002 | ... |
 |-----------|-------------|-------------|-----|
 | Name / Description | Feed from T-101 | <value> | ... |
@@ -87,17 +85,17 @@ Respond with a Markdown table only (no additional commentary) using a structure 
 | Mass Flow [kg/h] | <value> | <value> | ... |
 | Temperature [°C] | <value> | <value> | ... |
 | Pressure [barg] | <value> | <value> | ... |
-| Key Components | mol% | mol% | ... |
-| Nitrogen (N2) | <value> | <value> | ... |
-| Oxygen (O2) | <value> | <value> | ... |
-| Notes | <value> | <value> | ... |
-```
+| Key Component | (mol %) | (mol %) | ... |
+| Component A | ... | ... | ... | ... |
+| Component B | ... | ... | ... | ... |
+| Component C | ... | ... | ... | ... |
+
 - Use `<value>` placeholders where numbers are unknown.
 - Add additional stream columns for every stream implied by the concept (utilities, recycle, vent, product, etc.).
 
 # CRITICALS
 - **MUST** return the full stream data table in markdown format.
-
+- **Output ONLY a valid markdown formatting text. Do not use code block.**
 ---
 # EXAMPLE INPUT:
 In a heat exchanger that cools ethanol from 80 C to 40 C with cooling water, create streams for hot ethanol feed, cooled ethanol product, cooling water supply, and cooling water return, assigning IDs and placeholder temperatures that reflect the duty.

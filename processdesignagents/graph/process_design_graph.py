@@ -65,28 +65,67 @@ class ProcessDesignGraph:
         # Set up the graph
         self.graph = self.graph_setup.setup_graph()
         
-    async def propagate(self, problem_statement: str = "", save_markdown: str | None = None):
+    async def propagate(
+        self,
+        problem_statement: str = "",
+        save_markdown: str | None = None,
+        manual_concept_selection: bool = False,
+    ):
+        """Run the agent graph for a problem statement.
+
+        Args:
+            problem_statement: Design brief to analyse.
+            save_markdown: Optional path for saving the aggregated markdown report.
+            manual_concept_selection: When True, prompt the user to choose a concept
+                instead of automatically selecting the highest feasibility score.
+        """
         self.problem_statement = problem_statement
-        
+        previous_provider = self.graph_setup.concept_selection_provider
+        if manual_concept_selection:
+            def _prompt_user(concept_options):
+                print("\nSelect a concept for detailed development:", flush=True)
+                for index, option in enumerate(concept_options, start=1):
+                    score = option["score"]
+                    score_text = f"{score}" if score is not None else "N/A"
+                    print(f"{index}. {option['title']} (Feasibility Score: {score_text})", flush=True)
+                choice = input("Enter choice (press Enter to use highest score): ").strip()
+                if not choice:
+                    return None
+                try:
+                    selection = int(choice)
+                except ValueError:
+                    print("Invalid selection. Defaulting to highest score.", flush=True)
+                    return None
+                if 1 <= selection <= len(concept_options):
+                    return selection - 1
+                print("Selection out of range. Defaulting to highest score.", flush=True)
+                return None
+
+            self.graph_setup.concept_selection_provider = _prompt_user
+        else:
+            self.graph_setup.concept_selection_provider = None
+
         init_agent_state = self.propagator.create_initial_state(problem_statement)
 
         args = self.propagator.get_graph_args()
         
-        if self.debug:
-            # Debug mode with tracing
-            trace = []
-            async for chunk in self.graph.astream(init_agent_state, **args):
-                if len(chunk["messages"]) == 0:
-                    pass
-                else:
-                    chunk["messages"][-1].pretty_print()
-                    trace.append(chunk)
-                    
-            final_state = trace[-1]
-        else:
-            # Run the graph
-            final_state = await self.graph.ainvoke(init_agent_state, **args)
-            print(f"\n=========================== Finish Line ===========================", flush=True)
+        try:
+            if self.debug:
+                # Debug mode with tracing
+                trace = []
+                async for chunk in self.graph.astream(init_agent_state, **args):
+                    if len(chunk["messages"]) == 0:
+                        pass
+                    else:
+                        chunk["messages"][-1].pretty_print()
+                        trace.append(chunk)
+                final_state = trace[-1]
+            else:
+                # Run the graph
+                final_state = await self.graph.ainvoke(init_agent_state, **args)
+                print(f"\n=========================== Finish Line ===========================", flush=True)
+        finally:
+            self.graph_setup.concept_selection_provider = previous_provider
         
         # Store current state for reflection
         self.curr_state = final_state

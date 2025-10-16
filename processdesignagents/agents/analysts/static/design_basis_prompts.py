@@ -19,6 +19,8 @@ Prepare a concise design basis that can guide downstream process simulation and 
 5. **Leverage Concept Brief:** Use the supplied concept detail to anchor feed/product definitions, major process steps, and design scope. Do not contradict the chosen concept unless the requirements force an adjustment—if they do, state the conflict in Notes & Data Gaps.
 6. **Extract Components:** List the chemical components than involve in the process, e.g. Hydrogen (H2), Oxygen (O2), Carbon Dioxide (CO2), etc.
 
+**Output ONLY a valid markdown formatting text. Do not use code block.**
+
 # EXAMPLE:
 For a heat exchanger that cools an ethanol stream from 80 C to 40 C using cooling water, document the inlet and outlet temperatures, define ethanol and cooling water in the component list, and state any assumed flow rates or constraints you impose to close the basis.
 
@@ -55,7 +57,6 @@ Your Markdown must follow this exact structure:
 
 ## Notes & Data Gaps
 - <Outstanding questions or data needs>
-
 
 # EXPECTED MARKDOWN OUTPUT:
 ## Executive Summary
@@ -142,6 +143,8 @@ You are an expert **Senior Process Design Engineer** with deep expertise in chem
     * `## 6. Environmental and Regulatory Criteria`
     * `## 7. Process Selection Rationale (High-Level)`
     * `## 8. Preliminary Material of Construction (MoC) Basis`
+
+* **Output ONLY a valid markdown formatting text. Do not use code block.**
 
 ---
 **ONE-SHOT EXAMPLE**

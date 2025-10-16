@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def create_concept_detailer(llm):
+def create_concept_detailer(llm, selection_provider_getter=None):
     def concept_detailer(state: DesignState) -> DesignState:
         """Concept Detailer: Picks the highest-feasibility concept and elaborates it for downstream design."""
         print("\n---\n# Concept Selection", flush=True)
@@ -25,22 +25,49 @@ def create_concept_detailer(llm):
         if not concepts:
             raise ValueError("Concept detailer could not find any concept sections to evaluate.")
 
-        best_title, best_section, best_score = _select_best_concept(concepts)
-        print(f"Chosen concept: {best_title} (Feasibility Score: {best_score if best_score is not None else 'N/A'})", flush=True)
+        concept_options = [
+            {
+                "title": title,
+                "section": section,
+                "score": _extract_score(section),
+            }
+            for title, section in concepts
+        ]
 
+        selected_index: int | None = None
+        selection_provider = selection_provider_getter() if selection_provider_getter else None
+        if selection_provider:
+            try:
+                selected_index = selection_provider(concept_options)
+            except Exception as exc:  # noqa: BLE001
+                print(
+                    f"Concept selection input failed ({exc}); defaulting to best score.",
+                    flush=True,
+                )
+                selected_index = None
+
+        if selected_index is not None and 0 <= selected_index < len(concept_options):
+            chosen = concept_options[selected_index]
+            best_title = chosen["title"]
+            best_section = chosen["section"]
+            best_score = chosen["score"]
+        else:
+            best_title, best_section, best_score = _select_best_concept(concepts)
+
+        print(
+            f"Chosen concept: {best_title}\n(Feasibility Score: {best_score if best_score is not None else 'N/A'})",
+            flush=True,
+        )
+
+        print("Prepared detailed concept brief.", flush=True)
         system_message = system_prompt(best_title, best_section, requirements_markdown)
-
         prompt = ChatPromptTemplate.from_messages([
             ("system", "{system_message}"),
             MessagesPlaceholder(variable_name="messages"),
         ])
-
         chain = prompt.partial(system_message=system_message) | llm
         response = chain.invoke({"messages": list(state.get("messages", []))})
-
         detail_markdown = response.content if isinstance(response.content, str) else str(response.content)
-
-        print("Prepared detailed concept brief.", flush=True)
         print(detail_markdown, flush=True)
 
         return {
@@ -108,9 +135,8 @@ You are an experienced conceptual process designer. Your task is to prepare an i
 Using the chosen concept description and the overarching requirements, elaborate on the process flow, major equipment, operating envelopes, and key risks. Clarify the engineering rationale behind each element.
 
 # MARKDOWN TEMPLATE:
-Respond with Markdown using the exact structure below:
 ## Concept Summary
-- Name: {concept_name} <without "Concept #" prefix>
+- Name: concept_name <without "Concept #" prefix>
 - Intent: <succinct value proposition>
 - Feasibility Score (from review): <value or `Not provided`>
 
@@ -135,7 +161,10 @@ Respond with Markdown using the exact structure below:
 ## Data Gaps & Assumptions
 - <information still needed or assumptions made>
 
-Ensure every list or table entry is specific and actionable. If data is missing, flag it explicitly with `TBD` and add a short explanation.
+---
+# CRITICALS
+* Ensure every list or table entry is specific and actionable. If data is missing, flag it explicitly with `TBD` and add a short explanation.
+* **Output ONLY a valid markdown formatting text. Do not use code block.**
 
 # EXPECTED MARKDOWN OUTPUT:
 ## Concept Summary

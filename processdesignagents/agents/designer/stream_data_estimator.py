@@ -85,19 +85,23 @@ When refining a heat exchanger that cools ethanol from 80 C to 40 C with cooling
 
 # CRITICALS
 - **MUST** return the full stream data table in markdown format.
+- **Output ONLY a valid markdown formatting text. Do not use code block.**
 
 # MARKDOWN TEMPLATE:
 Your Markdown output must follow this structure:
-|          | 1001 | 1002 | 1003 | ... | <only show stream ID>
-| Description | ------ | ------ | ------ | ----- |
-| ---------- | ------ | ------ | ------ | ----- |
-| Temperature (°C) | ... | ... | ... | ... |
-| Pressure (barg) | ... | ... | ... | ... |
-| Mass Flow (kg/h) | ... | ... | ... | ... |
-| Key Component | (mol %) | (mol %) | (mol %) | ... |
-| Component A | ... | ... | ... | ... | ... |
-| Component B | ... | ... | ... | ... | ... |
-| Component C | ... | ... | ... | ... | ... |
+| Attribute | 1001 | 1002 | ... |
+|-----------|-------------|-------------|-----|
+| Name / Description | Feed from T-101 | <value> | ... |
+| From | T-101 | <value> | ... |
+| To | E-101 | <value> | ... |
+| Phase | <value> | <value> | ... |
+| Mass Flow [kg/h] | <value> | <value> | ... |
+| Temperature [°C] | <value> | <value> | ... |
+| Pressure [barg] | <value> | <value> | ... |
+| Key Component | (mol %) | (mol %) | ... |
+| Component A | ... | ... | ... | ... |
+| Component B | ... | ... | ... | ... |
+| Component C | ... | ... | ... | ... |
 
 ## Notes
 - <note 1>
@@ -111,9 +115,12 @@ Your Markdown output must follow this structure:
 |          | 1001 | 1002 | 2001 | 2002 |
 | Description | Hot ethanol feed | Cooled ethanol product | Cooling water supply | Cooling water return |
 | ---------- | ------ | ------ | ------ | ------ |
+| From | Upstream blender | E-101 outlet | CW header | E-101 |
+| To | E-101 shell | Storage tank via P-101 | E-101 tubes | CW header |
+| Phase | Liquid | Liquid | Liquid | Liquid |
+| Mass Flow (kg/h) | 10,000 | 10,000 | 24,000 | 24,000 |
 | Temperature (degC) | 80 | 40 | 25 | 35 |
 | Pressure (barg) | 1.5 | 1.3 | 2.5 | 2.3 |
-| Mass Flow (kg/h) | 10,000 | 10,000 | 24,000 | 24,000 |
 | Key Component | (mol %) | (mol %) | (mol %) | (mol %) |
 | Ethanol (C2H6O) | 93 | 93 | 0 | 0 |
 | Water (H2O) | 7 | 7 | 100 | 100 |

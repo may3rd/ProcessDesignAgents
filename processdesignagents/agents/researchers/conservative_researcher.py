@@ -41,51 +41,6 @@ def create_conservative_researcher(llm):
 
     return conservative_researcher
 
-def _split_concept_sections(markdown_text: str) -> dict[str, str]:
-    sections: dict[str, str] = {}
-    current_title: str | None = None
-    current_lines: list[str] = []
-
-    for line in markdown_text.splitlines():
-        heading_match = re.match(r"^##\s+(.*)", line.strip())
-        if heading_match:
-            if current_title is not None:
-                sections[current_title] = "\n".join(current_lines).strip()
-            current_title = heading_match.group(1).strip()
-            current_lines = []
-        elif current_title is not None:
-            current_lines.append(line)
-
-    if current_title is not None:
-        sections[current_title] = "\n".join(current_lines).strip()
-
-    return sections
-
-
-def _extract_score(section_text: str) -> int | None:
-    cleaned = section_text.replace("**", "")
-    match = re.search(r"Feasibility Score\s*[:\-]\s*(\d+)", cleaned, re.IGNORECASE)
-    if match:
-        try:
-            return int(match.group(1))
-        except ValueError:
-            return None
-    return None
-
-
-def _extract_bullets(section_text: str, heading: str) -> list[str]:
-    pattern = re.compile(rf"###\s*{re.escape(heading)}\s*(.*?)\n(?=###|$)", re.IGNORECASE | re.DOTALL)
-    match = pattern.search(section_text)
-    if not match:
-        return []
-
-    bullets: list[str] = []
-    for line in match.group(1).splitlines():
-        stripped = line.strip()
-        if stripped.startswith("-"):
-            bullets.append(stripped[1:].strip())
-    return bullets
-
 
 def system_prompt(concepts_markdown: str, requirements_markdown: str) -> str:
     return f"""
@@ -121,7 +76,8 @@ For each concept, produce a section with the following structure:
 - ...
 
 # CRITITALS
-Include exactly the same number of concept sections as provided in the input.
+- Include exactly the same number of concept sections as provided in the input.
+- **Output ONLY a valid markdown formatting text. Do not use code block.**
 
 # NEGATIVES
 * DO NOT output any other section, only evaluation report

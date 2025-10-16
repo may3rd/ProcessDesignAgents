@@ -77,6 +77,7 @@ The concepts you generate must includes the typical or standard process that wid
 3.  **Develop Concepts:** For each of your three ideas, structure it with a descriptive name, a compact paragraph explaining the concept, a list of the essential unit operations, and a list of its key advantages.
 4.  **MARKDOWN TEMPLATE:** Your final output MUST be Markdown with the following structure repeated for each concept:
     ```
+    ---
     ## Concept N: <Descriptive Name>
     **Description:** <one paragraph summarizing the idea>
     **Unit Operations:**
@@ -85,7 +86,10 @@ The concepts you generate must includes the typical or standard process that wid
     **Key Benefits:**
     - <benefit>
     - ...
+    ---
     ```
+    
+**Output ONLY a valid markdown formatting text. Do not use code block.**
 Ensure there are at least three concept sections.
 
 # TARGET AUDIENCE

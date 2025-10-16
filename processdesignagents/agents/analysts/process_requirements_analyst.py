@@ -47,6 +47,8 @@ Your goal is to act as a Process Requirements Analyst. You must read the provide
 # NEGATIVES:
     * **Components** do not output the compound name, e.g. Air, instead report the chemical compostion names, e.g. Hydrogen, Oxygen, Carbon Dioxide, etc.
     * **Plant/Unit Capacity** try to determine a reasonable capacity/throughput of the process unit.
+    * **Output ONLY a valid markdown formatting text. Do not use code block.**
+    * Enuser that the capacity UOM conversion is done correctly.
     
 # MARKDOWN TEMPLATE:
 Your Markdown output must follow this structure:
@@ -71,10 +73,6 @@ The chemical components involved in the process are:
 - <Constraint or assumption 1>
 - <Constraint or assumption 2>
 - ...
-
-# NEGATIVES:
-* ENSURE the the capacity UOM conversion is done correctly.
-
 
 # EXAMPLE:
 ---

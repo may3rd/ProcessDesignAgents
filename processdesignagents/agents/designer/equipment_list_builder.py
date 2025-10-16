@@ -77,6 +77,7 @@ Use the process description, design basis, requirements, and stream summary to l
 
 # CRITICALS
 - **MUST** return the full equipment table in markdown format.
+- **Output ONLY a valid markdown formatting text. Do not use code block.**
 
 # MARKDOWN TEMPLATE:
 Your Markdown output must follow this structure:

@@ -94,8 +94,7 @@ Review the provided requirements, design basis, process description, H&MB result
 
 # CRITICALS
 - **follow** the MARKDOWN TEMPLATE strictly.
-- **always** return the full report in markdown format.
-
+- **Output ONLY a valid markdown formatting text. Do not use code block.**
 # MARKDOWN TEMPLATE:
 Return a Markdown report with the following structure:
 ```

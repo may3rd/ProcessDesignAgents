@@ -7,7 +7,7 @@ Below is a concise reference for each agent, its inputs, outputs, and key prompt
 | Process Requirements Analyst | `agents/analysts/process_requirements_analyst.py` | `problem_statement`, `messages` | `requirements` | Extracts objectives, constraints, components, and assumptions from the raw brief. |
 | Innovative Researcher | `agents/researchers/innovative_researcher.py` | `requirements` | `research_concepts` | Proposes multiple process concepts. |
 | Conservative Researcher | `agents/researchers/conservative_researcher.py` | `research_concepts`, `requirements` | Refined `research_concepts` (overwrites prior concepts) | Stress-tests concepts and adds feasibility commentary. |
-| Concept Detailer | `agents/researchers/concept_detailer.py` | `research_concepts`, `requirements` | `selected_concept_details`, `selected_concept_name` | Selects the best concept and elaborates it for downstream agents. |
+| Concept Detailer | `agents/researchers/concept_detailer.py` | `research_concepts`, `requirements` | `selected_concept_details`, `selected_concept_name` | Selects the best concept and elaborates it for downstream agents (can prompt for manual choice). |
 | Design Basis Analyst | `agents/analysts/design_basis_analyst.py` | `problem_statement`, `requirements`, concept detail | `design_basis` | Produces the formal design basis document. |
 | Basic PFD Designer | `agents/designer/basic_pfd_designer.py` | `selected_concept_details`, `design_basis`, `requirements` | `basic_pfd` | Generates the conceptual flowsheet narrative. |
 | Stream Data Builder | `agents/designer/stream_data_builder.py` | `basic_pfd`, `design_basis`, `requirements`, concept detail | `basic_stream_data` | Builds the stream summary template as a markdown table. |

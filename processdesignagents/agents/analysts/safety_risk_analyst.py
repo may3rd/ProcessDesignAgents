@@ -83,6 +83,7 @@ For a cooler that drops ethanol from 80 C to 40 C with cooling water, consider h
 # CRITICALS
 - **MUST** return the full risk report in markdown format.
 - **MUST** follow the MARKDOWN TEMPLATE strictly.
+- **Output ONLY a valid markdown formatting text. Do not use code block.**
 
 # MARKDOWN TEMPLATE:
 Your Markdown must follow this structure exactly:
