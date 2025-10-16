@@ -214,7 +214,6 @@ The hot effluent from the reactor (Stream 1005), which consists of H2-rich gas a
 |          | 1001A | 1001B | 1002 | 1003 | 1004 | 1005 | 1006 | 1007 | 1008 | 1009 | 1010 | 1011 | 1012 | 1013 | 2001 | 2002 | 2003 | 2006 |
 |----------|-------|-------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|
 | Description | LNG Feed | LNG Pumped | Vaporized NG | Compressed NG | Hot NG Feed | Reactor Effluent | Crude MWCNT | Off-gas to Cooler | Cooled Off-gas | Fine MWCNT | Gas to PSA | Blue Hydrogen | PSA Tail Gas | Compressed H2 | LP Steam In | CW Supply | CW Return | Natural Gas Fuel |
-| ---------- | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
 | Temperature (°C) | -160 | -160 | 30 | 30 | 700 | 850 | 850 | 850 | 40 | 40 | 40 | 40 | 40 | 40 | 150 | 25 | 35 | 25 |
 | Pressure (barg) | 1.0 | 6.0 | 5.5 | 15.0 | 14.5 | 1.5 | 1.5 | 1.5 | 1.3 | 1.3 | 1.2 | 1.0 | 1.0 | 20.0 | 5.0 | 2.5 | 2.3 | 5.0 |
 | Mass Flow (kg/h) | 158.3 | 158.3 | 158.3 | 158.3 | 158.3 | 158.3 | 27.5 | 130.8 | 130.8 | 0.1 | 130.7 | 11.2 | 119.5 | 11.2 | 200.0 | 5000 | 5000 | 20.0 |
