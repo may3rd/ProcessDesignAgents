@@ -2,9 +2,16 @@ from __future__ import annotations
 
 import json
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from processdesignagents.agents.utils.agent_states import DesignState
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
+)
 from dotenv import load_dotenv
+
+from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
 load_dotenv()
 
@@ -12,7 +19,7 @@ load_dotenv()
 def create_safety_risk_analyst(llm):
     def safety_risk_analyst(state: DesignState) -> DesignState:
         """Safety and Risk Analyst: Performs HAZOP-inspired risk assessment on current concept."""
-        print("\n# Safety and Risk Assessment \n", flush=True)
+        print("\n# Safety and Risk Assessment", flush=True)
         requirements_markdown = state.get("requirements", "")
         design_basis_markdown = state.get("design_basis", "")
         basic_pfd_markdown = state.get("basic_pfd", "")
@@ -28,20 +35,20 @@ def create_safety_risk_analyst(llm):
             equipment_json = json.dumps(equipment_json, indent=2)
         if not isinstance(design_basis_markdown, str):
             design_basis_markdown = str(design_basis_markdown)
-        system_message = system_prompt(
+        base_prompt = safety_risk_prompt(
             requirements_markdown,
             design_basis_markdown,
             basic_pfd_markdown,
             stream_data,
             equipment_json,
         )
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "{system_message}"),
-            MessagesPlaceholder(variable_name="messages"),
-        ])
-        chain = prompt.partial(system_message=system_message) | llm
+        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt = ChatPromptTemplate.from_messages(prompt_messages)
+        chain = prompt | llm
         response = chain.invoke({"messages": list(state.get("messages", []))})
-        risk_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        risk_markdown = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        ).strip()
         print(risk_markdown, flush=True)
         return {
             "safety_risk_analyst_report": risk_markdown,
@@ -51,14 +58,14 @@ def create_safety_risk_analyst(llm):
     return safety_risk_analyst
 
 
-def system_prompt(
+def safety_risk_prompt(
     process_requirement: str,
     design_basis_markdown: str,
     basic_pfd_markdown: str,
     stream_data: str,
     equipment_data: str,
-) -> str:
-    return f"""
+) -> ChatPromptTemplate:
+    system_content = """
 # ROLE
 You are a Certified Process Safety Professional (CPSP) with 20 years of experience facilitating Hazard and Operability (HAZOP) studies for the chemical industry.
 
@@ -73,12 +80,10 @@ Conduct a preliminary, HAZOP-style risk assessment based on the provided basic p
 - Ensure each hazard references the specific stream IDs, equipment tags, or operating conditions involved.
 - Finish with an overall risk conclusion that reconciles the individual findings and highlights any required follow-up actions or confirmations.
 
-# EXAMPLE
-For a cooler that drops ethanol from 80 C to 40 C with cooling water, consider hazards such as cooling water loss leading to overheated ethanol or tube rupture causing cross-contamination, rate their severity and likelihood, and specify mitigations like temperature alarms or double isolation.
-
 # CRITICALS
 - **MUST** follow the MARKDOWN TEMPLATE strictly.
 - **Output ONLY a valid markdown formatting text. Do not use code block.**
+- **Only output the safety and risk assessment. Nothing else.**
 
 # MARKDOWN TEMPLATE:
 Your Markdown must follow this structure exactly:
@@ -102,15 +107,16 @@ Your Markdown must follow this structure exactly:
 
 ### Notes
 - <brief commentary referencing streams or units>
-```
-Repeat for each hazard (Hazard 1, Hazard 2, etc.). After listing hazards, add:
-```
+
 ## Overall Assessment
 - Overall Risk Level: <Low | Medium | High>
 - Compliance Notes: <summary>
 ```
 
-**EXPECTED MARKDOWN OUTPUT:**
+# EXAMPLE
+For a cooler that drops ethanol from 80 C to 40 C with cooling water, consider hazards such as cooling water loss leading to overheated ethanol or tube rupture causing cross-contamination, rate their severity and likelihood, and specify mitigations like temperature alarms or double isolation.
+
+# EXAMPLE MARKDOWN OUTPUT:
 ```
 ## Hazard 1: Loss of Cooling Water Flow
 **Severity:** 3
@@ -156,7 +162,8 @@ Repeat for each hazard (Hazard 1, Hazard 2, etc.). After listing hazards, add:
 - Overall Risk Level: Medium
 - Compliance Notes: Follow up on corrosion coupon program results before commissioning.
 ```
-
+"""
+    human_content = f"""
 # DATA FOR HAZOP ANALYSIS
 ---
 **REQUIREMENTS / CONSTRAINTS (Markdown):**
@@ -171,7 +178,20 @@ Repeat for each hazard (Hazard 1, Hazard 2, etc.). After listing hazards, add:
 **STREAM CONDITIONS (Markdown Table):**
 {stream_data}
 
-**EQUIPMENT DETAILS (JSON):**
+**EQUIPMENT DETAILS:**
 {equipment_data}
 
 """
+
+    messages = [
+        SystemMessagePromptTemplate.from_template(
+            jinja_raw(system_content),
+            template_format="jinja2",
+        ),
+        HumanMessagePromptTemplate.from_template(
+            jinja_raw(human_content),
+            template_format="jinja2",
+        ),
+    ]
+
+    return ChatPromptTemplate.from_messages(messages)

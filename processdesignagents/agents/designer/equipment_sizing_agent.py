@@ -3,11 +3,18 @@ from __future__ import annotations
 import json
 
 from langchain_core.messages import ToolMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
+)
+
+from dotenv import load_dotenv
 
 from processdesignagents.agents.tools import EQUIPMENT_SIZING_TOOLS
 from processdesignagents.agents.utils.agent_states import DesignState
-from dotenv import load_dotenv
+from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
 load_dotenv()
 
@@ -15,7 +22,7 @@ load_dotenv()
 def create_equipment_sizing_agent(llm):
     def equipment_sizing_agent(state: DesignState) -> DesignState:
         """Equipment Sizing Agent: populates the equipment table using tool-assisted estimates."""
-        print("\n# Equipment Sizing\n", flush=True)
+        print("\n# Equipment Sizing", flush=True)
 
         llm.temperature = 0.7
 
@@ -29,7 +36,7 @@ def create_equipment_sizing_agent(llm):
         if not equipment_table_template.strip():
             raise ValueError("Equipment template is missing. Run the equipment list builder before sizing.")
 
-        system_message = equipment_sizing_prompt(
+        base_prompt = equipment_sizing_prompt(
             requirements_markdown,
             design_basis_markdown,
             basic_pfd_markdown,
@@ -40,13 +47,9 @@ def create_equipment_sizing_agent(llm):
 
         # tool_enabled_llm = llm.bind_tools(EQUIPMENT_SIZING_TOOLS)
         
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "{system_message}"),
-            MessagesPlaceholder(variable_name="messages"),
-        ])
-        conversation = prompt.partial(system_message=system_message).format_prompt(
-            messages=list(state.get("messages", []))
-        ).to_messages()
+        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt = ChatPromptTemplate.from_messages(prompt_messages)
+        conversation = prompt.format_prompt(messages=list(state.get("messages", []))).to_messages()
 
         new_messages: list = []
         # response = tool_enabled_llm.invoke(conversation)
@@ -91,7 +94,9 @@ def create_equipment_sizing_agent(llm):
         #     conversation.append(response)
         #     new_messages.append(response)
 
-        markdown_output = response.content if isinstance(response.content, str) else str(response.content)
+        markdown_output = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        ).strip()
 
         print(markdown_output, flush=True)
 
@@ -110,8 +115,8 @@ def equipment_sizing_prompt(
     basic_hmb_markdown: str,
     stream_table: str,
     equipment_table_template: str,
-) -> str:
-    return f"""
+) -> ChatPromptTemplate:
+    system_content = """
 # CONTEXT
 Preliminary design has produced the concept flowsheet, reconciled stream data, and an equipment list populated with placeholders. You are the first pass at quantifying duties and dimensions so that cost, schedule, and risk evaluations can progress with representative numbers.
 
@@ -139,29 +144,30 @@ Update the equipment table with quantitative estimates. Present the final result
 # MARKDOWN TEMPLATE:
 ```
 | Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
-|--------------|------|---------|------|------------|-------------|-------------|----------------|-------|
 | ... | ... | ... | ... | ... | ... | ... | ... | ... |
 
 ## Detailed Notes
 - E-101: Referenced heat_exchanger_sizing – heat duty = ... kW, heat transfer area = ... m²; assumptions ...
 - V-101: Used vessel_volume_estimate – diameter = ... m; length = ... m; orientation = ...
 ```
+"""
 
+    human_content = f"""
 # DATA FOR ANALYSIS:
 ---
-**REQUIREMENTS SUMMARY:**
+**Requirements Summary (Markdown):**
 {requirements_markdown}
 
-**DESIGN BASIS:**
+**Design Basis (Markdown):**
 {design_basis_markdown}
 
-**BASIC PROCESS FLOW DIAGRAM:**
+**Basic Process Flow Diagram (Markdown):**
 {basic_pfd_markdown}
 
-**PRELIMINARY H&MB:**
+**Preliminary H&MB (Markdown/Table):**
 {basic_hmb_markdown}
 
-**EQUIPMENT TABLE TEMPLATE:**
+**Equipment Table Template (Markdown):**
 {equipment_table_template}
 
 **STEAM TABLE:**
@@ -178,13 +184,11 @@ For a single exchanger that cools ethanol from 80 C to 40 C with cooling water, 
 
 ### Heat Exchanger
 | Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
-|--------------|------|---------|------|------------|-------------|-------------|----------------|-------|
 | E-101 | Ethanol Cooler | Reduce ethanol temperature | Shell-and-tube exchanger | 1001, 2001 | 1002, 2002 | 0.28 MW | U=450 W/m2-K; Area=120 m2; LMTD=25 degC | Sized via heat_exchanger_sizing; 1-2 pass configuration |
 
 ## Pumps
 
 | Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
-|--------------|------|---------|------|------------|-------------|-------------|----------------|-------|
 | P-101 | Product Pump | Transfer cooled ethanol | Centrifugal pump | 1002 | 1003 | 45 kW | Flow=10,000 kg/h; Head=18 m; Eff=0.7 | Pump_sizing assumed density 820 kg/m3 |
 
 ## Detailed Notes
@@ -192,6 +196,19 @@ For a single exchanger that cools ethanol from 80 C to 40 C with cooling water, 
 - P-101: pump_sizing(flow=10,000 kg/h, head=18 m) -> brake power 42 kW, rounded to 45 kW with 10% contingency.
 ```
 """
+
+    messages = [
+        SystemMessagePromptTemplate.from_template(
+            jinja_raw(system_content),
+            template_format="jinja2",
+        ),
+        HumanMessagePromptTemplate.from_template(
+            jinja_raw(human_content),
+            template_format="jinja2",
+        ),
+    ]
+
+    return ChatPromptTemplate.from_messages(messages)
 
 
 _TOOL_REGISTRY = {tool.name: tool for tool in EQUIPMENT_SIZING_TOOLS}

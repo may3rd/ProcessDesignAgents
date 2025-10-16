@@ -1,9 +1,15 @@
 from __future__ import annotations
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
+)
+from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
-from dotenv import load_dotenv
+from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
 load_dotenv()
 
@@ -11,7 +17,7 @@ load_dotenv()
 def create_stream_data_estimator(llm):
     def stream_data_estimator(state: DesignState) -> DesignState:
         """Stream Data Estimator: Generates stream and H&MB tables with estimated conditions."""
-        print("\n# Stream Data Estimator\n", flush=True)
+        print("\n# Stream Data Estimator", flush=True)
 
         llm.temperature = 0.7
         
@@ -21,22 +27,20 @@ def create_stream_data_estimator(llm):
         concept_details_markdown = state.get("selected_concept_details", "")
         stream_template = state.get("basic_stream_data", "")
 
-        system_message = system_prompt(
+        base_prompt = stream_data_estimator_prompt(
             basic_pfd_markdown,
             requirements_markdown,
             design_basis_markdown,
             concept_details_markdown,
             stream_template,
         )
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "{system_message}"),
-            MessagesPlaceholder(variable_name="messages"),
-        ])
-        response = (prompt.partial(system_message=system_message) | llm).invoke(
-            {"messages": list(state.get("messages", []))}
-        )
+        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt = ChatPromptTemplate.from_messages(prompt_messages)
+        response = (prompt | llm).invoke({"messages": list(state.get("messages", []))})
 
-        markdown_output = response.content if isinstance(response.content, str) else str(response.content)
+        markdown_output = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        ).strip()
 
         print(markdown_output, flush=True)
 
@@ -49,16 +53,16 @@ def create_stream_data_estimator(llm):
     return stream_data_estimator
 
 
-def system_prompt(
+def stream_data_estimator_prompt(
     basic_pfd_markdown: str,
     requirements_markdown: str,
     design_basis_markdown: str,
     concept_details_markdown: str,
     stream_template: str,
-) -> str:
-    return f"""
+) -> ChatPromptTemplate:
+    system_content = f"""
 # CONTEXT
-You receive the templated stream inventory, concept summary, and governing requirements from earlier design stages. The project needs first-pass operating conditions and reconciled balances so downstream sizing and analysis teams can proceed with credible data.
+You receive the templated stream table, concept summary, and governing requirements from earlier design stages. The project needs first-pass operating conditions and reconciled balances so downstream sizing and analysis teams can proceed with credible data.
 
 # TARGET AUDIENCE
 - Equipment sizing agent deriving preliminary dimensions and duties.
@@ -71,9 +75,6 @@ You are a Senior Process Simulation Engineer. Generate estimated operating condi
 # TASK
 Using the provided information and the 'STREAM TEMPLATE', replace `<value>` placeholders with realistic estimates (include units). Highlight assumptions in notes. Present results strictly as Markdown.
 
-# EXAMPLE
-When refining a heat exchanger that cools ethanol from 80 C to 40 C with cooling water, estimate consistent temperatures and flow rates for the ethanol and cooling water streams, ensuring the heat removed from ethanol matches the heat absorbed by the utility and documenting any assumed specific heat values.
-
 # INSTRUCTIONS
 1. Review the STREAM TEMPLATE alongside the process description, requirements, and design basis to understand intended unit operations, utilities, and performance targets.
 2. Replace every `<value>` placeholder with realistic estimates (include units) derived from energy and material balance reasoning; adjust temperatures, pressures, and flows so each unit operation is internally consistent.
@@ -84,14 +85,13 @@ When refining a heat exchanger that cools ethanol from 80 C to 40 C with cooling
 7. Return the completed Markdown exactly in the required format, including the `## Notes` section with concise bullet entries.
 
 # CRITICALS
-- **MUST** return the full stream data table in markdown format.
+- **MUST return the full stream data table in markdown format.**
 - **Output ONLY a valid markdown formatting text. Do not use code block.**
 
 # MARKDOWN TEMPLATE:
 Your Markdown output must follow this structure:
 ```
 | Attribute | 1001 | 1002 | ... |
-|-----------|-------------|-------------|-----|
 | Name / Description | Feed from T-101 | <value> | ... |
 | From | T-101 | <value> | ... |
 | To | E-101 | <value> | ... |
@@ -111,11 +111,13 @@ Your Markdown output must follow this structure:
 ```
 ---
 
-**EXPECTED MARKDOWN OUTPUT:**
+# EXAMPLE
+When refining a heat exchanger that cools ethanol from 80 C to 40 C with cooling water, estimate consistent temperatures and flow rates for the ethanol and cooling water streams, ensuring the heat removed from ethanol matches the heat absorbed by the utility and documenting any assumed specific heat values.
+
+# EXPECTED MARKDOWN OUTPUT:
 ```
 |          | 1001 | 1002 | 2001 | 2002 |
 | Description | Hot ethanol feed | Cooled ethanol product | Cooling water supply | Cooling water return |
-| ---------- | ------ | ------ | ------ | ------ |
 | From | Upstream blender | E-101 outlet | CW header | E-101 |
 | To | E-101 shell | Storage tank via P-101 | E-101 tubes | CW header |
 | Phase | Liquid | Liquid | Liquid | Liquid |
@@ -130,19 +132,38 @@ Your Markdown output must follow this structure:
 - Cooling water duty balances ethanol heat removal at approx. 0.28 MW.
 - Monitoring differential pressure across E-101 ensures early fouling detection.
 ```
+"""
+
+    human_content = f"""
+
+# REFERENCE MATERIAL
+---
+**Requirements Summary (Markdown):**
+{requirements_markdown}
+
+**Concept Details (Markdown):**
+{concept_details_markdown}
+
+**Design Basis (Markdown):**
+{design_basis_markdown}
+
+**Basic Process Flow Diagram (Markdown):**
+{basic_pfd_markdown}
 
 # STREAM TEMPLATE
 {stream_template}
 
-# REFERENCE MATERIAL
----
-**BASIC PROCESS FLOW DIAGRAM:**
-{basic_pfd_markdown}
-
-**DESIGN BASIS:**
-{design_basis_markdown}
-
-**REQUIREMENTS SUMMARY:**
-{requirements_markdown}
-
 """
+
+    messages = [
+        SystemMessagePromptTemplate.from_template(
+            jinja_raw(system_content),
+            template_format="jinja2",
+        ),
+        HumanMessagePromptTemplate.from_template(
+            jinja_raw(human_content),
+            template_format="jinja2",
+        ),
+    ]
+
+    return ChatPromptTemplate.from_messages(messages)

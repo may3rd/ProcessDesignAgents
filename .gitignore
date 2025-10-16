@@ -6,5 +6,7 @@ results/
 eval_results/
 GEMINI.md
 
-# files
+#
 test_auth.py
+
+!examples/reports/

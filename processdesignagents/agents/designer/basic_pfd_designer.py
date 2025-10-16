@@ -1,8 +1,15 @@
 from __future__ import annotations
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from processdesignagents.agents.utils.agent_states import DesignState
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
+)
 from dotenv import load_dotenv
+
+from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
 load_dotenv()
 
@@ -26,21 +33,21 @@ def create_basic_pfd_designer(llm):
         if not isinstance(design_basis_markdown, str):
             design_basis_markdown = str(design_basis_markdown)
 
-        system_message = system_prompt(
+        base_prompt = basic_pfd_prompt(
             selected_concept_name,
             concept_details_markdown,
             requirements_markdown,
             design_basis_markdown,
         )
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "{system_message}"),
-            MessagesPlaceholder(variable_name="messages"),
-        ])
-        chain = prompt.partial(system_message=system_message) | llm
+        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt = ChatPromptTemplate.from_messages(prompt_messages)
+        chain = prompt | llm
         response = chain.invoke({"messages": list(state.get("messages", []))})
 
-        basic_pfd_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        basic_pfd_markdown = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        ).strip()
 
         print(basic_pfd_markdown, flush=True)
 
@@ -52,13 +59,13 @@ def create_basic_pfd_designer(llm):
     return basic_pfd_designer
 
 
-def system_prompt(
+def basic_pfd_prompt(
     concept_name: str,
     concept_details: str,
     requirements: str,
     design_basis: str,
-) -> str:
-    return f"""
+) -> ChatPromptTemplate:
+    system_content = f"""
 # CONTEXT
 You receive vetted concept documentation, design basis, and requirements assembled by upstream teams. The sponsor expects a state-of-the-art flowsheet that showcases advanced integration, modularisation, and smart instrumentation suitable for rapid deployment. Your deliverable seeds downstream stream definition, equipment sizing, safety assessment, and project approval.
 
@@ -100,12 +107,10 @@ Structure your Markdown exactly as follows:
 
 ## Units
 | ID | Name | Type | Description |
-|----|------|------|-------------|
 | ... | ... | ... | ... |
 
 ## Streams
 | ID | Stream | From | To | Description |
-| --- |--------|------|----|-------------|
 | ... | ... | ... | ... | ... |
 
 ## Overall Description
@@ -130,14 +135,12 @@ For a simple exchanger that cools ethanol from 80 C to 40 C using cooling water,
 
 ## Units
 | ID | Name | Type | Description |
-|----|------|------|-------------|
 | E-101 | Ethanol Cooler | Shell-and-tube exchanger | Transfers heat from ethanol to cooling water |
 | P-101 | Product Pump | Centrifugal pump | Boosts cooled ethanol to storage |
 | U-201 | Cooling Water Loop | Utility header | Provides 25 degC cooling water supply |
 
 ## Connections
 | ID | Stream | From | To | Description |
-| --- |--------|------|----|-------------|
 | 1001 | Hot ethanol feed | Upstream blender | E-101 | Ethanol at 80 degC and 1.5 barg |
 | 1002 | Cooled ethanol | E-101 | P-101 | Product leaving exchanger at 40 degC |
 | 1003 | Storage transfer | P-101 | Storage tank | Pumped ethanol to atmospheric tank |
@@ -151,13 +154,32 @@ Hot ethanol from the blender enters E-101 where heat is exchanged against plant 
 - Provide strainers on cooling water inlet to limit fouling.
 - Include bypass line around E-101 for maintenance.
 ```
+"""
+    human_content = f"""
+# DESIGN INPUTS
 
-# DATA FOR ANALYSIS
----
-**REQUIREMENTS:**
+**Requirements (Markdown):**
 {requirements}
 
-**DESIGN BASIS:**
-{design_basis}
+**Selected Concept Name:**
+{concept_name or "Not provided"}
 
+**Concept Details (Markdown):**
+{concept_details}
+
+**Design Basis (Markdown):**
+{design_basis}
 """
+
+    messages = [
+        SystemMessagePromptTemplate.from_template(
+            jinja_raw(system_content),
+            template_format="jinja2",
+        ),
+        HumanMessagePromptTemplate.from_template(
+            jinja_raw(human_content),
+            template_format="jinja2",
+        ),
+    ]
+
+    return ChatPromptTemplate.from_messages(messages)

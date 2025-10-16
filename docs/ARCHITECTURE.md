@@ -16,9 +16,9 @@ Equipment Sizing → Safety & Risk → Project Manager
 | `selected_concept_details`, `selected_concept_name` | Detailed concept brief and name | Concept Detailer |
 | `design_basis` | Markdown design basis for sizing/validation | Design Basis Analyst |
 | `basic_pfd` | Conceptual flowsheet narrative | Basic PFD Designer |
-| `basic_stream_data` | Stream summary markdown table | Stream Data Builder / Stream Data Estimator |
-| `basic_hmb_results` | Filled-in heat and material balance tables | Stream Data Estimator |
-| `basic_equipment_template` | Equipment list & sizing results (markdown) | Equipment List Builder & Equipment Sizing Agent |
+| `basic_stream_data` | Stream inventory JSON | Stream Data Builder / Stream Data Estimator |
+| `basic_hmb_results` | Heat & material balance JSON payload | Stream Data Estimator |
+| `basic_equipment_template` | Equipment catalogue JSON with sizing data | Equipment List Builder & Equipment Sizing Agent |
 | `safety_risk_analyst_report` | HAZOP-style risk assessment | Safety & Risk Analyst |
 | `project_manager_report` | Final gate approval | Project Manager |
 
@@ -34,4 +34,4 @@ LLM responses are appended to `state["messages"]` so downstream agents can refer
 4. Insert the node and edges in `processdesignagents/graph/setup.py`.
 5. Add UI hooks (CLI report sections, etc.) when appropriate.
 
-For deeper examples, examine the stream and equipment builder agents—they show how markdown artefacts flow through the pipeline and are reused by later stages.
+For deeper examples, examine the stream and equipment builder agents—they show how structured artefacts flow through the pipeline and are reused by later stages. Sample end-to-end outputs are available in `examples/reports/` for quick reference.

@@ -1,7 +1,7 @@
 langgraph
 langchain-openai
 langchain_anthropic
-langchain_google
+langchain-google-genai
 openai
 scipy
 numpy
@@ -16,3 +16,4 @@ tabulate
 rich
 questionary
 typer
+jinja2

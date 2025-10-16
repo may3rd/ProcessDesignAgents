@@ -6,6 +6,7 @@ ProcessDesignAgents coordinates specialised agents for conceptual chemical-proce
 - Core agents live in `processdesignagents/agents/`; graph orchestration and shared state definitions are under `processdesignagents/graph/` and `processdesignagents/utils/`.
 - User-facing entry points sit in `main.py` (batch run) and `cli/main.py` (Rich dashboard). Keep new interface code alongside these scripts.
 - Documentation belongs in `docs/`; assets that accompany reports or demos live in `assets/` and generated artefacts land in `results/` or `reports/`.
+- Sample end-to-end outputs are archived in `examples/` (see `examples/reports/` for representative project bundles).
 - Tests currently sit beside modules (see `test_auth.py`); prefer adding new suites under a dedicated `tests/` package that mirrors the source tree.
 
 ## Build, Test, and Development Commands

@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from processdesignagents.agents.utils.agent_states import DesignState
-from dotenv import load_dotenv
 import re
+
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
+)
+from dotenv import load_dotenv
+
+from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
 load_dotenv()
 
@@ -11,7 +19,7 @@ load_dotenv()
 def create_conservative_researcher(llm):
     def conservative_researcher(state: DesignState) -> DesignState:
         """Conservative Researcher: Critiques concepts for practicality using LLM."""
-        print("\n---\n# Conservatively Critiqued Concepts", flush=True)
+        print("\n# Conservatively Critiqued Concepts", flush=True)
 
         concepts_markdown = state.get("research_concepts", "")
         requirements_markdown = state.get("requirements", "")
@@ -20,16 +28,16 @@ def create_conservative_researcher(llm):
         if not isinstance(requirements_markdown, str):
             requirements_markdown = str(requirements_markdown)
             
-        system_message = system_prompt(concepts_markdown, requirements_markdown)
+        base_prompt = conservative_researcher_prompt(concepts_markdown, requirements_markdown)
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "{system_message}"),
-            MessagesPlaceholder(variable_name="messages"),
-        ])
-        chain = prompt.partial(system_message=system_message) | llm
+        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt = ChatPromptTemplate.from_messages(prompt_messages)
+        chain = prompt | llm
         response = chain.invoke({"messages": list(state.get("messages", []))})
 
-        critique_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        critique_markdown = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        ).strip()
         # concept_blocks = _split_concept_sections(critique_markdown)
         
         print(critique_markdown, flush=True)
@@ -42,8 +50,11 @@ def create_conservative_researcher(llm):
     return conservative_researcher
 
 
-def system_prompt(concepts_markdown: str, requirements_markdown: str) -> str:
-    return f"""
+def conservative_researcher_prompt(
+    concepts_markdown: str,
+    requirements_markdown: str,
+) -> ChatPromptTemplate:
+    system_content = """
 # CONTEXT:
 From the 'REQUIREMENTS / CONSTRAINTS' and 'CONCEPTS' input, we are going to evaluate the design concept and other information and calculate a feasibily score.
 
@@ -98,13 +109,29 @@ For each concept, produce a section with the following structure:
 - Implement periodic backflush and water-side chemical treatment.
 - Install hydrocarbon detectors on cooling water return header.
 ```
+"""
 
+    human_content = f"""
 # DATA FOR ANALYSIS
 ---
-**CONCEPTS (Markdown):**
-{concepts_markdown}
 
-**REQUIREMENTS / CONSTRAINTS (Markdown):**
+**Requirements / Constraints (Markdown):**
 {requirements_markdown}
 
+**Concepts (Markdown):**
+{concepts_markdown}
+
 """
+
+    messages = [
+        SystemMessagePromptTemplate.from_template(
+            jinja_raw(system_content),
+            template_format="jinja2",
+        ),
+        HumanMessagePromptTemplate.from_template(
+            jinja_raw(human_content),
+            template_format="jinja2",
+        ),
+    ]
+
+    return ChatPromptTemplate.from_messages(messages)

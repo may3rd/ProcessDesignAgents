@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import re
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
+)
+from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
-from dotenv import load_dotenv
+from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
 load_dotenv()
 
@@ -12,7 +18,7 @@ load_dotenv()
 def create_concept_detailer(llm, selection_provider_getter=None):
     def concept_detailer(state: DesignState) -> DesignState:
         """Concept Detailer: Picks the highest-feasibility concept and elaborates it for downstream design."""
-        print("\n---\n# Concept Selection", flush=True)
+        print("\n# Concept Selection", flush=True)
 
         concepts_markdown = state.get("research_concepts", "")
         if not isinstance(concepts_markdown, str):
@@ -60,14 +66,14 @@ def create_concept_detailer(llm, selection_provider_getter=None):
         )
 
         print("Prepared detailed concept brief.", flush=True)
-        system_message = system_prompt(best_title, best_section, requirements_markdown)
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "{system_message}"),
-            MessagesPlaceholder(variable_name="messages"),
-        ])
-        chain = prompt.partial(system_message=system_message) | llm
+        base_prompt = concept_detailer_prompt(best_title, best_section, requirements_markdown)
+        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt = ChatPromptTemplate.from_messages(prompt_messages)
+        chain = prompt | llm
         response = chain.invoke({"messages": list(state.get("messages", []))})
-        detail_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        detail_markdown = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        ).strip()
         print(detail_markdown, flush=True)
 
         return {
@@ -126,8 +132,12 @@ def _extract_score(section_text: str) -> int | None:
     return None
 
 
-def system_prompt(concept_name: str, concept_section: str, requirements_markdown: str) -> str:
-    return f"""
+def concept_detailer_prompt(
+    concept_name: str,
+    concept_section: str,
+    requirements_markdown: str,
+) -> ChatPromptTemplate:
+    system_content = f"""
 # ROLE
 You are an experienced conceptual process designer. Your task is to prepare an in-depth brief for the selected concept so downstream engineers can establish a design basis.
 
@@ -146,7 +156,6 @@ Using the chosen concept description and the overarching requirements, elaborate
 
 ## Major Equipment & Roles
 | Equipment | Function | Critical Operating Notes |
-|-----------|----------|--------------------------|
 | ... | ... | ... |
 
 ## Operating Envelope
@@ -181,7 +190,6 @@ Cooling water enters the exchanger at 25 degC from the utility header and leaves
 
 ## Major Equipment & Roles
 | Equipment | Function | Critical Operating Notes |
-|-----------|----------|--------------------------|
 | E-101 Shell-and-tube exchanger | Remove sensible heat from ethanol | Maintain minimum 5 degC approach; monitor fouling on tube bundle |
 | T-201 Storage tank | Receive cooled ethanol | Blanketed with nitrogen to prevent oxygen ingress |
 
@@ -199,14 +207,31 @@ Cooling water enters the exchanger at 25 degC from the utility header and leaves
 - Ethanol specific heat assumed 2.5 kJ/kg-K; verify real composition.
 - Cooling water quality limits pending utility documentation.
 ```
+"""
 
+    human_content = f"""
 # DATA FOR ANALYSIS:
 ---
-**SELECTED CONCEPT (Markdown):**
+**Selected Concept Name:** {concept_name}
+
+**Selected Concept (Markdown):**
 {concept_section}
 
-**HIGH-LEVEL REQUIREMENTS:**
+**High-Level Requirements (Markdown):**
 {requirements_markdown}
 
 # FINAL MARKDOWN OUTPUT:
 """
+
+    messages = [
+        SystemMessagePromptTemplate.from_template(
+            jinja_raw(system_content),
+            template_format="jinja2",
+        ),
+        HumanMessagePromptTemplate.from_template(
+            jinja_raw(human_content),
+            template_format="jinja2",
+        ),
+    ]
+
+    return ChatPromptTemplate.from_messages(messages)

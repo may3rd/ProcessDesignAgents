@@ -16,19 +16,21 @@ class GraphSetup:
         quick_thinking_llm: ChatOpenAI,
         deep_thinking_llm: ChatOpenAI,
         checkpointer=None,
+        delay_time: float = 0.5,
     ):
         """Initialize with required components."""
         self.quick_thinking_llm = quick_thinking_llm
         self.deep_thinking_llm = deep_thinking_llm
         self.checkpointer = checkpointer
         self.concept_selection_provider = None
+        self.delay_time = delay_time
 
-    def _wrap_with_delay(self, agent_fn, delay: float = 0.5):
+    def _wrap_with_delay(self, agent_fn):
         """Ensure each agent pauses briefly before yielding control."""
         @wraps(agent_fn)
         def wrapper(state: DesignState) -> DesignState:
             result = agent_fn(state)
-            time.sleep(delay)
+            time.sleep(self.delay_time)
             return result
         return wrapper
         
@@ -41,12 +43,7 @@ class GraphSetup:
         process_requirements_analyst = self._wrap_with_delay(create_process_requiruments_analyst(self.quick_thinking_llm))
         innovative_researcher = self._wrap_with_delay(create_innovative_researcher(self.quick_thinking_llm))
         conservative_researcher = self._wrap_with_delay(create_conservative_researcher(self.quick_thinking_llm))
-        concept_detailer = self._wrap_with_delay(
-            create_concept_detailer(
-                self.deep_thinking_llm,
-                selection_provider_getter=lambda: self.concept_selection_provider,
-            )
-        )
+        concept_detailer = self._wrap_with_delay(create_concept_detailer(self.quick_thinking_llm))
         design_basis_analyst = self._wrap_with_delay(create_design_basis_analyst(self.quick_thinking_llm))
         basic_pfd_designer = self._wrap_with_delay(create_basic_pfd_designer(self.quick_thinking_llm))
         stream_data_builder = self._wrap_with_delay(create_stream_data_builder(self.quick_thinking_llm))

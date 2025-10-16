@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from processdesignagents.agents.utils.agent_states import DesignState
-from dotenv import load_dotenv
 import re
+
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
+)
+from dotenv import load_dotenv
+
+from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
 load_dotenv()
 
@@ -11,7 +19,7 @@ load_dotenv()
 def create_project_manager(llm):
     def project_manager(state: DesignState) -> DesignState:
         """Project Manager: Reviews design for approval and generates implementation plan."""
-        print("\n# Project Review\n", flush=True)
+        print("\n# Project Review", flush=True)
 
         requirements_markdown = state.get("requirements", "")
         design_basis = state.get("design_basis", "")
@@ -31,7 +39,7 @@ def create_project_manager(llm):
         if not isinstance(safety_report, str):
             safety_report = str(safety_report)
 
-        system_message = system_prompt(
+        base_prompt = project_manager_prompt(
             requirements_markdown,
             design_basis,
             basic_pfd_markdown,
@@ -40,15 +48,15 @@ def create_project_manager(llm):
             safety_report,
         )
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "{system_message}"),
-            MessagesPlaceholder(variable_name="messages"),
-        ])
+        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt = ChatPromptTemplate.from_messages(prompt_messages)
 
-        chain = prompt.partial(system_message=system_message) | llm
+        chain = prompt | llm
         response = chain.invoke({"messages": list(state.get("messages", []))})
 
-        approval_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        approval_markdown = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        ).strip()
         approval_status = _extract_status(approval_markdown)
 
         print(f"Project review completed. Status: **{approval_status or 'Unknown'}**\n", flush=True)
@@ -70,15 +78,15 @@ def _extract_status(markdown_text: str) -> str | None:
     return None
 
 
-def system_prompt(
+def project_manager_prompt(
     project_requirements: str,
     design_basis: str,
     basic_pfd: str,
     stream_data: str,
     equipment_table: str,
     safety_and_risk_analysis: str,
-) -> str:
-    return f"""
+) -> ChatPromptTemplate:
+    system_content = """
 # CONTEXT
 
 We are at the final stage of the process design process. By summarizing all the results from previous processes, i.e. define the process requirements, create a design basis, drafting the basic process flow diagram, list all the major equipments, and preliminary safety and risk analysis, you role is too justify the project approval.
@@ -150,25 +158,39 @@ If the package contains a single heat exchanger that cools ethanol from 80 C to 
 - Confirm corrosion coupon program before first ethanol run.
 - Align utility contract to guarantee 24,000 kg/h cooling water during summer peaks.
 ```
+"""
 
+    human_content = f"""
 # DATA FOR REVIEW
 
-**REQUIREMENTS SUMMARY (Markdown):**
+**Requirements Summary (Markdown):**
 {project_requirements}
 
-**DESIGN BASIS (Markdown):**
+**Design Basis (Markdown):**
 {design_basis}
 
-**BASIC PROCESS FLOW DIAGRAM (Markdown):**
+**Basic Process Flow Diagram (Markdown):**
 {basic_pfd}
 
-**H&MB RESULTS (Markdown):**
+**H&MB Results (Markdown):**
 {stream_data}
 
-**EQUIPMENT SIZING (Markdown):**
+**Equipment Sizing (Markdown):**
 {equipment_table}
 
-**SAFETY & RISK SUMMARY (Markdown):**
+**Safety & Risk Summary (Markdown):**
 {safety_and_risk_analysis}
-
 """
+
+    messages = [
+        SystemMessagePromptTemplate.from_template(
+            jinja_raw(system_content),
+            template_format="jinja2",
+        ),
+        HumanMessagePromptTemplate.from_template(
+            jinja_raw(human_content),
+            template_format="jinja2",
+        ),
+    ]
+
+    return ChatPromptTemplate.from_messages(messages)

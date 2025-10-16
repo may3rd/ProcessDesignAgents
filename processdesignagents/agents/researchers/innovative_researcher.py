@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from processdesignagents.agents.utils.agent_states import DesignState
-from dotenv import load_dotenv
 import re
+
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
+)
+from dotenv import load_dotenv
+
+from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
 load_dotenv()
 
@@ -11,22 +19,22 @@ load_dotenv()
 def create_innovative_researcher(llm):
     def innovative_researcher(state: DesignState) -> DesignState:
         """Innovative Researcher: Proposes novel process concepts using LLM."""
-        print("\n---\n# Innovative Research Concepts", flush=True)
+        print("\n# Innovative Research Concepts", flush=True)
 
         requirements_summary = state.get("requirements", "")
         if not isinstance(requirements_summary, str):
             requirements_summary = str(requirements_summary)
-        system_message = system_prompt(requirements_summary)
+        base_prompt = innovative_researcher_prompt(requirements_summary)
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "{system_message}"),
-            MessagesPlaceholder(variable_name="messages"),
-        ])
+        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt = ChatPromptTemplate.from_messages(prompt_messages)
 
-        chain = prompt.partial(system_message=system_message) | llm
+        chain = prompt | llm
         response = chain.invoke({"messages": list(state.get("messages", []))})
 
-        research_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        research_markdown = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        ).strip()
         # concept_names = _extract_concept_names(research_markdown)
         # if len(concept_names) < 3:
         #     raise ValueError("Innovative concepts report must include at least three concept sections.")
@@ -58,8 +66,8 @@ def _extract_concept_names(markdown_text: str) -> list[str]:
     return names
 
 
-def system_prompt(requirements_markdown: str) -> str:
-    return f"""
+def innovative_researcher_prompt(requirements_markdown: str) -> ChatPromptTemplate:
+    system_content = """
 # CONTEXT
 We are going to create a list of conceptual design of process unit. Each concopt includes the name, short description, list of unit operations, and key benefits. These concepts will be next criticize by other personal to weight the feasibilty of the concept that will be selected for further design.
 
@@ -130,10 +138,25 @@ The target audince of this prompt is an agentic llm that will critically evaluat
 - Reduces cooling water consumption in summer peaks
 - Provides flexibility for future lower product temperature requirements
 ```
+"""
 
+    human_content = f"""
 # DATA FOR ANALYSIS:
 ---
-**REQUIREMENTS SUMMARY (Markdown):**
+**Requirements Summary (Markdown):**
 {requirements_markdown}
 
 """
+
+    messages = [
+        SystemMessagePromptTemplate.from_template(
+            jinja_raw(system_content),
+            template_format="jinja2",
+        ),
+        HumanMessagePromptTemplate.from_template(
+            jinja_raw(human_content),
+            template_format="jinja2",
+        ),
+    ]
+
+    return ChatPromptTemplate.from_messages(messages)

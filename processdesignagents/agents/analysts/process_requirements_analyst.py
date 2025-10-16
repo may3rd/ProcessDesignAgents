@@ -1,6 +1,13 @@
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from processdesignagents.agents.utils.agent_states import DesignState
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
+)
 from dotenv import load_dotenv
+
+from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
 load_dotenv()
 
@@ -8,15 +15,14 @@ def create_process_requiruments_analyst(llm):
     def process_requirements_analyst(state: DesignState) -> DesignState:
         """Process Requirements Analyst: Extracts key design requirements using LLM."""
         print("\n# Process Requirements Analysis", flush=True)
-        system_message = system_prompt(state['problem_statement'])
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "{system_message}"),
-            MessagesPlaceholder(variable_name="messages"),
-        ])
-        prompt = prompt.partial(system_message=system_message)
+        base_prompt = process_requirements_prompt(state["problem_statement"])
+        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt = ChatPromptTemplate.from_messages(prompt_messages)
         chain = prompt | llm
         response = chain.invoke({"messages": list(state.get("messages", []))})
-        requirements_markdown = response.content if isinstance(response.content, str) else str(response.content)
+        requirements_markdown = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        ).strip()
         print(f"{requirements_markdown}", flush=True)
         return {
             "requirements": requirements_markdown,
@@ -24,8 +30,8 @@ def create_process_requiruments_analyst(llm):
         }
     return process_requirements_analyst
 
-def system_prompt(problem_statement: str) -> str:
-    return f"""
+def process_requirements_prompt(problem_statement: str) -> ChatPromptTemplate:
+    system_content = """
 # ROLE:
 You are an expert Senior Process Engineer with 20 years of experience in conceptual process design and requirement analysis. Your task is to meticulously analyze a chemical process design problem and extract key parameters.
 
@@ -108,6 +114,22 @@ The chemical components involved in the process are:
 
 ---
 # PROBLEM STATEMENT TO ANALYZE:
+"""
+    human_content = f"""
+# PROBLEM STATEMENT TO ANALYZE:
 {problem_statement}
 
 """
+
+    messages = [
+        SystemMessagePromptTemplate.from_template(
+            jinja_raw(system_content),
+            template_format="jinja2",
+        ),
+        HumanMessagePromptTemplate.from_template(
+            jinja_raw(human_content),
+            template_format="jinja2",
+        ),
+    ]
+
+    return ChatPromptTemplate.from_messages(messages)
