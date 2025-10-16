@@ -103,7 +103,12 @@ class ProcessDesignGraph:
 
             self.graph_setup.concept_selection_provider = _prompt_user
         else:
-            self.graph_setup.concept_selection_provider = None
+            # self.graph_setup.concept_selection_provider = None
+            def _auto_provider(concept_options):
+                return None
+
+            self.graph_setup.concept_selection_provider = _auto_provider
+
 
         init_agent_state = self.propagator.create_initial_state(problem_statement)
 
@@ -144,15 +149,15 @@ class ProcessDesignGraph:
         self.log_state_dict = {
             "problem_statement": final_state.get("problem_statement", ""),
             "requirements": final_state.get("requirements", ""),
-            "design_basis": final_state.get("design_basis", ""),
             "research_concepts": final_state.get("research_concepts", ""),
-            "selected_concept_details": final_state.get("selected_concept_details", ""),
             "selected_concept_name": final_state.get("selected_concept_name", ""),
+            "selected_concept_details": final_state.get("selected_concept_details", ""),
+            "design_basis": final_state.get("design_basis", ""),
             "basic_pfd": final_state.get("basic_pfd", ""),
             "basic_hmb_results": final_state.get("basic_hmb_results", ""),
             "basic_equipment_template": final_state.get("basic_equipment_template", ""),
-            "basic_stream_data": final_state.get("basic_stream_data", ""),
-            "approval": final_state.get("approval", ""),
+            "safety_risk_analyst_report": final_state.get("safety_risk_analyst_report", ""),
+            "project_manager_report": final_state.get("project_manager_report", ""),
         }
         
         # Save to file

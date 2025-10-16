@@ -135,6 +135,7 @@ You are an experienced conceptual process designer. Your task is to prepare an i
 Using the chosen concept description and the overarching requirements, elaborate on the process flow, major equipment, operating envelopes, and key risks. Clarify the engineering rationale behind each element.
 
 # MARKDOWN TEMPLATE:
+```
 ## Concept Summary
 - Name: concept_name <without "Concept #" prefix>
 - Intent: <succinct value proposition>
@@ -160,13 +161,14 @@ Using the chosen concept description and the overarching requirements, elaborate
 
 ## Data Gaps & Assumptions
 - <information still needed or assumptions made>
+```
 
----
 # CRITICALS
 * Ensure every list or table entry is specific and actionable. If data is missing, flag it explicitly with `TBD` and add a short explanation.
 * **Output ONLY a valid markdown formatting text. Do not use code block.**
 
 # EXPECTED MARKDOWN OUTPUT:
+```
 ## Concept Summary
 - Name: Ethanol Cooler Module
 - Intent: Reduce hot ethanol temperature ahead of storage using a compact exchanger skid
@@ -196,6 +198,7 @@ Cooling water enters the exchanger at 25 degC from the utility header and leaves
 ## Data Gaps & Assumptions
 - Ethanol specific heat assumed 2.5 kJ/kg-K; verify real composition.
 - Cooling water quality limits pending utility documentation.
+```
 
 # DATA FOR ANALYSIS:
 ---

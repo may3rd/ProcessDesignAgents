@@ -28,7 +28,6 @@ def create_safety_risk_analyst(llm):
             equipment_json = json.dumps(equipment_json, indent=2)
         if not isinstance(design_basis_markdown, str):
             design_basis_markdown = str(design_basis_markdown)
-
         system_message = system_prompt(
             requirements_markdown,
             design_basis_markdown,
@@ -42,11 +41,8 @@ def create_safety_risk_analyst(llm):
         ])
         chain = prompt.partial(system_message=system_message) | llm
         response = chain.invoke({"messages": list(state.get("messages", []))})
-
         risk_markdown = response.content if isinstance(response.content, str) else str(response.content)
-
         print(risk_markdown, flush=True)
-
         return {
             "safety_risk_analyst_report": risk_markdown,
             "messages": [response],
@@ -81,7 +77,6 @@ Conduct a preliminary, HAZOP-style risk assessment based on the provided basic p
 For a cooler that drops ethanol from 80 C to 40 C with cooling water, consider hazards such as cooling water loss leading to overheated ethanol or tube rupture causing cross-contamination, rate their severity and likelihood, and specify mitigations like temperature alarms or double isolation.
 
 # CRITICALS
-- **MUST** return the full risk report in markdown format.
 - **MUST** follow the MARKDOWN TEMPLATE strictly.
 - **Output ONLY a valid markdown formatting text. Do not use code block.**
 
@@ -116,7 +111,7 @@ Repeat for each hazard (Hazard 1, Hazard 2, etc.). After listing hazards, add:
 ```
 
 **EXPECTED MARKDOWN OUTPUT:**
-<md_output>
+```
 ## Hazard 1: Loss of Cooling Water Flow
 **Severity:** 3
 **Likelihood:** 3
@@ -160,7 +155,7 @@ Repeat for each hazard (Hazard 1, Hazard 2, etc.). After listing hazards, add:
 ## Overall Assessment
 - Overall Risk Level: Medium
 - Compliance Notes: Follow up on corrosion coupon program results before commissioning.
-</md_output>
+```
 
 # DATA FOR HAZOP ANALYSIS
 ---

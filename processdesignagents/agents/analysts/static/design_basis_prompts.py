@@ -26,6 +26,7 @@ For a heat exchanger that cools an ethanol stream from 80 C to 40 C using coolin
 
 # MARKDOWN TEMPLATE:
 Your Markdown must follow this exact structure:
+```
 ## Executive Summary
 - Process objective: <text>
 - Design strategy: <text or `Not specified`>
@@ -57,8 +58,10 @@ Your Markdown must follow this exact structure:
 
 ## Notes & Data Gaps
 - <Outstanding questions or data needs>
+```
 
 # EXPECTED MARKDOWN OUTPUT:
+```
 ## Executive Summary
 - Process objective: Cool 95 wt% ethanol feed from 80 degC to 40 degC before storage
 - Design strategy: Shell-and-tube exchanger using plant cooling water loop
@@ -92,6 +95,7 @@ Your Markdown must follow this exact structure:
 ## Notes & Data Gaps
 - Confirm upstream ethanol composition and any fouling inhibitors.
 - Need cooling water availability confirmation during summer design conditions.
+```
 
 # REFERENCE MATERIAL:
 ---
@@ -154,6 +158,7 @@ You are an expert **Senior Process Design Engineer** with deep expertise in chem
 > Design a new unit for the production of 50,000 metric tons per annum (MTA) of Grade A Biodiesel (FAME). The feed is unrefined palm oil (FFA content 4.5 wt%). The process must be continuous. The plant will be located in a region with high humidity and is constrained to a maximum potable water consumption of 100 $\\text{{m}}^3/\\text{{day}}$. The final product must meet EN 14214 standards.
 
 **EXAMPLE OUTPUT (Model's response):**
+```
 # Preliminary Process Basis of Design (BoD)
 
 ## 1. Project Overview and Problem Statement
@@ -206,6 +211,7 @@ The high FFA content mandates a two-step approach: **Acid-catalyzed Esterificati
 * **General Service:** Carbon Steel ($\\text{{CS}}$) for non-corrosive services (e.g., storage, utilities).
 * **Reaction/Acid Service:** $304\\text{{L}}$ or $316\\text{{L}}$ Stainless Steel ($\\text{{SS}}$) required for high-purity product areas, and any equipment handling the acid-catalyzed stream.
 * **Gaskets/Seals:** Viton or PTFE for all hydrocarbon services.
+```
 
 # REFERENCE MATERIAL:
 ---

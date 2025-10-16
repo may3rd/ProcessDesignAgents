@@ -137,6 +137,7 @@ Update the equipment table with quantitative estimates. Present the final result
 - **Output ONLY a valid markdown formatting text. Do not use code block.**
 
 # MARKDOWN TEMPLATE:
+```
 | Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
 |--------------|------|---------|------|------------|-------------|-------------|----------------|-------|
 | ... | ... | ... | ... | ... | ... | ... | ... | ... |
@@ -144,6 +145,7 @@ Update the equipment table with quantitative estimates. Present the final result
 ## Detailed Notes
 - E-101: Referenced heat_exchanger_sizing – heat duty = ... kW, heat transfer area = ... m²; assumptions ...
 - V-101: Used vessel_volume_estimate – diameter = ... m; length = ... m; orientation = ...
+```
 
 # DATA FOR ANALYSIS:
 ---
@@ -166,12 +168,12 @@ Update the equipment table with quantitative estimates. Present the final result
 {stream_table}
 
 ---
-# FINAL MARKDOWN OUTPUT:
 
-# EXAMPLE
+# EXAMPLE INPUT:
 For a single exchanger that cools ethanol from 80 C to 40 C with cooling water, estimate the duty from the heat balance, size the heat transfer area using the heat_exchanger_sizing tool, and record cooling water inlet/outlet temperatures along with any approach temperature assumptions in the notes.
 
-**EXPECTED MARKDOWN OUTPUT:**
+# EXPECTED MARKDOWN OUTPUT:
+```
 ## Equipment Table
 
 ### Heat Exchanger
@@ -188,7 +190,7 @@ For a single exchanger that cools ethanol from 80 C to 40 C with cooling water, 
 ## Detailed Notes
 - E-101: heat_exchanger_sizing(duty=2.8e5 W, U=450 W/m2-K, LMTD=25 degC) -> area 24.9 m2; conservatively rounded to 30 m2 bundle with fouling factor.
 - P-101: pump_sizing(flow=10,000 kg/h, head=18 m) -> brake power 42 kW, rounded to 45 kW with 10% contingency.
-
+```
 """
 
 

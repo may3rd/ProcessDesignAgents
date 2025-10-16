@@ -76,6 +76,7 @@ For each stream, provide identifiers, origin/destination, qualitative descriptio
 6. Output only the Markdown table; do not add commentary before or after the table.
 
 # MARKDOWN TEMPLATE:
+```
 | Attribute | 1001 | 1002 | ... |
 |-----------|-------------|-------------|-----|
 | Name / Description | Feed from T-101 | <value> | ... |
@@ -89,6 +90,7 @@ For each stream, provide identifiers, origin/destination, qualitative descriptio
 | Component A | ... | ... | ... | ... |
 | Component B | ... | ... | ... | ... |
 | Component C | ... | ... | ... | ... |
+```
 
 - Use `<value>` placeholders where numbers are unknown.
 - Add additional stream columns for every stream implied by the concept (utilities, recycle, vent, product, etc.).
@@ -101,7 +103,7 @@ For each stream, provide identifiers, origin/destination, qualitative descriptio
 In a heat exchanger that cools ethanol from 80 C to 40 C with cooling water, create streams for hot ethanol feed, cooled ethanol product, cooling water supply, and cooling water return, assigning IDs and placeholder temperatures that reflect the duty.
 
 # EXPECTED MARKDOWN OUTPUT:
-# Stream Data Table
+```
 | Attribute | 1001 | 1002 | 2001 | 2002 |
 |-----------|------|------|------|------|
 | Name / Description | Hot ethanol feed | Cooled ethanol product | Cooling water supply | Cooling water return |
@@ -115,7 +117,7 @@ In a heat exchanger that cools ethanol from 80 C to 40 C with cooling water, cre
 | Ethanol (C2H6O) | <95> | <95> | <0> | <0> |
 | Water (H2O) | <5> | <5> | <100> | <100> |
 | Notes | Tie-in from upstream blender | To fixed-roof storage | Shared cooling water header | Returned to utility system |
-
+```
 # DATA FOR ANALYSIS
 ---
 **BASIC PFD DESCRIPTION:**

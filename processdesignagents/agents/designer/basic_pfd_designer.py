@@ -92,6 +92,7 @@ Synthesize a preliminary process flowsheet using the provided 'REQUIREMENTS' and
 
 # MARKDOWN TEMPLATE:
 Structure your Markdown exactly as follows:
+```
 ## Flowsheet Summary
 - Concept: <concept name without 'Concept #' prefix>
 - Objective: <one-sentence objective>
@@ -114,12 +115,14 @@ Structure your Markdown exactly as follows:
 - <note 1>
 - <note 2>
 - ...
+```
 
 # EXAMPLE INPUT:
 ---
 For a simple exchanger that cools ethanol from 80 C to 40 C using cooling water, include a single E-101 heat exchanger unit, show the warm ethanol feed entering and cooled ethanol product leaving, and note the cooling water supply and return connections.
 
 # EXPECTED MARKDOWN OUTPUT:
+```
 ## Flowsheet Summary
 - Concept: Ethanol Cooler Module
 - Objective: Reduce hot ethanol from 80 degC to 40 degC using plant cooling water
@@ -147,6 +150,7 @@ Hot ethanol from the blender enters E-101 where heat is exchanged against plant 
 ## Notes
 - Provide strainers on cooling water inlet to limit fouling.
 - Include bypass line around E-101 for maintenance.
+```
 
 # DATA FOR ANALYSIS
 ---

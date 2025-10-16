@@ -80,10 +80,12 @@ Use the process description, design basis, requirements, and stream summary to l
 - **Output ONLY a valid markdown formatting text. Do not use code block.**
 
 # MARKDOWN TEMPLATE:
+```
 Your Markdown output must follow this structure:
 | Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
 |--------------|------|---------|------|------------|-------------|-------------|----------------|-------|
 | V-101 | Feed Surge Drum | Buffer upstream of pump | Vessel (Vertical) | 1001 | 1002 | <value> kW | Holdup: <value> m³; Orientation: Vertical | <assumptions or TBD items> |
+```
 
 # INPUT DATA
 ---
@@ -105,6 +107,7 @@ Your Markdown output must follow this structure:
 For a cooler that drops ethanol from 80 C to 40 C using cooling water, list E-101 with ethanol feed and product stream IDs, cooling water in/out streams, a duty placeholder, and notes about assumed approach temperatures.
 
 # EXPECTED MARKDOWN OUTPUT:
+```
 ## Equipment Table
 
 ### Heat Exchangers
@@ -116,5 +119,5 @@ For a cooler that drops ethanol from 80 C to 40 C using cooling water, list E-10
 | Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
 |--------------|------|---------|------|------------|-------------|-------------|----------------|-------|
 | P-101 | Product Pump | Transfer cooled ethanol to storage | Centrifugal pump | 1002 | 1003 | 45 kW | Flow: 10,000 kg/h; Head: 18 m | Include VFD for turndown control |
-
+```
 """

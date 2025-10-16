@@ -97,6 +97,7 @@ The target audince of this prompt is an agentic llm that will critically evaluat
 ---
 
 **EXPECTED MARKDOWN OUTPUT:**
+```
 ## Concept 1: Shell-and-Tube Ethanol Cooler
 **Description:** Standard shell-and-tube exchanger cools hot ethanol from 80 degC to 40 degC using existing cooling water loop.
 **Unit Operations:**
@@ -128,6 +129,7 @@ The target audince of this prompt is an agentic llm that will critically evaluat
 **Key Benefits:**
 - Reduces cooling water consumption in summer peaks
 - Provides flexibility for future lower product temperature requirements
+```
 
 # DATA FOR ANALYSIS:
 ---

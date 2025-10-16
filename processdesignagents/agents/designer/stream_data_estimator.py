@@ -89,6 +89,7 @@ When refining a heat exchanger that cools ethanol from 80 C to 40 C with cooling
 
 # MARKDOWN TEMPLATE:
 Your Markdown output must follow this structure:
+```
 | Attribute | 1001 | 1002 | ... |
 |-----------|-------------|-------------|-----|
 | Name / Description | Feed from T-101 | <value> | ... |
@@ -107,11 +108,11 @@ Your Markdown output must follow this structure:
 - <note 1>
 - <note 2>
 - ...
-
+```
 ---
 
 **EXPECTED MARKDOWN OUTPUT:**
-# Stream Data Table
+```
 |          | 1001 | 1002 | 2001 | 2002 |
 | Description | Hot ethanol feed | Cooled ethanol product | Cooling water supply | Cooling water return |
 | ---------- | ------ | ------ | ------ | ------ |
@@ -128,6 +129,7 @@ Your Markdown output must follow this structure:
 ## Notes
 - Cooling water duty balances ethanol heat removal at approx. 0.28 MW.
 - Monitoring differential pressure across E-101 ensures early fouling detection.
+```
 
 # STREAM TEMPLATE
 {stream_template}

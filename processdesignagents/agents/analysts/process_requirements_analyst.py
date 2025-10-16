@@ -7,7 +7,7 @@ load_dotenv()
 def create_process_requiruments_analyst(llm):
     def process_requirements_analyst(state: DesignState) -> DesignState:
         """Process Requirements Analyst: Extracts key design requirements using LLM."""
-        print("\n# Process Requirements Analysis\n", flush=True)
+        print("\n# Process Requirements Analysis", flush=True)
         system_message = system_prompt(state['problem_statement'])
         prompt = ChatPromptTemplate.from_messages([
             ("system", "{system_message}"),
@@ -17,7 +17,7 @@ def create_process_requiruments_analyst(llm):
         chain = prompt | llm
         response = chain.invoke({"messages": list(state.get("messages", []))})
         requirements_markdown = response.content if isinstance(response.content, str) else str(response.content)
-        print(f"Process requirements:\n{requirements_markdown}", flush=True)
+        print(f"{requirements_markdown}", flush=True)
         return {
             "requirements": requirements_markdown,
             "messages": [response],
@@ -52,6 +52,7 @@ Your goal is to act as a Process Requirements Analyst. You must read the provide
     
 # MARKDOWN TEMPLATE:
 Your Markdown output must follow this structure:
+```
 ## Objective
 - Primary goal: <text>
 - Key drivers: <text or `Not specified`>
@@ -73,12 +74,14 @@ The chemical components involved in the process are:
 - <Constraint or assumption 1>
 - <Constraint or assumption 2>
 - ...
+```
 
 # EXAMPLE:
 ---
 **PROBLEM STATEMENT:** "We need to design a plant to produce 1500 kg/h of high-purity Ethyl Acetate from the esterification of Ethanol and Acetic Acid using Sulfuric Acid as a catalyst. The target purity for the Ethyl Acetate product is 99.8%. The reaction should achieve at least a 92% yield based on the limiting reactant, which is Acetic Acid. The reactor must operate below 100°C."
 
 **EXPECTED MARKDOWN OUTPUT:**
+```
 ## Objective
 - Primary goal: Produce high-purity Ethyl Acetate via esterification of Ethanol and Acetic Acid
 - Key drivers: Maintain catalyst activity (Sulfuric Acid) while maximizing conversion
@@ -101,6 +104,7 @@ The chemical components involved in the process are:
 ## Constraints & Assumptions
 - Reactor operating temperature must remain below 100°C.
 - Achieve at least 92% yield based on Acetic Acid (limiting reactant).
+```
 
 ---
 # PROBLEM STATEMENT TO ANALYZE:

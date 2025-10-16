@@ -11,7 +11,7 @@ load_dotenv()
 def create_design_basis_analyst(llm):
     def design_basis_analyst(state: DesignState) -> DesignState:
         """Design Basis Analyst: Converts requirements into a structured design basis summary."""
-        print("\n---\n# Design Basis\n", flush=True)
+        print("\n---\n\n# Design Basis Analyst\n", flush=True)
 
         problem_statement = state.get("problem_statement", "")
         requirements_markdown = state.get("requirements", "")
@@ -23,31 +23,20 @@ def create_design_basis_analyst(llm):
             selected_concept_details = str(selected_concept_details)
         if not isinstance(selected_concept_name, str):
             selected_concept_name = str(selected_concept_name)
-
         system_message = google_system_prompt(
             problem_statement,
             requirements_markdown,
             selected_concept_name,
             selected_concept_details,
         )
-        
         prompt = ChatPromptTemplate.from_messages([
-            (
-                "system",
-                "{system_message}",
-            ),
+            ( "system", "{system_message}",),
             MessagesPlaceholder(variable_name="messages"),
         ])
-
         chain = prompt.partial(system_message=system_message) | llm
         response = chain.invoke({"messages": list(state.get("messages", []))})
-
-        design_basis_markdown = (
-            response.content if isinstance(response.content, str) else str(response.content)
-        )
-
+        design_basis_markdown = response.content if isinstance(response.content, str) else str(response.content)
         print(design_basis_markdown, flush=True)
-
         return {
             "design_basis": design_basis_markdown,
             "messages": [response],

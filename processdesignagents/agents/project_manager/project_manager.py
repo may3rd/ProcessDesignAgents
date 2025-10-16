@@ -71,14 +71,18 @@ def _extract_status(markdown_text: str) -> str | None:
 
 
 def system_prompt(
-    requirements_markdown: str,
+    project_requirements: str,
     design_basis: str,
-    basic_pfd_markdown: str,
-    validation_markdown: str,
+    basic_pfd: str,
+    stream_data: str,
     equipment_table: str,
-    safety_markdown: str,
+    safety_and_risk_analysis: str,
 ) -> str:
     return f"""
+# CONTEXT
+
+We are at the final stage of the process design process. By summarizing all the results from previous processes, i.e. define the process requirements, create a design basis, drafting the basic process flow diagram, list all the major equipments, and preliminary safety and risk analysis, you role is too justify the project approval.
+
 # ROLE
 You are the project manager responsible for final stage-gate approval of the process design.
 
@@ -93,8 +97,9 @@ Review the provided requirements, design basis, process description, H&MB result
 5. **Flag follow-ups:** Use Final Notes to capture open risks, compliance items, or data gaps, referencing the source document (streams, equipment tags, hazards) that triggered the concern.
 
 # CRITICALS
-- **follow** the MARKDOWN TEMPLATE strictly.
+- **Follow the MARKDOWN TEMPLATE strictly.**
 - **Output ONLY a valid markdown formatting text. Do not use code block.**
+
 # MARKDOWN TEMPLATE:
 Return a Markdown report with the following structure:
 ```
@@ -117,12 +122,14 @@ Return a Markdown report with the following structure:
 ## Final Notes
 - <risk or follow-up item>
 - <compliance reminder>
+```
 ---
 
 # EXAMPLE INPUT:
 If the package contains a single heat exchanger that cools ethanol from 80 C to 40 C using cooling water, ensure the summary references the utility demand, checks that safety measures cover loss of cooling, and ties the approval status to readiness of that cooler service.
 
-# EXPECTED MARKDOWN OUTPUT:
+# EXPECTED OUTPUT:
+```
 ## Executive Summary
 - Approval Status: Conditional
 - Key Rationale: Cooling water redundancy verification required prior to full approval
@@ -142,26 +149,26 @@ If the package contains a single heat exchanger that cools ethanol from 80 C to 
 ## Final Notes
 - Confirm corrosion coupon program before first ethanol run.
 - Align utility contract to guarantee 24,000 kg/h cooling water during summer peaks.
+```
 
 # DATA FOR REVIEW
 
 **REQUIREMENTS SUMMARY (Markdown):**
-{requirements_markdown}
+{project_requirements}
 
 **DESIGN BASIS (Markdown):**
 {design_basis}
 
 **BASIC PROCESS FLOW DIAGRAM (Markdown):**
-{basic_pfd_markdown}
+{basic_pfd}
 
 **H&MB RESULTS (Markdown):**
-{validation_markdown}
+{stream_data}
 
 **EQUIPMENT SIZING (Markdown):**
 {equipment_table}
 
 **SAFETY & RISK SUMMARY (Markdown):**
-{safety_markdown}
+{safety_and_risk_analysis}
 
-# FINAL MARKDOWN OUTPUT:
 """
