@@ -14,7 +14,7 @@ load_dotenv()
 def create_process_requiruments_analyst(llm):
     def process_requirements_analyst(state: DesignState) -> DesignState:
         """Process Requirements Analyst: Extracts key design requirements using LLM."""
-        print("\n# Process Requirements Analysis", flush=True)
+        print("# Process Requirements Analysis", flush=True)
         base_prompt = process_requirements_prompt(state["problem_statement"])
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
@@ -23,6 +23,9 @@ def create_process_requiruments_analyst(llm):
         requirements_markdown = (
             response.content if isinstance(response.content, str) else str(response.content)
         ).strip()
+        if len(requirements_markdown) < 10:
+            print(f"The response is too short, exit(-1)")
+            exit(-1)
         print(f"{requirements_markdown}", flush=True)
         return {
             "requirements": requirements_markdown,
@@ -31,90 +34,74 @@ def create_process_requiruments_analyst(llm):
     return process_requirements_analyst
 
 def process_requirements_prompt(problem_statement: str) -> ChatPromptTemplate:
-    system_content = """
-# ROLE:
-You are an expert Senior Process Engineer with 20 years of experience in conceptual process design and requirement analysis. Your task is to meticulously analyze a chemical process design problem and extract key parameters.
+    system_content = f"""
+You are an expert Senior Process Engineer with 20 years of experience specializing in conceptual design and requirements analysis. Your function is to meticulously dissect a chemical process problem statement and distill it into a structured set of key parameters for a technology research team.
 
-# TASK:
-Your goal is to act as a Process Requirements Analyst. You must read the provided problem statement, identify all critical process parameters enough for technology researcher team to understand and find the best possible pross design and requirement, and structure them into a concise Markdown briefing.
+**Context:**
 
-# INSTRUCTIONS:
-1.  **Analyze Carefully:** Read the entire 'PROBLEM STATEMENT' below. Identify all specified and implied process requirements.
-2.  **Think Step-by-Step:** 
-    1. Identify the main process objective.
-    2. List all chemical components involve in the process.
-    3. Extract or estimate any quantitative data like feed rates or production rates, (optional) product purity.
-    4. Identify all operational assumptions and constraints.
-3.  **Handle Missing Information:**
-    * If a parameter (e.g., 'yield_target') is not mentioned at all, mark it as `Not specified` and include a short note explaining the gap in the final section.
-    * If a reasonable default can be inferred from standard chemical engineering principles (e.g., assuming atmospheric pressure if not specified), you may use it but clearly flag the assumption in the Constraints & Assumptions section.
-4.  **Format Output:** Your final output MUST be a single Markdown document using the section headers shown below. Do not wrap your answer in JSON or code fences.
+  * You will be provided with a high-level problem statement describing a chemical process.
+  * Your output, a concise Markdown briefing, is the foundational document for the technology research team to begin their design and selection process.
+  * Accuracy and clarity are paramount. The team depends on your analysis to define the scope of their work.
 
-# NEGATIVES:
-    * **Components** do not output the compound name, e.g. Air, instead report the chemical compostion names, e.g. Hydrogen, Oxygen, Carbon Dioxide, etc.
-    * **Plant/Unit Capacity** try to determine a reasonable capacity/throughput of the process unit.
-    * **Output ONLY a valid markdown formatting text. Do not use code block.**
-    * Enuser that the capacity UOM conversion is done correctly.
-    
-# MARKDOWN TEMPLATE:
-Your Markdown output must follow this structure:
-```
-## Objective
-- Primary goal: <text>
-- Key drivers: <text or `Not specified`>
+**Instructions:**
 
-## Capacity
-The design capacity of <process unit> is <value with UOM or `Not specified`> <basis>.
+  * **Analyze the `PROBLEM STATEMENT`:** Read the entire text to identify all specified and implied process requirements.
+  * **Extract Key Parameters:** Systematically identify the process objective, key drivers <Energy Conservation, Emission Reduction, High Productivity, etc.>, all chemical components, capacity/throughput, purity targets, and operational constraints or assumptions.
+  * **Component Specificity:** When listing components, break down mixtures into their individual chemical species (e.g., instead of "Air," list "Nitrogen," "Oxygen," etc.).
+  * **Handle Missing Information:** If a parameter is not mentioned, you must use the text `Not specified`. If you infer a value based on standard engineering principles (e.g., assuming atmospheric pressure), you must explicitly state this in the "Constraints & Assumptions" section.
+  * **Capacity Calculation:** Determine a reasonable design capacity for the main process unit. Ensure all unit of measure (UOM) conversions are performed correctly and the basis for the capacity is stated.
+  * **Format Adherence:** Your output must be a single, PURE Markdown document. Do not add any introductory text, concluding remarks, or formatting (like code blocks) that is not part of the specified template.
 
-## Components
-The chemical components involved in the process are:
-- <Component 1>
-- <Component 2>
-- ...
+-----
 
-## Purity Target <Optional>
-- Component: <name or `Not specified`>
-- Value: <percentage or `Not specified`>
+  * **Problem Statement:**
+    ```
+    {{problem_statement}}
+    ```
 
-## Constraints & Assumptions
-- <Constraint or assumption 1>
-- <Constraint or assumption 2>
-- ...
-```
+-----
 
-# EXAMPLE:
----
-**PROBLEM STATEMENT:** "We need to design a plant to produce 1500 kg/h of high-purity Ethyl Acetate from the esterification of Ethanol and Acetic Acid using Sulfuric Acid as a catalyst. The target purity for the Ethyl Acetate product is 99.8%. The reaction should achieve at least a 92% yield based on the limiting reactant, which is Acetic Acid. The reactor must operate below 100°C."
+**Example:**
 
-**EXPECTED MARKDOWN OUTPUT:**
-```
-## Objective
-- Primary goal: Produce high-purity Ethyl Acetate via esterification of Ethanol and Acetic Acid
-- Key drivers: Maintain catalyst activity (Sulfuric Acid) while maximizing conversion
+  * **Problem Statement:**
 
-## Capacity
-The design capacity of high-purity Ethyl Acetate plant is 1500.0 kg/h based on EA product to storage tank.
+    ```
+    "We need to design a plant to produce 1500 kg/h of high-purity Ethyl Acetate from the esterification of Ethanol and Acetic Acid using Sulfuric Acid as a catalyst. The target purity for the Ethyl Acetate product is 99.8%. The reaction should achieve at least a 92% yield based on the limiting reactant, which is Acetic Acid. The reactor must operate below 100°C."
+    ```
 
-## Components
-The chemical components involved in the process are:
-- Ethanol
-- Acetic Acid
-- Ethyl Acetate
-- Water
-- Sulfuric Acid
+  * **Response:**
 
-## Purity Target
-- Component: Ethyl Acetate
-- Value: 99.8%
+    ```markdown
+    ## Objective
+    - Primary goal: Produce high-purity Ethyl Acetate via esterification of Ethanol and Acetic Acid
+    - Key drivers: High Energy Optimization (or `Not specified`)
 
-## Constraints & Assumptions
-- Reactor operating temperature must remain below 100°C.
-- Achieve at least 92% yield based on Acetic Acid (limiting reactant).
-```
+    ## Capacity
+    The design capacity of the Ethyl Acetate production unit is 1500.0 kg/h, based on the final product rate.
 
----
-# PROBLEM STATEMENT TO ANALYZE:
+    ## Components
+    The chemical components involved in the process are:
+    - Ethanol
+    - Acetic Acid
+    - Ethyl Acetate
+    - Water
+    - Sulfuric Acid
+
+    ## Purity Target
+    - Component: Ethyl Acetate
+    - Value: 99.8%
+
+    ## Constraints & Assumptions
+    - The reactor operating temperature must be below 100°C.
+    - A minimum yield of 92% must be achieved, based on Acetic Acid as the limiting reactant.
+    ```
+
+-----
+
+**Your Task:**
+Based on the `problem_statement` provided, generate ONLY the valid Markdown document that precisely follows the structure and rules defined above, **not in code block**.
 """
+
     human_content = f"""
 # PROBLEM STATEMENT TO ANALYZE:
 {problem_statement}
