@@ -4,6 +4,14 @@ def load_config():
     return {
         "deep_think_llm": "google/gemini-2.5-flash-lite",  # Retain for future; requires OpenAI
         "quick_think_llm": "google/gemini-2.5-flash-lite",
+        "deep_think_temperature": 0.0,
+        "quick_think_temperature": 0.0,
+        "backend_url": "https://openrouter.ai/api/v1",
+        "llm_provider": "openrouter",
+        "online_tools": True,
+        "data_dir": "/Users/yluo/Documents/Code/ScAI/FR1-data",
+        "data_cache_dir": "./dataflows/data_cache",
+        "results_dir": "./results",
         "save_dir": "./reports",
         "max_debate_rounds": 3,
         "property_data_source": "pubchem",
@@ -23,6 +31,8 @@ DEFAULT_CONNFIG = {
     "deep_think_llm": "google/gemini-2.5-flash-lite",
     "quick_think_llm": "google/gemini-2.5-flash-lite",
     "backend_url": "https://openrouter.ai/api/v1",
+    "deep_think_temperature": 0.0,
+    "quick_think_temperature": 0.0,
     # Debate and discussion settings
     "max_debate_rounds": 1,
     "max_risk_discuss_rounds": 1,

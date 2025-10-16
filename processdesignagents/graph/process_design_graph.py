@@ -50,6 +50,9 @@ class ProcessDesignGraph:
         else:
             raise ValueError(f"Unsupported LLM provider: {self.config['llm_provider']}")
 
+        self.deep_thinking_llm.temperature = self.config["deep_think_temperature"]
+        self.quick_thinking_llm.temperature = self.config["quick_think_temperature"]
+        
         self.checkpointer = MemorySaver()
         
         delay_time = 15.0 if self.config["llm_provider"].lower() == "google" else 0.5

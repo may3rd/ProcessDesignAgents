@@ -17,6 +17,9 @@ config["deep_think_llm"] = "x-ai/grok-4-fast"
 # config["quick_think_llm"] = "gemini-2.5-flash"
 # config["deep_think_llm"] = "gemeni-2.5-flash"
 
+config["quick_think_temperature"] = 0.5
+config["deep_think_temperature"] = 0.5
+
 async def main():
     graph = ProcessDesignGraph(debug=False, config=config)
 
