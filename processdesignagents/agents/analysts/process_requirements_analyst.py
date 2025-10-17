@@ -7,7 +7,7 @@ from langchain_core.prompts import (
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.prompt_utils import jinja_raw
+from processdesignagents.agents.utils.prompt_utils import jinja_raw, strip_markdown_code_fences
 
 load_dotenv()
 
@@ -23,6 +23,7 @@ def create_process_requiruments_analyst(llm):
         requirements_markdown = (
             response.content if isinstance(response.content, str) else str(response.content)
         ).strip()
+        requirements_markdown = strip_markdown_code_fences(requirements_markdown)
         if len(requirements_markdown) < 10:
             print(f"The response is too short, exit(-1)")
             exit(-1)

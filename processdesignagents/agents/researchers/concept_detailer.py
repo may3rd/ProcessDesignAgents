@@ -10,7 +10,7 @@ from langchain_core.prompts import (
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.prompt_utils import jinja_raw
+from processdesignagents.agents.utils.prompt_utils import jinja_raw, strip_markdown_code_fences
 from processdesignagents.agents.utils.json_tools import (
     extract_first_json_document,
     convert_evaluations_json_to_markdown,
@@ -100,6 +100,7 @@ def create_concept_detailer(llm, selection_provider_getter=None):
             detail_markdown = (
                 response.content if isinstance(response.content, str) else str(response.content)
             ).strip()
+            detail_markdown = strip_markdown_code_fences(detail_markdown)
             is_done = len(detail_markdown) > 20
             try_count += 1
             if not is_done:

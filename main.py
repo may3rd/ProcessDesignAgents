@@ -36,6 +36,7 @@ async def main():
     _ = await graph.propagate(
         problem_statement=problem_statement, 
         save_markdown="reports/latest_run.md",
+        save_word_doc="reports/latest_run.docx",
         manual_concept_selection=False
         )
 

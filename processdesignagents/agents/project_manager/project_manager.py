@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 
 from langchain_core.prompts import (
@@ -11,12 +12,8 @@ from langchain_core.prompts import (
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.utils.json_tools import (
-    convert_streams_json_to_markdown,
-    convert_equipment_json_to_markdown,
-    convert_risk_json_to_markdown,
-)
+from processdesignagents.agents.utils.prompt_utils import jinja_raw, strip_markdown_code_fences
+from processdesignagents.agents.utils.json_tools import extract_first_json_document
 
 load_dotenv()
 
@@ -44,17 +41,21 @@ def create_project_manager(llm):
         if not isinstance(safety_report, str):
             safety_report = str(safety_report)
 
-        stream_markdown = convert_streams_json_to_markdown(validation_markdown) if validation_markdown else ""
-        equipment_markdown = convert_equipment_json_to_markdown(equipment_table) if equipment_table else ""
-        safety_markdown = convert_risk_json_to_markdown(safety_report) if safety_report else ""
+        sanitized_stream_json, stream_payload = extract_first_json_document(validation_markdown) if validation_markdown else ("", None)
+        sanitized_equipment_json, equipment_payload = extract_first_json_document(equipment_table) if equipment_table else ("", None)
+        sanitized_safety_json, safety_payload = extract_first_json_document(safety_report) if safety_report else ("", None)
+
+        stream_json_formatted = json.dumps(stream_payload, ensure_ascii=False, indent=2) if stream_payload is not None else (validation_markdown or "{}")
+        equipment_json_formatted = json.dumps(equipment_payload, ensure_ascii=False, indent=2) if equipment_payload is not None else (equipment_table or "{}")
+        safety_json_formatted = json.dumps(safety_payload, ensure_ascii=False, indent=2) if safety_payload is not None else (safety_report or "{}")
 
         base_prompt = project_manager_prompt(
             requirements_markdown,
             design_basis,
             basic_pfd_markdown,
-            stream_markdown or validation_markdown,
-            equipment_markdown or equipment_table,
-            safety_markdown or safety_report,
+            stream_json_formatted,
+            equipment_json_formatted,
+            safety_json_formatted,
         )
 
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
@@ -66,6 +67,7 @@ def create_project_manager(llm):
         approval_markdown = (
             response.content if isinstance(response.content, str) else str(response.content)
         ).strip()
+        approval_markdown = strip_markdown_code_fences(approval_markdown)
         approval_status = _extract_status(approval_markdown)
 
         print(f"Project review completed. Status: **{approval_status or 'Unknown'}**\n", flush=True)
@@ -91,86 +93,70 @@ def project_manager_prompt(
     project_requirements: str,
     design_basis: str,
     basic_pfd: str,
-    stream_data: str,
-    equipment_table: str,
-    safety_and_risk_analysis: str,
+    stream_data_json: str,
+    equipment_table_json: str,
+    safety_and_risk_json: str,
 ) -> ChatPromptTemplate:
     system_content = """
-# CONTEXT
+You are a **Project Manager** specializing in stage-gate approval, financial evaluation, and implementation planning for capital projects in the chemical and process industries.
 
-We are at the final stage of the process design process. By summarizing all the results from previous processes, i.e. define the process requirements, create a design basis, drafting the basic process flow diagram, list all the major equipments, and preliminary safety and risk analysis, you role is too justify the project approval.
+**Context:**
 
-# ROLE
-You are the project manager responsible for final stage-gate approval of the process design.
+  * You are at the final stage-gate of a conceptual design process.
+  * You will receive a structured `DESIGN_PACKAGE` composed of Markdown narratives (requirements, design basis, PFD summary) plus JSON artefacts (stream data, equipment list, HAZOP dossier).
+  * Your task is to synthesize this information, render the gatekeeping decision (Approve, Conditional, Reject), summarize the financial outlook, and outline near-term execution steps.
+  * The approval memo you produce is the authoritative record for advancing (or pausing) the project before FEED.
 
-# TASK
-Review the provided requirements, design basis, process description, H&MB results, equipment sizing summary, and safety/risk findings. Decide whether to approve, conditionally approve, or reject the project. Summarize financial estimates and outline the immediate implementation plan.
+**Instructions:**
 
-# INSTRUCTIONS
-1. **Assess alignment:** Cross-check requirements, design basis, equipment summary, and safety notes; highlight any conflicts or missing justifications in the rationale.
-2. **Decide approval:** Choose `Approved`, `Conditional`, or `Rejected`, stating the gating condition(s) that drive the decision.
-3. **Quantify economics:** Populate CAPEX, OPEX, and contingency with estimates (or `TBD` plus a short note) derived from the available data or reasonable scaling assumptions.
-4. **Plan execution:** Provide three concrete implementation steps, each actionable and sequenced; note timing or responsibility where possible.
-5. **Flag follow-ups:** Use Final Notes to capture open risks, compliance items, or data gaps, referencing the source document (streams, equipment tags, hazards) that triggered the concern.
+  * Critically review the JSON artefacts to confirm internal consistency (streams ↔ equipment ↔ safety mitigations) and alignment with the narrative requirements/design basis.
+  * Select the appropriate `Approval Status` and state a one-sentence `Key Rationale` backing your decision.
+  * Populate the financial table with CAPEX, OPEX, and contingency values. Use reasonable assumptions when data is missing and flag any estimates in the `Final Notes`.
+  * Draft three sequenced, actionable steps in the `Implementation Plan`, noting owners or timing when relevant.
+  * Capture residual risks, compliance items, or data gaps in `Final Notes`, referencing specific stream IDs, equipment tags, or hazard IDs from the JSON where applicable.
+  * Output must follow the approval memo Markdown template exactly—no supplementary prose or code fences.
 
-# CRITICALS
-- **Follow the MARKDOWN TEMPLATE strictly.**
-- **Output ONLY a valid markdown formatting text. Do not use code block.**
+-----
 
-# MARKDOWN TEMPLATE:
-Return a Markdown report with the following structure:
-```
-## Executive Summary
-- Approval Status: <Approved | Conditional | Rejected>
-- Key Rationale: <one sentence>
+**Example:**
 
-## Financial Outlook
-| Metric | Estimate |
-|--------|----------|
-| CAPEX (USD millions) | ... |
-| OPEX (USD millions per year) | ... |
-| Contingency (%) | ... |
+  * **DESIGN PACKAGE:**
 
-## Implementation Plan
-1. <Step 1>
-2. <Step 2>
-3. <Step 3>
+    ```
+    "The project is for a single heat exchanger (E-101) to cool 10,000 kg/h ethanol from 80°C to 40°C. The design relies on the plant's central cooling water utility. The HAZOP identified a critical risk related to 'Loss of Cooling Water Flow' (Hazard #1). The estimated cost for the modular skid is $1.2M. Annual utility and maintenance costs are estimated at $350k."
+    ```
 
-## Final Notes
-- <risk or follow-up item>
-- <compliance reminder>
-```
----
+  * **Response:**
 
-# EXAMPLE INPUT:
-If the package contains a single heat exchanger that cools ethanol from 80 C to 40 C using cooling water, ensure the summary references the utility demand, checks that safety measures cover loss of cooling, and ties the approval status to readiness of that cooler service.
+    ```markdown
+    ## Executive Summary
+    - Approval Status: Conditional
+    - Key Rationale: Full approval is contingent upon engineering verification of safeguards for the loss of cooling water scenario identified in the HAZOP.
 
-# EXPECTED OUTPUT:
-```
-## Executive Summary
-- Approval Status: Conditional
-- Key Rationale: Cooling water redundancy verification required prior to full approval
+    ## Financial Outlook
+    | Metric                       | Estimate |
+    | ---------------------------- | -------- |
+    | CAPEX (USD millions)         | 1.2      |
+    | OPEX (USD millions per year) | 0.35     |
+    | Contingency (%)              | 15       |
 
-## Financial Outlook
-| Metric | Estimate |
-|--------|----------|
-| CAPEX (USD millions) | 1.2 |
-| OPEX (USD millions per year) | 0.35 |
-| Contingency (%) | 15 |
+    ## Implementation Plan
+    1.  **Finalize Detailed Design:** Complete the mechanical design for the E-101 exchanger skid and issue for procurement (Target: 4 weeks).
+    2.  **Implement Safeguards:** Install and functionally test the high-temperature interlock and any required cooling water redundancy measures (Target: 3 weeks, post-procurement).
+    3.  **Commissioning:** Perform a full performance test of the cooler module and complete operator training (Target: 2 weeks, post-installation).
 
-## Implementation Plan
-1. Finalise exchanger mechanical design and procurement (4 weeks).
-2. Install cooling water redundancy instrumentation and test interlocks (3 weeks).
-3. Commission cooler module with performance test and operator training (2 weeks).
+    ## Final Notes
+    - The utility contract must be reviewed to guarantee the required 24,000 kg/h cooling water supply during peak summer conditions.
+    - The final design must include the corrosion coupon program recommended in the safety review before the first ethanol run.
+    ```
 
-## Final Notes
-- Confirm corrosion coupon program before first ethanol run.
-- Align utility contract to guarantee 24,000 kg/h cooling water during summer peaks.
-```
+-----
+
+**Your Task:** Based on the provided `DESIGN_PACKAGE`, generate ONLY the valid Markdown approval report that precisely follows the structure and rules defined above. Do not include code fences or additional narrative.
 """
 
     human_content = f"""
-# DATA FOR REVIEW
+# DESIGN PACKAGE (Mixed Format)
 
 **Requirements Summary (Markdown):**
 {project_requirements}
@@ -181,14 +167,14 @@ If the package contains a single heat exchanger that cools ethanol from 80 C to 
 **Basic Process Flow Diagram (Markdown):**
 {basic_pfd}
 
-**H&MB Results (Markdown):**
-{stream_data}
+**Heat & Material Balance (JSON):**
+{stream_data_json}
 
-**Equipment Sizing (Markdown):**
-{equipment_table}
+**Equipment Summary (JSON):**
+{equipment_table_json}
 
-**Safety & Risk Summary (Markdown):**
-{safety_and_risk_analysis}
+**Safety & Risk Dossier (JSON):**
+{safety_and_risk_json}
 """
 
     messages = [

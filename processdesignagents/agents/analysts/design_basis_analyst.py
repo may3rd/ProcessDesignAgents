@@ -9,7 +9,10 @@ from langchain_core.prompts import (
 )
 
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.prompt_utils import jinja_raw
+from processdesignagents.agents.utils.prompt_utils import (
+    jinja_raw,
+    strip_markdown_code_fences,
+)
 
 from .static.design_basis_prompts import basic_system_prompt, google_system_prompt
 
@@ -49,6 +52,7 @@ def create_design_basis_analyst(llm):
             design_basis_markdown = (
                 response.content if isinstance(response.content, str) else str(response.content)
             ).strip()
+            design_basis_markdown = strip_markdown_code_fences(design_basis_markdown)
             is_done = len(design_basis_markdown) > 100
             try_count += 1
             if not is_done:

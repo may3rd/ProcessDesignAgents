@@ -9,7 +9,7 @@ from langchain_core.prompts import (
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.prompt_utils import jinja_raw
+from processdesignagents.agents.utils.prompt_utils import jinja_raw, strip_markdown_code_fences
 
 load_dotenv()
 
@@ -51,6 +51,7 @@ def create_basic_pfd_designer(llm):
             basic_pfd_markdown = (
                 response.content if isinstance(response.content, str) else str(response.content)
             ).strip()
+            basic_pfd_markdown = strip_markdown_code_fences(basic_pfd_markdown)
             is_done = len(basic_pfd_markdown) > 100
             try_count += 1
             if try_count > 10:

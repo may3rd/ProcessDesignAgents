@@ -1,6 +1,11 @@
 from pathlib import Path
 import json
 
+try:
+    from docx import Document
+except ImportError:  # pragma: no cover - optional dependency
+    Document = None
+
 from langgraph.graph import StateGraph, END
 from typing import TypedDict, Dict, Any
 
@@ -106,6 +111,7 @@ class ProcessDesignGraph:
         self,
         problem_statement: str = "",
         save_markdown: str | None = None,
+        save_word_doc: str | None = None,
         manual_concept_selection: bool = False,
     ):
         """Run the agent graph for a problem statement.
@@ -177,8 +183,10 @@ class ProcessDesignGraph:
 
         if save_markdown:
             self._write_markdown_report(final_state, save_markdown)
+            
+        if save_word_doc:
+            self._write_word_report(final_state, save_word_doc)
         
-        # Return
         return final_state
     
     def _log_state(self, final_state):
@@ -206,7 +214,7 @@ class ProcessDesignGraph:
         ) as f:
             json.dump(self.log_state_dict, f, indent=4)
         
-    def _write_markdown_report(self, final_state: Dict[str, Any], filename: str) -> None:
+    def _compose_report_sections(self, final_state: Dict[str, Any]) -> list[tuple[str, str]]:
         stream_markdown = ""
         hmb_markdown = ""
         equipment_markdown = ""
@@ -232,6 +240,10 @@ class ProcessDesignGraph:
             ("Safety & Risk Assessment", safety_markdown or final_state.get("safety_risk_analyst_report", "")),
             ("Project Manager Report", final_state.get("project_manager_report", "")),
         ]
+        return sections
+
+    def _write_markdown_report(self, final_state: Dict[str, Any], filename: str) -> None:
+        sections = self._compose_report_sections(final_state)
 
         output_lines: list[str] = []
         for title, content in sections:
@@ -246,3 +258,22 @@ class ProcessDesignGraph:
         output_path = Path(filename)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(report_text, encoding="utf-8")
+
+    def _write_word_report(self, final_state: Dict[str, Any], filename: str) -> None:
+        if Document is None:
+            raise ImportError(
+                "python-docx is required to export Word reports. Install with `pip install python-docx`."
+            )
+
+        sections = self._compose_report_sections(final_state)
+        document = Document()
+
+        for title, content in sections:
+            if not content:
+                continue
+            document.add_heading(title, level=1)
+            document.add_paragraph(content.strip())
+
+        output_path = Path(filename)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        document.save(output_path)
