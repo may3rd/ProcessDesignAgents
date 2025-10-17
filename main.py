@@ -4,7 +4,7 @@ from processdesignagents.default_config import DEFAULT_CONNFIG
 
 config = DEFAULT_CONNFIG.copy()
 config["llm_provider"] = "openrouter"
-config["quick_think_llm"] = "openai/gpt-oss-120b"
+config["quick_think_llm"] = "google/gemini-2.5-flash-preview-09-2025"
 config["deep_think_llm"] = "x-ai/grok-4-fast"
 
 # config["deep_think_llm"] = "openai/gpt-oss-120b"
@@ -16,6 +16,10 @@ config["deep_think_llm"] = "x-ai/grok-4-fast"
 # config["llm_provider"] = "google"
 # config["quick_think_llm"] = "gemini-2.5-flash"
 # config["deep_think_llm"] = "gemeni-2.5-flash"
+
+# config["llm_provider"] = "ollama"
+# config["quick_think_llm"] = "llama3.2"
+# config["deep_think_llm"] = "llama3.2"
 
 config["quick_think_temperature"] = 0.5
 config["deep_think_temperature"] = 0.5

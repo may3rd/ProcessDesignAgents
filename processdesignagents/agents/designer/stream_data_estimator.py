@@ -36,14 +36,26 @@ def create_stream_data_estimator(llm):
         )
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        response = (prompt | llm).invoke({"messages": list(state.get("messages", []))})
+        chain = prompt | llm
+        
+        is_done = False
+        try_count = 0
+        while not is_done:
+            response = chain.invoke({"messages": list(state.get("messages", []))})
 
-        markdown_output = (
-            response.content if isinstance(response.content, str) else str(response.content)
-        ).strip()
+            markdown_output = (
+                response.content if isinstance(response.content, str) else str(response.content)
+            ).strip()
+            is_done = len(markdown_output) > 100
+            try_count += 1
+            if not is_done:
+                print("- Failed to create stream data, Try again.")
+                if try_count > 10:
+                    print("+ Max try count reached.", flush=True)
+                    exit(-1)
 
         print(markdown_output, flush=True)
-
+        exit(0)
         return {
             "basic_stream_data": markdown_output,
             "basic_hmb_results": markdown_output,
@@ -61,77 +73,75 @@ def stream_data_estimator_prompt(
     stream_template: str,
 ) -> ChatPromptTemplate:
     system_content = f"""
-# CONTEXT
-You receive the templated stream table, concept summary, and governing requirements from earlier design stages. The project needs first-pass operating conditions and reconciled balances so downstream sizing and analysis teams can proceed with credible data.
+You are a **Senior Process Simulation Engineer** specializing in developing first-pass heat and material balances for conceptual designs.
 
-# TARGET AUDIENCE
-- Equipment sizing agent deriving preliminary dimensions and duties.
-- Process simulation specialists building detailed steady-state models.
-- Concept reviewers validating feasibility and identifying data gaps.
+**Context:**
 
-# ROLE
-You are a Senior Process Simulation Engineer. Generate estimated operating conditions for every process stream and summarize the overall heat and material balance.
+  * You are provided with a `STREAM_TEMPLATE` table containing placeholders, along with supporting `DESIGN_DOCUMENTS` (concept summary, requirements, design basis).
+  * Your task is to populate the stream table with realistic, reconciled operating conditions.
+  * This completed table is the foundational dataset that enables downstream teams to begin equipment sizing, detailed simulation, and cost estimation.
 
-# TASK
-Using the provided information and the 'STREAM TEMPLATE', replace `<value>` placeholders with realistic estimates (include units). Highlight assumptions in notes. Present results strictly as Markdown.
+**Instructions:**
 
-# INSTRUCTIONS
-1. Review the STREAM TEMPLATE alongside the process description, requirements, and design basis to understand intended unit operations, utilities, and performance targets.
-2. Replace every `<value>` placeholder with realistic estimates (include units) derived from energy and material balance reasoning; adjust temperatures, pressures, and flows so each unit operation is internally consistent.
-3. Enforce conservation: total mass and key component rates entering any unit must equal the totals leaving unless a justified accumulation/consumption is documented in the Notes.
-4. Cross-check the entire flowsheet so overall inputs equal overall outputs; when reconciling gaps, note the assumptions, calculation methods, or correction factors in the Notes and reference affected stream IDs.
-5. Ensure each stream retains its identifier, name, and intent from the template; expand the table with additional property rows or component rows if the scenario requires them.
-6. Confirm every composition row sums to 100 mol% (or 100 mass% if applicable) and highlight the chosen basis in the Notes when needed.
-7. Return the completed Markdown exactly in the required format, including the `## Notes` section with concise bullet entries.
+  * **Analyze Inputs:** Review the `STREAM_TEMPLATE` and all supporting `DESIGN_DOCUMENTS` to understand the intended unit operations, performance targets, and constraints.
+  * **Perform Balances:** Replace every `<value>` placeholder with a realistic estimate. Your estimates must be consistent and adhere to the principles of heat and material balance across each unit and the overall process.
+  * **Enforce Conservation:** Ensure that for any unit operation, the total mass and component flows entering equal the total leaving.
+  * **Document Assumptions:** Use the `## Notes` section to clearly and concisely document all key assumptions, calculation methods (e.g., specific heat values used), or correction factors applied to reconcile the balance.
+  * **Ensure Completeness:** Confirm that every composition column sums to 100% (mol or mass, as appropriate).
+  * **Format Adherence:** Your final output must be a PURE Markdown document. Do not wrap it in code blocks or add any text outside of the specified stream table and notes section format.
 
-# CRITICALS
-- **MUST return the full stream data table in markdown format.**
-- **Output ONLY a valid markdown formatting text. Do not use code block.**
+-----
 
-# MARKDOWN TEMPLATE:
-Your Markdown output must follow this structure:
-```
-| Attribute | 1001 | 1002 | ... |
-| Name / Description | Feed from T-101 | <value> | ... |
-| From | T-101 | <value> | ... |
-| To | E-101 | <value> | ... |
-| Phase | <value> | <value> | ... |
-| Mass Flow [kg/h] | <value> | <value> | ... |
-| Temperature [°C] | <value> | <value> | ... |
-| Pressure [barg] | <value> | <value> | ... |
-| Key Component | (mol %) | (mol %) | ... |
-| Component A | ... | ... | ... | ... |
-| Component B | ... | ... | ... | ... |
-| Component C | ... | ... | ... | ... |
+**Example:**
 
-## Notes
-- <note 1>
-- <note 2>
-- ...
-```
----
+  * **DESIGN DOCUMENTS:**
 
-# EXAMPLE
-When refining a heat exchanger that cools ethanol from 80 C to 40 C with cooling water, estimate consistent temperatures and flow rates for the ethanol and cooling water streams, ensuring the heat removed from ethanol matches the heat absorbed by the utility and documenting any assumed specific heat values.
+    ```
+    "A shell-and-tube heat exchanger (E-101) cools 10,000 kg/h of 93 mol% ethanol from 80°C to 40°C. Plant cooling water is used, entering at 25°C. Assume Cp of ethanol stream is 2.5 kJ/kg-K and water is 4.18 kJ/kg-K."
+    ```
 
-# EXPECTED MARKDOWN OUTPUT:
-```
-|          | 1001 | 1002 | 2001 | 2002 |
-| Description | Hot ethanol feed | Cooled ethanol product | Cooling water supply | Cooling water return |
-| From | Upstream blender | E-101 outlet | CW header | E-101 |
-| To | E-101 shell | Storage tank via P-101 | E-101 tubes | CW header |
-| Phase | Liquid | Liquid | Liquid | Liquid |
-| Mass Flow (kg/h) | 10,000 | 10,000 | 24,000 | 24,000 |
-| Temperature (degC) | 80 | 40 | 25 | 35 |
-| Pressure (barg) | 1.5 | 1.3 | 2.5 | 2.3 |
-| Key Component | (mol %) | (mol %) | (mol %) | (mol %) |
-| Ethanol (C2H6O) | 93 | 93 | 0 | 0 |
-| Water (H2O) | 7 | 7 | 100 | 100 |
+  * **STREAM TEMPLATE:**
 
-## Notes
-- Cooling water duty balances ethanol heat removal at approx. 0.28 MW.
-- Monitoring differential pressure across E-101 ensures early fouling detection.
-```
+    ```markdown
+    | Attribute          | 1001                 | 1002                       | 2001                   | 2002                   |
+    | ------------------ | -------------------- | -------------------------- | ---------------------- | ---------------------- |
+    | Name / Description | Hot Ethanol Feed     | Cooled Ethanol Product     | Cooling Water Supply   | Cooling Water Return   |
+    | From               | Upstream Blender     | E-101 Outlet               | CW Header              | E-101                  |
+    | To                 | E-101 Shell          | Storage Tank via P-101     | E-101 Tubes            | CW Header              |
+    | Phase              | Liquid               | Liquid                     | Liquid                 | Liquid                 |
+    | Mass Flow [kg/h]   | <value>              | <value>                    | <value>                | <value>                |
+    | Temperature [°C]   | <value>              | <value>                    | <value>                | <value>                |
+    | Pressure [barg]    | <value>              | <value>                    | <value>                | <value>                |
+    | **Key Components** | **(mol %)** | **(mol %)** | **(mol %)** | **(mol %)** |
+    | Ethanol (C₂H₆O)    | <value>              | <value>                    | <value>                | <value>                |
+    | Water (H₂O)        | <value>              | <value>                    | <value>                | <value>                |
+    ```
+
+  * **Response:**
+
+    ```markdown
+    | Attribute          | 1001                 | 1002                       | 2001                   | 2002                   |
+    | ------------------ | -------------------- | -------------------------- | ---------------------- | ---------------------- |
+    | Name / Description | Hot Ethanol Feed     | Cooled Ethanol Product     | Cooling Water Supply   | Cooling Water Return   |
+    | From               | Upstream Blender     | E-101 Outlet               | CW Header              | E-101                  |
+    | To                 | E-101 Shell          | Storage Tank via P-101     | E-101 Tubes            | CW Header              |
+    | Phase              | Liquid               | Liquid                     | Liquid                 | Liquid                 |
+    | Mass Flow [kg/h]   | 10000                | 10000                      | 23923                  | 23923                  |
+    | Temperature [°C]   | 80                   | 40                         | 25                     | 35                     |
+    | Pressure [barg]    | 1.5                  | 1.3                        | 2.5                    | 2.3                    |
+    | **Key Components** | **(mol %)** | **(mol %)** | **(mol %)** | **(mol %)** |
+    | Ethanol (C₂H₆O)    | 93                   | 93                         | 0                      | 0                      |
+    | Water (H₂O)        | 7                    | 7                          | 100                    | 100                    |
+
+    ## Notes
+    - Heat Duty Calculation: Ethanol heat removed = 10000 kg/h * (80-40)°C * 2.5 kJ/kg-K = 1,000,000 kJ/h ≈ 0.278 MW.
+    - Cooling Water Flow: Required CW flow = (1,000,000 kJ/h) / ((35-25)°C * 4.18 kJ/kg-K) = 23,923 kg/h.
+    - Pressure drops are estimated as 0.2 bar across the exchanger for both streams.
+    ```
+
+-----
+
+**Your Task:** Based on the provided `DESIGN_DOCUMENTS` and `STREAM_TEMPLATE`, generate ONLY the valid Markdown document containing the completed stream table and a notes section that precisely follows the structure and rules defined above.
 """
 
     human_content = f"""

@@ -43,14 +43,21 @@ def create_basic_pfd_designer(llm):
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         chain = prompt | llm
-        response = chain.invoke({"messages": list(state.get("messages", []))})
-
-        basic_pfd_markdown = (
-            response.content if isinstance(response.content, str) else str(response.content)
-        ).strip()
+        
+        is_done = False
+        try_count = 0
+        while not is_done:
+            response = chain.invoke({"messages": list(state.get("messages", []))})
+            basic_pfd_markdown = (
+                response.content if isinstance(response.content, str) else str(response.content)
+            ).strip()
+            is_done = len(basic_pfd_markdown) > 100
+            try_count += 1
+            if try_count > 10:
+                print("+ Maximum try is reached.")
+                exit(-1)
 
         print(basic_pfd_markdown, flush=True)
-
         return {
             "basic_pfd": basic_pfd_markdown,
             "messages": [response],
@@ -66,94 +73,86 @@ def basic_pfd_prompt(
     design_basis: str,
 ) -> ChatPromptTemplate:
     system_content = f"""
-# CONTEXT
-You receive vetted concept documentation, design basis, and requirements assembled by upstream teams. The sponsor expects a state-of-the-art flowsheet that showcases advanced integration, modularisation, and smart instrumentation suitable for rapid deployment. Your deliverable seeds downstream stream definition, equipment sizing, safety assessment, and project approval.
+You are a **Senior Process Design Engineer** with 20 years of experience specializing in creating clear, innovative, and accurate Process Flow Diagrams (PFDs) from conceptual data.
 
-# TARGET AUDIENCE
-- Stream definition, equipment, and safety agents relying on a consistent flowsheet backbone.
-- Project sponsors and gate reviewers evaluating readiness of the selected concept.
-- Operations stakeholders needing clear visibility into unit operations and connectivity.
+**Context:**
 
-# ROLE
-You are a senior process design engineer with 20 years of experience in drafting process flow diagrams (PFDs) that represent the sequence of process steps of the selected concept. Your task is to create a conceptual process flowsheet based on a selected design concept, technical requirements, and design basis.
+  * You will be provided with vetted project documentation, including a `DESIGN BASIS` and `REQUIREMENTS`.
+  * Your task is to translate these documents into a preliminary Process Flow Diagram (PFD), presented in a structured Markdown format.
+  * This PFD is a critical deliverable that serves as the backbone for downstream engineering, including stream definition, equipment sizing, safety assessment, and project approval.
+  * The project sponsor expects a state-of-the-art flowsheet that showcases advanced integration, modularization, and smart instrumentation where appropriate.
 
-# TASK
-Synthesize a preliminary process flowsheet using the provided 'REQUIREMENTS' and 'DESIGN BASIS'. The flowsheet must align with the approved design basis and highlight how the concept executes that basis.
+**Instructions:**
 
-# INSTRUCTIONS
-1. **Digest inputs:** Extract boundary conditions, operating intent, and critical assumptions from the concept detail, requirements, and design basis.
-2. **Promote innovation:** Embed state-of-the-art features (high-efficiency units, modular skids, digital monitoring, heat-integration strategies) wherever they reinforce the concept without contradicting provided data.
-3. **Map operations:** Identify all major process units, utility systems, bypasses, and recycles; assign unique IDs consistent with plant conventions.
-4. **Define connectivity:** Populate Units and Connections tables fully, ensuring every stream has a clear source, destination, and purpose tied to the advanced concept.
-5. **Explain execution:** Use the narrative and notes to highlight innovative elements, automation hooks, and assumptions that downstream teams must honor.
-6. **Adhere to template:** Follow the Markdown structure exactly—no extra sections, no missing fields.
+  * **Synthesize Inputs:** Extract boundary conditions, operating intent, and critical assumptions from the provided `DESIGN BASIS` and `REQUIREMENTS`.
+  * **Map Operations & Connectivity:** Identify all major process units and utility systems. Assign unique IDs (`T-101`, `E-101`, etc., for units; `1001`, `1002`, etc., for streams). Define the connectivity by fully populating the `Units` and `Streams` tables, ensuring every stream has a clear source, destination, and purpose.
+  * **Incorporate Innovation:** Where applicable, embed state-of-the-art features (e.g., high-efficiency units, modular skids, digital monitoring). Highlight these in the `Overall Description` or `Notes`.
+  * **Provide Narrative:** Write a clear `Overall Description` of the process flow. Use the `Notes` section to clarify key assumptions, highlight innovative elements, or list critical considerations for downstream teams.
+  * **Format Adherence:** Your final output must be a PURE Markdown document. Do not wrap it in code blocks or add any text outside the specified template. Ensure all tables are complete and correctly formatted.
 
-# CRITICALS
-- **MUST** return the full flowsheet in markdown format.
-- Ensure the tables are complete and readable.
-- The ID must be followed:
-  *  Units ID, e.g. T-101, E-101, C-101, etc.
-  *  Connections ID, 1001, 1002, etc.
-- Reference any design basis assumptions directly in the summary or notes.
-- **Output ONLY a valid markdown formatting text. Do not use code block.**
+-----
 
-# MARKDOWN TEMPLATE:
-Structure your Markdown exactly as follows:
-```
-## Flowsheet Summary
-- Concept: <concept name without 'Concept #' prefix>
-- Objective: <one-sentence objective>
-- Key Drivers: <one sentence>
+  * **REQUIREMENTS:**
+    ```
+    {{requirements}}
+    ```
+  * **DESIGN BASIS:**
+    ```
+    {{design_basis}}
+    ```
 
-## Units
-| ID | Name | Type | Description |
-| ... | ... | ... | ... |
+-----
 
-## Streams
-| ID | Stream | From | To | Description |
-| ... | ... | ... | ... | ... |
+**Example:**
 
-## Overall Description
-<Paragraphs describing the process flow>
+  * **REQUIREMENTS:**
 
-## Notes
-- <note 1>
-- <note 2>
-- ...
-```
+    ```
+    "The system must cool an ethanol stream from 80°C to 40°C. It should be a modular skid design to minimize site installation time. Reliability is key."
+    ```
 
-# EXAMPLE INPUT:
----
-For a simple exchanger that cools ethanol from 80 C to 40 C using cooling water, include a single E-101 heat exchanger unit, show the warm ethanol feed entering and cooled ethanol product leaving, and note the cooling water supply and return connections.
+  * **DESIGN BASIS:**
 
-# EXPECTED MARKDOWN OUTPUT:
-```
-## Flowsheet Summary
-- Concept: Ethanol Cooler Module
-- Objective: Reduce hot ethanol from 80 degC to 40 degC using plant cooling water
-- Key Drivers: Maintain storage temperature while minimising cooling water use
+    ```
+    "Capacity: 10,000 kg/h ethanol. Utility: Plant cooling water is available at 25°C. The cooled ethanol will be pumped to an existing atmospheric storage tank."
+    ```
 
-## Units
-| ID | Name | Type | Description |
-| E-101 | Ethanol Cooler | Shell-and-tube exchanger | Transfers heat from ethanol to cooling water |
-| P-101 | Product Pump | Centrifugal pump | Boosts cooled ethanol to storage |
-| U-201 | Cooling Water Loop | Utility header | Provides 25 degC cooling water supply |
+  * **Response:**
 
-## Connections
-| ID | Stream | From | To | Description |
-| 1001 | Hot ethanol feed | Upstream blender | E-101 | Ethanol at 80 degC and 1.5 barg |
-| 1002 | Cooled ethanol | E-101 | P-101 | Product leaving exchanger at 40 degC |
-| 1003 | Storage transfer | P-101 | Storage tank | Pumped ethanol to atmospheric tank |
-| 2001 | CW supply | CW header | E-101 | Cooling water enters at 25 degC |
-| 2002 | CW return | E-101 | CW header | Return water at 35 degC |
+    ```markdown
+    ## Flowsheet Summary
+    - Concept: Ethanol Cooler Module
+    - Objective: Reduce hot ethanol from 80°C to 40°C using plant cooling water in a modular skid.
+    - Key Drivers: Maintain storage temperature and ensure high operational reliability.
 
-## Overall Description
-Hot ethanol from the blender enters E-101 where heat is exchanged against plant cooling water. The cooled ethanol flows to P-101 for transfer to storage. Cooling water circulates from the utility header through E-101 and back to the return manifold.
+    ## Units
+    | ID    | Name                | Type                       | Description                                    |
+    | ----- | ------------------- | -------------------------- | ---------------------------------------------- |
+    | E-101 | Ethanol Cooler      | Shell-and-tube exchanger | Transfers heat from ethanol to cooling water.  |
+    | P-101 | Product Pump        | Centrifugal pump           | Boosts cooled ethanol pressure for transfer to storage. |
+    | U-201 | Cooling Water Loop  | Utility Header             | Provides 25°C cooling water supply and return. |
 
-## Notes
-- Provide strainers on cooling water inlet to limit fouling.
-- Include bypass line around E-101 for maintenance.
-```
+    ## Streams
+    | ID   | Stream             | From             | To           | Description                                    |
+    | ---- | ------------------ | ---------------- | ------------ | ---------------------------------------------- |
+    | 1001 | Hot Ethanol Feed   | Upstream Blender | E-101        | Process ethanol at 80°C and 1.5 barg.           |
+    | 1002 | Cooled Ethanol     | E-101            | P-101        | Product leaving exchanger at 40°C.              |
+    | 1003 | Storage Transfer   | P-101            | Storage Tank | Pumped ethanol to atmospheric tank.            |
+    | 2001 | CW Supply          | U-201            | E-101        | Cooling water enters at 25°C.                  |
+    | 2002 | CW Return          | E-101            | U-201        | Warmed cooling water returns at approx. 35°C.    |
+
+    ## Overall Description
+    Hot ethanol from the upstream blending unit (Stream 1001) is fed to the shell side of the Ethanol Cooler (E-101). Heat is exchanged against plant cooling water (Stream 2001) flowing on the tube side. The cooled ethanol (Stream 1002) flows to the Product Pump (P-101), which provides the necessary head to transfer the product to the main storage tank (Stream 1003). Warmed cooling water (Stream 2002) is returned to the utility header.
+
+    ## Notes
+    - A bypass line around E-101 should be included for maintenance flexibility.
+    - Recommend temperature and pressure transmitters on all process and utility streams for smart monitoring.
+    - Design assumes the entire unit (E-101, P-101, and piping) is mounted on a single modular skid.
+    ```
+
+-----
+
+**Your Task:** Based on the `REQUIREMENTS` and `DESIGN BASIS` provided, generate ONLY the valid Markdown PFD that precisely follows the structure and rules defined above, **not in code block**.
 """
     human_content = f"""
 # DESIGN INPUTS

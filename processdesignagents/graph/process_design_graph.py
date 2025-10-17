@@ -33,14 +33,17 @@ class ProcessDesignGraph:
         """
         self.debug = debug
         self.config = config or DEFAULT_CONNFIG
-
         # Initialize LLMs
         # if self.config["llm_provider"].lower() == "openai" or self.config["llm_provider"] == "ollama" or self.config["llm_provider"] == "openrouter":
         if self.config["llm_provider"] == "openrouter":
-            base_url = "https://openrouter.ai/api/v1"
+            base_url = self.get_url_by_name(self.config["llm_provider"].lower())
             api_key = os.getenv("OPENROUTER_API_KEY")
             self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=base_url, api_key=api_key)
             self.quick_thinking_llm = ChatOpenAI(model=self.config["quick_think_llm"], base_url=base_url, api_key=api_key)
+        elif self.config["llm_provider"] == "ollama":
+            base_url = self.get_url_by_name(self.config["llm_provider"].lower())
+            self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=base_url)
+            self.quick_thinking_llm = ChatOpenAI(model=self.config["quick_think_llm"], base_url=base_url)
         # elif self.config["llm_provider"].lower() == "anthropic":
         #     self.deep_thinking_llm = ChatAnthropic(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
         #     self.quick_thinking_llm = ChatAnthropic(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
@@ -70,6 +73,29 @@ class ProcessDesignGraph:
         
         # Set up the graph
         self.graph = self.graph_setup.setup_graph()
+        
+    def get_url_by_name(self, name: str) -> str:
+        """
+        Retrieves the URL associated with a given name from a predefined list of base URLs.
+
+        Args:
+            name (str): The name of the API provider (e.g., 'OpenAI', 'Anthropic').
+
+        Returns:
+            str | None: The corresponding URL if found, otherwise None.
+        """
+        BASE_URLS = [
+            ("openai", "https://api.openai.com/v1"),
+            ("anthropic", "https://api.anthropic.com/"),
+            ("google", "https://generativelanguage.googleapis.com/v1"),
+            ("openrouter", "https://openrouter.ai/api/v1"),
+            ("ollama", "http://localhost:11434/v1"),        
+        ]
+        
+        for provider, url in BASE_URLS:
+            if provider.lower() == name.lower():
+                return url
+        return None
         
     async def propagate(
         self,

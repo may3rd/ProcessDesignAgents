@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import re
+import json
 
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
+from processdesignagents.agents.utils.json_tools import extract_first_json_document
 
 load_dotenv()
 
@@ -25,47 +26,82 @@ def create_innovative_researcher(llm):
         if not isinstance(requirements_summary, str):
             requirements_summary = str(requirements_summary)
         base_prompt = innovative_researcher_prompt(requirements_summary)
-
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-
         chain = prompt | llm
-        response = chain.invoke({"messages": list(state.get("messages", []))})
+        
+        is_done = False
+        try_count = 0
+        while not is_done:
+            response = chain.invoke({"messages": list(state.get("messages", []))})
+            research_json = (
+                response.content if isinstance(response.content, str) else str(response.content)
+            ).strip()
+            is_done = len(research_json) > 100
+            try_count += 1
+            if not is_done:
+                print("- False to create more concepts. Try again.", flush=True)
+                print(response, flush=True)
+                if try_count > 10:
+                    print("+ Max try count reached.", flush=True)
+                    exit(-1)
 
-        research_markdown = (
-            response.content if isinstance(response.content, str) else str(response.content)
-        ).strip()
-        # concept_names = _extract_concept_names(research_markdown)
-        # if len(concept_names) < 3:
-        #     raise ValueError("Innovative concepts report must include at least three concept sections.")
-
-        # print("Generated innovative research concepts.")
-        # print("\n--- Concept Names ---")
-        # if concept_names:
-        #     for concept_name in concept_names:
-        #         print(f"- {concept_name}")
-        # else:
-        #     print("- (No concept headings detected)")
-        if len(research_markdown) < 10:
-            print(f"The response is too short, exit(-1)")
-            exit(-1)
+        sanitized_json, _ = extract_first_json_document(research_json)
+        research_markdown = convert_concepts_json_to_markdown(sanitized_json)
         print(research_markdown, flush=True)
-
         return {
-            "research_concepts": research_markdown,
+            "research_concepts": sanitized_json,
             "messages": [response],
         }
 
     return innovative_researcher
 
 
-def _extract_concept_names(markdown_text: str) -> list[str]:
-    names: list[str] = []
-    for line in markdown_text.splitlines():
-        match = re.match(r"^##\s+(.*)", line.strip())
-        if match:
-            names.append(match.group(1).strip())
-    return names
+def convert_concepts_json_to_markdown(concepts_json: str) -> str:
+    """Convert structured JSON concept output into a readable Markdown summary."""
+    sanitized_json, payload = extract_first_json_document(concepts_json)
+    if payload is None:
+        return sanitized_json
+
+    concepts = payload if isinstance(payload, list) else payload.get("concepts")
+    if not isinstance(concepts, list):
+        return sanitized_json
+
+    lines: list[str] = []
+    concept_counter = 0
+    for concept in concepts:
+        if not isinstance(concept, dict):
+            continue
+
+        concept_counter += 1
+        name = concept.get("name", "Untitled Concept")
+        maturity = concept.get("maturity")
+        description = concept.get("description")
+        unit_operations = concept.get("unit_operations") or []
+        key_benefits = concept.get("key_benefits") or []
+
+        lines.append("---")
+        lines.append(f"## Concept {concept_counter}. {name}")
+        if isinstance(maturity, str) and maturity:
+            normalized_maturity = maturity.replace("_", " ").title()
+            lines.append(f"**Maturity:** {normalized_maturity}")
+        if isinstance(description, str) and description:
+            lines.append(f"**Description:** {description}")
+
+        if isinstance(unit_operations, list) and unit_operations:
+            lines.append("**Unit Operations:**")
+            for unit in unit_operations:
+                lines.append(f"- {unit}")
+
+        if isinstance(key_benefits, list) and key_benefits:
+            lines.append("**Key Benefits:**")
+            for benefit in key_benefits:
+                lines.append(f"- {benefit}")
+
+    if not lines:
+        return sanitized_json
+
+    return "\n".join(lines)
 
 
 def innovative_researcher_prompt(requirements_markdown: str) -> ChatPromptTemplate:
@@ -83,9 +119,11 @@ You are a Senior R&D Process Engineer specializing in conceptual design and proc
 
   * Analyze the provided `REQUIREMENTS` to fully understand the core objective, key components, and constraints.
   * Generate between 3 and 6 distinct process concepts that meet the requirements.
-  * Structure each concept with a descriptive name, a concise paragraph explaining the idea, a bulleted list of essential unit operations, and a bulleted list of its key benefits.
+  * For each concept provide a descriptive name, a concise paragraph explaining the idea, a maturity classification, plus lists of essential unit operations and key benefits.
   * Ensure the range of concepts includes at least one conventional/standard process, one innovative/complex process, and one state-of-the-art process.
-  * Your final output must be a PURE Markdown document. Do not add any introductory text, concluding remarks, or formatting (like code blocks) that is not part of the specified template.
+  * Respond with a single valid JSON object using double quotes and UTF-8 safe characters. Do not include Markdown, comments, code fences, or explanatory prose.
+  * The JSON must contain a top-level key `"concepts"` whose value is a list of objects. Each concept object MUST include the keys: `"name"` (string), `"maturity"` (one of `"conventional"`, `"innovative"`, `"state_of_the_art"`), `"description"` (string), `"unit_operations"` (list of strings), and `"key_benefits"` (list of strings).
+  * Ensure at least one concept is marked `"maturity": "conventional"`, one `"innovative"`, and one `"state_of_the_art"`.
 
 -----
 
@@ -106,42 +144,54 @@ You are a Senior R&D Process Engineer specializing in conceptual design and proc
 
   * **Response:**
 
-    ```markdown
-    ---
-    ## Concept 1: Shell-and-Tube Ethanol Cooler
-    **Description:** A standard shell-and-tube heat exchanger is used to cool the hot ethanol stream from 80°C down to 40°C. The process fluid (ethanol) flows on one side while utility cooling water from the existing plant loop flows on the other side to remove the heat. This represents the most common and straightforward industry approach.
-    **Unit Operations:**
-    - Feed/Product Pumps
-    - Shell-and-Tube Heat Exchanger
-    **Key Benefits:**
-    - Proven, reliable technology with low operational and capital cost.
-    - Simple to design, operate, and maintain with readily available parts.
-
-    ---
-    ## Concept 2: Plate-and-Frame Modular Cooler
-    **Description:** This concept uses a compact plate-and-frame heat exchanger, potentially on a pre-fabricated skid, for higher thermal efficiency. The modular design allows for staged plates to optimize heat transfer and enables quick disassembly for cleaning or capacity expansion, offering an improvement over traditional designs.
-    **Unit Operations:**
-    - Modular Plate-and-Frame Exchanger
-    - Bypass and Isolation Valving
-    **Key Benefits:**
-    - Higher heat-transfer coefficients reduce the required surface area and footprint.
-    - Plates can be easily added, removed, or cleaned offline, minimizing downtime.
-
-    ---
-    ## Concept 3: Heat Pump Assisted Cooling
-    **Description:** A state-of-the-art approach using a vapor-compression refrigeration cycle (heat pump) to recover low-grade heat from the ethanol stream. This heat is then upgraded and rejected elsewhere, allowing the ethanol to be cooled to sub-ambient temperatures if needed. This decouples the process from the limitations of the cooling water temperature.
-    **Unit Operations:**
-    - Heat Pump Evaporator/Condenser
-    - Chilled-Water Loop Heat Exchanger
-    - Cooling Tower Interface
-    **Key Benefits:**
-    - Achieves product temperatures below the cooling water temperature.
-    - Reduces load on the main cooling tower, especially during summer peaks.
-    ```
+    {{
+      "concepts": [
+        {{
+          "name": "Shell-and-Tube Ethanol Cooler",
+          "maturity": "conventional",
+          "description": "A standard shell-and-tube heat exchanger cools the hot ethanol stream from 80°C to 40°C using the existing cooling water loop, offering the most common industry approach.",
+          "unit_operations": [
+            "Feed/Product Pumps",
+            "Shell-and-Tube Heat Exchanger"
+          ],
+          "key_benefits": [
+            "Proven, reliable technology with low operational and capital cost.",
+            "Simple to design, operate, and maintain with readily available parts."
+          ]
+        }},
+        {{
+          "name": "Plate-and-Frame Modular Cooler",
+          "maturity": "innovative",
+          "description": "A compact plate-and-frame exchanger on a modular skid delivers higher thermal efficiency and allows staged plates for optimized heat transfer with rapid maintenance turnaround.",
+          "unit_operations": [
+            "Modular Plate-and-Frame Exchanger",
+            "Bypass and Isolation Valving"
+          ],
+          "key_benefits": [
+            "Higher heat-transfer coefficients reduce required surface area and footprint.",
+            "Modular plates can be added or cleaned offline, minimizing downtime."
+          ]
+        }},
+        {{
+          "name": "Heat Pump Assisted Cooling",
+          "maturity": "state_of_the_art",
+          "description": "A vapor-compression heat pump recovers low-grade heat from the ethanol stream, enabling sub-ambient cooling and decoupling the process from cooling water limitations.",
+          "unit_operations": [
+            "Heat Pump Evaporator/Condenser",
+            "Chilled-Water Loop Heat Exchanger",
+            "Cooling Tower Interface"
+          ],
+          "key_benefits": [
+            "Achieves product temperatures below the cooling water temperature.",
+            "Reduces load on the main cooling tower during peak conditions."
+          ]
+        }}
+      ]
+    }}
 
 -----
 
-**Your Task:** Output ONLY a valid Markdown document, **not in code block**, containing 3 to 7 distinct process concepts based on the provided `REQUIREMENTS`. Each concept must precisely follow the structure defined above, with each concept separated by a horizontal rule (`---`).
+**Your Task:** Output ONLY a valid JSON object matching the schema described above. Do not wrap the JSON in a code block. Do not add any comment text.
 """
 
     human_content = f"""

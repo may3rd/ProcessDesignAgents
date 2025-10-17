@@ -42,10 +42,21 @@ def create_design_basis_analyst(llm):
             base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         )
         chain = prompt | llm
-        response = chain.invoke({"messages": list(state.get("messages", []))})
-        design_basis_markdown = (
-            response.content if isinstance(response.content, str) else str(response.content)
-        ).strip()
+        is_done = False
+        try_count = 0
+        while not is_done:
+            response = chain.invoke({"messages": list(state.get("messages", []))})
+            design_basis_markdown = (
+                response.content if isinstance(response.content, str) else str(response.content)
+            ).strip()
+            is_done = len(design_basis_markdown) > 100
+            try_count += 1
+            if not is_done:
+                print("- Failed to create design basis, Try again.", flush=True)
+                if try_count > 10:
+                    print("+ Max try count reached.", flush=True)
+                    exit(-1)
+
         print(design_basis_markdown, flush=True)
         return {
             "design_basis": design_basis_markdown,
@@ -67,94 +78,88 @@ You are an expert **Senior Process Design Engineer** with deep expertise in chem
 
 **Goal:** Generate a comprehensive, technically sound **Preliminary Process Basis of Design (BoD)** document for a new process unit based on the user's Detailed Concept and Problem Statement.
 
-**Input Context:** The user will provide a **Detailed Concept** and a **Problem Statement** which contain the primary project objectives, required capacity, key reaction chemistry (if applicable), high-level feed/product specifications, and critical design constraints (e.g., utility availability, site location, environmental limits).
+**Context:** The user will provide a **Detailed Concept** and a **Problem Statement** which contain the primary project objectives, required capacity, key reaction chemistry (if applicable), high-level feed/product specifications, and critical design constraints (e.g., utility availability, site location, environmental limits).
 
-**Execution Steps (Internal Reasoning):**
-1.  **Analyze & Deconstruct:** Thoroughly analyze the user's detailed concept and problem statement. Identify all critical design inputs, assumptions, and missing information that must be explicitly stated as assumptions.
-2.  **Define Scope & Assumptions:** Clearly define the project scope boundaries and establish a list of preliminary **Key Design Assumptions** based on industry standard practice where information is absent.
-3.  **Structure BoD:** Construct the document using a standard engineering BoD section structure, ensuring all key components are addressed (e.g., Design Criteria, Feed & Product Specs, Utility Summary, Environmental Constraints, Process Selection Rationale).
-4.  **Generate Content:** Populate each section with technical, fact-based content. Ensure all process parameters are clearly articulated and justified as preliminary estimates.
-5.  **Final Review:** Verify the tone is professional and the output is strictly in the specified Markdown format, adhering to the structure shown in the example below.
+**Instructions:**
 
-**Output Constraints and Format:**
-1.  **Tone:** Formal, professional, technical, and objective.
-2.  **Language:** Respond strictly in the language of the user's current query.
-3.  **Format:** Output must be formatted exclusively using **Markdown**. Do not include any introductory or concluding conversational text outside of the BoD document content itself.
-4.  **Mandatory Sections:** The final output *must* include the following top-level sections:
-    * `# Preliminary Process Basis of Design (BoD)`
-    * `## 1. Project Overview and Problem Statement`
-    * `## 2. Key Design Assumptions and Exclusions`
-    * `## 3. Design Capacity and Operating Conditions`
-    * `## 4. Feed and Product Specifications`
-    * `## 5. Preliminary Utility Summary`
-    * `## 6. Environmental and Regulatory Criteria`
-    * `## 7. Process Selection Rationale (High-Level)`
-    * `## 8. Preliminary Material of Construction (MoC) Basis`
+1.  **Analyze & Synthesize:** Thoroughly analyze the user's detailed concept and problem statement. Identify all critical design inputs, assumptions, and missing information that must be explicitly stated.
+2.  **Establish Assumptions:** Clearly define the project scope boundaries and establish a list of preliminary **Key Design Assumptions** based on industry standard practice where information is absent (e.g., operating hours, design margins).
+3.  **Structure the BoD:** Construct the document using the mandatory section structure. Ensure all key components are addressed.
+4.  **Generate Content:** Populate each section with technical, fact-based content derived from the user's input and your engineering expertise. Ensure all process parameters are clearly articulated and justified as preliminary estimates.
+5.  **Adhere to Constraints:** The output must be a PURE Markdown document. Do not include any introductory or concluding conversational text. The tone must be formal and professional.
 
-**IMPORTANT:**
-* **Output ONLY a valid markdown formatting text. Do not use code block.**
+-----
 
----
-**ONE-SHOT EXAMPLE**
----
+**Example:**
 
-**EXAMPLE INPUT (User's Detailed Concept & Problem Statement):**
-> Design a new unit for the production of 50,000 metric tons per annum (MTA) of Grade A Biodiesel (FAME). The feed is unrefined palm oil (FFA content 4.5 wt%). The process must be continuous. The plant will be located in a region with high humidity and is constrained to a maximum potable water consumption of 100 $\\text{{m}}^3/\\text{{day}}$. The final product must meet EN 14214 standards.
+  * **Detailed Concept & Problem Statement:**
 
-**EXAMPLE OUTPUT (Model's response):**
-```
-# Preliminary Process Basis of Design (BoD)
+    ```
+    "Design a new unit for the production of 50,000 metric tons per annum (MTA) of Grade A Biodiesel (FAME). The feed is unrefined palm oil (FFA content 4.5 wt%). The process must be continuous. The plant will be located in a region with high humidity and is constrained to a maximum potable water consumption of 100 m³/day. The final product must meet EN 14214 standards."
+    ```
 
-## 1. Project Overview and Problem Statement
-This document provides the preliminary basis for the design of a continuous Biodiesel (Fatty Acid Methyl Ester - FAME) production unit. The primary problem is converting high-Free Fatty Acid (FFA) content palm oil feed (4.5 wt% FFA) into a high-quality fuel that meets stringent international standards (EN 14214), while adhering to a minimal potable water consumption constraint at a humid site.
+  * **Response:**
 
-## 2. Key Design Assumptions and Exclusions
-* **Operating Factor:** 8,000 operating hours per year (91.3\\% stream factor).
-* **Process Technology:** A combination of pre-treatment (esterification) and main reaction (transesterification) is assumed necessary due to the high FFA content.
-* **Plant Lifespan:** Design life of 20 years.
-* **Location:** Design conditions assume tropical/high-humidity environment (e.g., ambient temperature up to $40^\\circ\\text{{C}}$).
-* **Exclusion:** Detailed Mechanical Design (vessel sizing, line lists) and Control Narrative are excluded from this preliminary BoD.
+    ```markdown
+    # Preliminary Process Basis of Design (BoD)
 
-## 3. Design Capacity and Operating Conditions
-| Parameter | Value | Units | Basis |
-| **Nameplate Capacity** | 50,000 | $\\text{{MTA}}$ | User Requirement |
-| **Design Capacity** | 55,000 | $\\text{{MTA}}$ | $10\\%$ Safety Margin |
-| **Daily Production Rate** | 18.06 | $\\text{{Tons}}/\\text{{hr}}$ | 8000 $\\text{{hr}}/\\text{{yr}}$ Basis |
-| **Reaction Type** | Esterification & Transesterification | N/A | High FFA Feedstock |
-| **Typical Reactor Pressure** | Atmospheric to $5 \\text{{barg}}$ | $\\text{{barg}}$ | Preliminary Estimate |
+    ## 1. Project Overview and Problem Statement
+    This document provides the preliminary basis for the design of a new continuous Biodiesel (Fatty Acid Methyl Ester - FAME) production unit. The primary objective is to convert a high Free-Fatty-Acid (FFA) content unrefined palm oil feedstock into 50,000 MTA of Grade A Biodiesel that complies with the EN 14214 standard. The design must accommodate a site location with high humidity and adhere to a strict potable water consumption limit of 100 m³/day.
 
-## 4. Feed and Product Specifications
+    ## 2. Key Design Assumptions and Exclusions
+    * **Operating Factor:** 8,000 operating hours per year (91.3% stream factor) is assumed for continuous operation.
+    * **Process Technology:** A two-step process involving pre-treatment (esterification) and main reaction (transesterification) is assumed necessary to handle the high FFA feed.
+    * **Plant Lifespan:** The facility will be designed for a minimum operational life of 20 years.
+    * **Location:** Design conditions will assume a tropical/high-humidity environment (ambient temperature up to 40°C, RH >90%).
+    * **Exclusions:** This preliminary BoD excludes detailed mechanical design, civil/structural design, P&IDs, control narratives, and detailed cost estimation.
 
-### Feed Specification (Unrefined Palm Oil)
-* **FFA Content (Max):** $4.5 \\text{{wt}}\\%$
-* **Moisture Content (Max):** $0.5 \\text{{wt}}\\%$
-* **Impurity Basis:** $1.0 \\text{{wt}}\\%$ (Maximum)
+    ## 3. Design Capacity and Operating Conditions
+    | Parameter                 | Value                               | Units      | Basis                                   |
+    | ------------------------- | ----------------------------------- | ---------- | --------------------------------------- |
+    | **Nameplate Capacity** | 50,000                              | MTA        | User Requirement                        |
+    | **Design Capacity** | 55,000                              | MTA        | 10% Design Margin                       |
+    | **Hourly Production Rate** | 6,875                               | kg/hr      | Based on 8,000 operating hours per year |
+    | **Reaction Type** | Acid Esterification & Base Transesterification | N/A        | High FFA Feedstock                      |
+    | **Typical Reactor Pressure**| Atmospheric to 5 barg               | barg       | Preliminary Estimate                    |
+    | **Typical Reactor Temp.** | 60 - 150 °C                           | °C         | Preliminary Estimate                    |
 
-### Product Specification (Grade A Biodiesel - FAME)
-* **Target Standard:** EN 14214
-* **Methyl Ester Content (Min):** $96.5 \\text{{wt}}\\%$
-* **Glycerol (Total) (Max):** $0.25 \\text{{wt}}\\%$
-* **Water Content (Max):** $500 \\text{{ppm}}$
+    ## 4. Feed and Product Specifications
 
-## 5. Preliminary Utility Summary
-* **Potable Water:** Max $100 \\text{{m}}^3/\\text{{day}}$ (Constraint - Will prioritize air/refrigeration cooling over water cooling).
-* **Process Water:** De-mineralized (DM) water required for washing and catalyst preparation. Source to be confirmed (e.g., reverse osmosis plant).
-* **Steam:** Low-pressure steam ($5 \\text{{barg}}$) required for heating reactors and distillation columns.
-* **Electricity:** $415\\text{{V}}/\\text{{3-phase}}/\\text{{50Hz}}$ is the design standard.
+    ### Feed Specification (Unrefined Palm Oil)
+    * **FFA Content (Max):** 4.5 wt%
+    * **Moisture Content (Max):** 0.5 wt% (Assumed standard)
+    * **Impurities (Max):** 1.0 wt% (Assumed standard)
 
-## 6. Environmental and Regulatory Criteria
-* **Air Emissions:** Compliance with national ambient air quality standards and all local permitting regulations. Thermal oxidizer/scrubber for methanol and volatile organic compounds ($\\text{{VOC}}$) abatement to be included.
-* **Wastewater:** All process wastewater streams (e.g., from washing) will be routed to an on-site wastewater treatment plant before discharge or recycle to meet regulatory discharge limits.
-* **Site Constraint:** Strict adherence to $100 \\text{{m}}^3/\\text{{day}}$ maximum potable water consumption is mandatory.
+    ### Product Specification (Grade A Biodiesel - FAME)
+    * **Target Standard:** EN 14214
+    * **Methyl Ester Content (Min):** 96.5 wt%
+    * **Total Glycerol (Max):** 0.25 wt%
+    * **Water Content (Max):** 500 ppm
 
-## 7. Process Selection Rationale (High-Level)
-The high FFA content mandates a two-step approach: **Acid-catalyzed Esterification** (to reduce FFA to $<1\\%$) followed by **Alkali-catalyzed Transesterification** (for the bulk reaction). This is a robust, commercially proven pathway for multi-feedstock biodiesel plants.
+    ## 5. Preliminary Utility Summary
+    * **Potable Water:** Maximum 100 m³/day (Critical Constraint). Design will prioritize air cooling and process water recycling.
+    * **Process Water:** De-mineralized (DM) water required for product washing. An on-site reverse osmosis (RO) plant is assumed.
+    * **Steam:** Low-pressure (LP) steam (~5 barg) required for heating reactors and distillation columns.
+    * **Electricity:** 415V / 3-phase / 50Hz standard is assumed.
+    * **Instrument Air:** Standard plant instrument air supply required.
 
-## 8. Preliminary Material of Construction (MoC) Basis
-* **General Service:** Carbon Steel ($\\text{{CS}}$) for non-corrosive services (e.g., storage, utilities).
-* **Reaction/Acid Service:** $304\\text{{L}}$ or $316\\text{{L}}$ Stainless Steel ($\\text{{SS}}$) required for high-purity product areas, and any equipment handling the acid-catalyzed stream.
-* **Gaskets/Seals:** Viton or PTFE for all hydrocarbon services.
-```
+    ## 6. Environmental and Regulatory Criteria
+    * **Air Emissions:** Vent streams containing methanol and other volatile organic compounds (VOCs) will be routed to a thermal oxidizer or scrubber system to comply with local air quality regulations.
+    * **Wastewater:** All process wastewater (e.g., from washing) will be directed to an on-site wastewater treatment plant (WWTP) to meet regulatory discharge limits before being discharged or recycled.
+    * **Site Constraint:** The design must strictly adhere to the 100 m³/day maximum potable water consumption limit.
+
+    ## 7. Process Selection Rationale (High-Level)
+    The high FFA content of the palm oil feed makes a single-step transesterification process unfeasible due to soap formation. Therefore, a two-step approach is selected as a robust, commercially proven pathway. The first step, **Acid-catalyzed Esterification**, will convert FFAs to esters, reducing FFA content to <1%. The second step, **Alkali-catalyzed Transesterification**, will convert the remaining triglycerides to FAME.
+
+    ## 8. Preliminary Material of Construction (MoC) Basis
+    * **General Service:** Carbon Steel (CS) for non-corrosive services (e.g., crude oil storage, utilities).
+    * **Reaction/Acid Service:** Stainless Steel (304L or 316L) is required for reactors, distillation columns, and any equipment in contact with the acid catalyst or high-purity product.
+    * **Gaskets/Seals:** Viton or PTFE for all process streams containing methanol or biodiesel.
+    ```
+
+-----
+
+**Your Task:** Based on the user's `detailed_concept` and `problem_statement`, generate ONLY the valid Markdown document that precisely follows the structure and rules defined above, **not in code block**.
     """
     
     # User-specific context for HumanMessage
