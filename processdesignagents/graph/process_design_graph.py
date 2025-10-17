@@ -12,6 +12,11 @@ import os
 from dotenv import load_dotenv
 
 from processdesignagents.default_config import DEFAULT_CONNFIG
+from processdesignagents.agents.utils.json_tools import (
+    convert_streams_json_to_markdown,
+    convert_equipment_json_to_markdown,
+    convert_risk_json_to_markdown,
+)
 from .setup import GraphSetup
 from .propagator import Propagator
 from langgraph.checkpoint.memory import MemorySaver
@@ -202,15 +207,29 @@ class ProcessDesignGraph:
             json.dump(self.log_state_dict, f, indent=4)
         
     def _write_markdown_report(self, final_state: Dict[str, Any], filename: str) -> None:
+        stream_markdown = ""
+        hmb_markdown = ""
+        equipment_markdown = ""
+        if final_state.get("basic_stream_data"):
+            stream_markdown = convert_streams_json_to_markdown(final_state["basic_stream_data"])
+        if final_state.get("basic_hmb_results"):
+            hmb_markdown = convert_streams_json_to_markdown(final_state["basic_hmb_results"])
+        if final_state.get("basic_equipment_template"):
+            equipment_markdown = convert_equipment_json_to_markdown(final_state["basic_equipment_template"])
+        safety_markdown = ""
+        if final_state.get("safety_risk_analyst_report"):
+            safety_markdown = convert_risk_json_to_markdown(final_state["safety_risk_analyst_report"])
+
         sections = [
             ("Problem Statement", final_state.get("problem_statement", "")),
             ("Process Requirements", final_state.get("requirements", "")),
             ("Concept Detail", final_state.get("selected_concept_details", "")),
             ("Design Basis", final_state.get("design_basis", "")),
+            # ("Stream Data", stream_markdown or final_state.get("basic_stream_data", "")),
             ("Basic Process Flow Diagram", final_state.get("basic_pfd", "")),
-            ("Heat & Material Balance", final_state.get("basic_hmb_results", "")),
-            ("Equipment Summary", final_state.get("basic_equipment_template", "")),
-            ("Safety & Risk Assessment", final_state.get("safety_risk_analyst_report", "")),
+            ("Heat & Material Balance", hmb_markdown or final_state.get("basic_hmb_results", "")),
+            ("Equipment Summary", equipment_markdown or final_state.get("basic_equipment_template", "")),
+            ("Safety & Risk Assessment", safety_markdown or final_state.get("safety_risk_analyst_report", "")),
             ("Project Manager Report", final_state.get("project_manager_report", "")),
         ]
 

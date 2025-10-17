@@ -12,6 +12,12 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
+from processdesignagents.agents.utils.json_tools import (
+    convert_streams_json_to_markdown,
+    convert_equipment_json_to_markdown,
+    convert_risk_json_to_markdown,
+    extract_first_json_document,
+)
 
 load_dotenv()
 
@@ -35,24 +41,62 @@ def create_safety_risk_analyst(llm):
             equipment_json = json.dumps(equipment_json, indent=2)
         if not isinstance(design_basis_markdown, str):
             design_basis_markdown = str(design_basis_markdown)
+        sanitized_stream_json, stream_payload = extract_first_json_document(stream_data) if stream_data else ("", None)
+        sanitized_equipment_json, equipment_payload = extract_first_json_document(equipment_json) if equipment_json else ("", None)
+
+        if stream_payload is None:
+            raise ValueError("Safety analyst requires H&MB JSON from the stream estimator.")
+        if equipment_payload is None:
+            raise ValueError("Safety analyst requires equipment JSON from the sizing workflow.")
+
+        stream_json_formatted = json.dumps(stream_payload, ensure_ascii=False, indent=2)
+        equipment_json_formatted = json.dumps(equipment_payload, ensure_ascii=False, indent=2)
+
+        stream_markdown = convert_streams_json_to_markdown(sanitized_stream_json)
+        equipment_markdown = convert_equipment_json_to_markdown(sanitized_equipment_json)
+
         base_prompt = safety_risk_prompt(
             requirements_markdown,
             design_basis_markdown,
             basic_pfd_markdown,
-            stream_data,
-            equipment_json,
+            stream_json_formatted,
+            stream_markdown,
+            equipment_json_formatted,
+            equipment_markdown,
         )
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         chain = prompt | llm
-        response = chain.invoke({"messages": list(state.get("messages", []))})
-        risk_markdown = (
-            response.content if isinstance(response.content, str) else str(response.content)
-        ).strip()
+
+        is_done = False
+        try_count = 0
+        sanitized_output = ""
+        response = None
+        while not is_done:
+            response = chain.invoke({"messages": list(state.get("messages", []))})
+            raw_output = (
+                response.content if isinstance(response.content, str) else str(response.content)
+            ).strip()
+            sanitized_output, payload = extract_first_json_document(raw_output)
+            hazards = None
+            if isinstance(payload, dict):
+                hazards = payload.get("hazards")
+            elif isinstance(payload, list):
+                hazards = payload
+            has_hazards = isinstance(hazards, list) and len(hazards) > 0
+            is_done = has_hazards
+            try_count += 1
+            if not is_done:
+                print("- Failed to generate safety assessment. Retrying...", flush=True)
+                if try_count > 10:
+                    print("+ Max try count reached.", flush=True)
+                    exit(-1)
+
+        risk_markdown = convert_risk_json_to_markdown(sanitized_output)
         print(risk_markdown, flush=True)
         return {
-            "safety_risk_analyst_report": risk_markdown,
-            "messages": [response],
+            "safety_risk_analyst_report": sanitized_output,
+            "messages": [response] if response else [],
         }
 
     return safety_risk_analyst
@@ -62,106 +106,63 @@ def safety_risk_prompt(
     process_requirement: str,
     design_basis_markdown: str,
     basic_pfd_markdown: str,
-    stream_data: str,
-    equipment_data: str,
+    stream_data_json: str,
+    stream_data_markdown: str,
+    equipment_data_json: str,
+    equipment_data_markdown: str,
 ) -> ChatPromptTemplate:
     system_content = """
-# ROLE
-You are a Certified Process Safety Professional (CPSP) with 20 years of experience facilitating Hazard and Operability (HAZOP) studies for the chemical industry.
+You are a **Certified Process Safety Professional (CPSP)** with 20 years of experience facilitating Hazard and Operability (HAZOP) studies for the chemical industry.
 
-# TASK
-Conduct a preliminary, HAZOP-style risk assessment based on the provided basic process description, simulated stream conditions, and operational constraints. Your analysis must identify 3-5 critical process hazards, assess their risks, and propose actionable mitigations. The final output must be a Markdown report.
+**Context:**
 
-# INSTRUCTIONS
-- Start by scanning the process overview and stream/equipment data to map each major unit operation and its feed/product streams.
-- For every unit, enumerate credible deviations (flow, temperature, pressure, composition) using standard HAZOP guide words and link them to potential causes.
-- Quantify severity and likelihood on the 1–5 scale using the provided operating envelopes and requirements; show your reasoning in brief notes.
-- Propose mitigations that directly address the identified causes or consequences and cross-reference existing safeguards where applicable.
-- Ensure each hazard references the specific stream IDs, equipment tags, or operating conditions involved.
-- Finish with an overall risk conclusion that reconciles the individual findings and highlights any required follow-up actions or confirmations.
+  * You are given structured `DESIGN_DOCUMENTS` covering the process narrative, stream inventory, and equipment list.
+  * Your task is to produce a preliminary HAZOP-style assessment highlighting the most critical hazards.
+  * Stakeholders require the results as a JSON dossier that can be tracked programmatically.
 
-# CRITICALS
-- **MUST** follow the MARKDOWN TEMPLATE strictly.
-- **Output ONLY a valid markdown formatting text. Do not use code block.**
-- **Only output the safety and risk assessment. Nothing else.**
+**Instructions:**
 
-# MARKDOWN TEMPLATE:
-Your Markdown must follow this structure exactly:
-```
-## Hazard 1: <Hazard Title>
-**Severity:** <1-5>
-**Likelihood:** <1-5>
-**Risk Score:** <integer>
+  * Review the provided information to map unit operations, stream connectivity, and operating envelopes.
+  * Identify at least three and at most five hazards covering credible deviations (e.g., loss of flow, high pressure, contamination, utility failure).
+  * For each hazard provide:
+      - `title`
+      - `severity` (integer 1–5)
+      - `likelihood` (integer 1–5)
+      - `risk_score` (severity × likelihood)
+      - `causes`, `consequences`, `mitigations`, `notes` (arrays of concise statements referencing stream IDs/equipment tags where relevant)
+  * Summarize the overall risk posture in `overall_assessment` with `risk_level` (Low | Medium | High) and `compliance_notes` (array of follow-up actions or reminders).
+  * Use `"TBD"` where data is genuinely unavailable; otherwise provide reasoned estimates.
+  * Return a single JSON object matching the schema shown below. Do **not** include code fences, comments, or explanatory prose.
 
-### Causes
-- <cause 1>
-- <cause 2>
+**Example Output:**
 
-### Consequences
-- <consequence 1>
-- <consequence 2>
+{
+  "hazards": [
+    {
+      "title": "Loss of Cooling Water Flow",
+      "severity": 3,
+      "likelihood": 3,
+      "risk_score": 9,
+      "causes": ["Cooling water control valve XV-201 fails closed", "Utility header pressure drops during maintenance"],
+      "consequences": ["Ethanol outlet > 50 °C causing vapor in downstream storage", "Potential overpressure at vent system"],
+      "mitigations": ["Install redundant cooling water pumps with automatic switchover", "Add high-temperature alarm TAH-101 with shutdown logic"],
+      "notes": ["Streams 1001/1002 and equipment E-101 impacted; verify relief design for temperature excursion."]
+    }
+  ],
+  "overall_assessment": {
+    "risk_level": "Medium",
+    "compliance_notes": [
+      "Confirm redundancy test for cooling water network before commissioning.",
+      "Finalize corrosion monitoring program for E-101 tubes."
+    ]
+  }
+}
 
-### Mitigations
-- <mitigation 1>
-- <mitigation 2>
+**Output Requirements:**
 
-### Notes
-- <brief commentary referencing streams or units>
-
-## Overall Assessment
-- Overall Risk Level: <Low | Medium | High>
-- Compliance Notes: <summary>
-```
-
-# EXAMPLE
-For a cooler that drops ethanol from 80 C to 40 C with cooling water, consider hazards such as cooling water loss leading to overheated ethanol or tube rupture causing cross-contamination, rate their severity and likelihood, and specify mitigations like temperature alarms or double isolation.
-
-# EXAMPLE MARKDOWN OUTPUT:
-```
-## Hazard 1: Loss of Cooling Water Flow
-**Severity:** 3
-**Likelihood:** 3
-**Risk Score:** 9
-
-### Causes
-- Cooling water control valve XV-201 fails closed
-- Utility header pressure drops during maintenance
-
-### Consequences
-- Ethanol outlet temperature rises above 50 degC risking vapor formation in storage
-- Potential overpressure at downstream tank vents
-
-### Mitigations
-- Install redundant control valve with automatic switchover
-- Add high-temperature alarm with interlock to divert ethanol to recycle
-
-### Notes
-- Streams 1001/1002 and equipment E-101 affected; monitor differential temperature sensors TE-101A/B.
-
-## Hazard 2: Tube Leak Introducing Water into Ethanol
-**Severity:** 4
-**Likelihood:** 2
-**Risk Score:** 8
-
-### Causes
-- Tube corrosion due to low inhibitor residual
-- Thermal cycling leading to tube expansion failure
-
-### Consequences
-- Contamination of ethanol product and potential off-spec batch
-- Water hammer in storage transfer line causing mechanical damage
-
-### Mitigations
-- Implement periodic eddy-current testing of tube bundle
-- Provide automatic isolation valves on cooling water and ethanol sides
-
-### Notes
-- Monitor hydrocarbon detectors on cooling water return stream 2002; ensure relief valve RV-101 sized for two-phase release.
-
-## Overall Assessment
-- Overall Risk Level: Medium
-- Compliance Notes: Follow up on corrosion coupon program results before commissioning.
-```
+  * All numeric ratings must be integers.
+  * Lists may be empty but should remain present.
+  * Do not wrap the JSON in code fences or add commentary outside the JSON object.
 """
     human_content = f"""
 # DATA FOR HAZOP ANALYSIS
@@ -175,11 +176,11 @@ For a cooler that drops ethanol from 80 C to 40 C with cooling water, consider h
 **BASIC PROCESS FLOW DIAGRAM (Markdown):**
 {basic_pfd_markdown}
 
-**STREAM CONDITIONS (Markdown Table):**
-{stream_data}
+**STREAM DATA (JSON):**
+{stream_data_json}
 
-**EQUIPMENT DETAILS:**
-{equipment_data}
+**EQUIPMENT DETAILS (JSON):**
+{equipment_data_json}
 
 """
 

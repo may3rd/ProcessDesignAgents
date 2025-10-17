@@ -14,7 +14,7 @@ Below is a concise reference for each agent, its inputs, outputs, and key prompt
 | Stream Data Estimator | `agents/designer/stream_data_estimator.py` | Stream template, `basic_pfd`, `design_basis`, `requirements`, concept detail | Updated stream JSON plus heat/material balance (`basic_stream_data`, `basic_hmb_results`) | Estimates temperatures, pressures, flows, and compositions. |
 | Equipment List Builder | `agents/designer/equipment_list_builder.py` | Stream table, `basic_pfd`, `design_basis`, `requirements` | `basic_equipment_template` | Lists major equipment as JSON objects ready for sizing. |
 | Equipment Sizing Agent | `agents/designer/equipment_sizing_agent.py` | Equipment template, stream table, `basic_hmb_results`, requirements, design basis | Updated equipment JSON (`basic_equipment_template`) | Uses built-in sizing tools to populate duty/size fields and notes. |
-| Safety & Risk Analyst | `agents/analysts/safety_risk_analyst.py` | `basic_pfd`, `basic_hmb_results`, `basic_equipment_template`, `requirements` | `basic_hmb_results`, `safety_risk_analyst_report` | Performs a HAZOP-style hazard assessment. |
+| Safety & Risk Analyst | `agents/analysts/safety_risk_analyst.py` | `basic_pfd`, `basic_hmb_results`, `basic_equipment_template`, `requirements` | `basic_hmb_results`, `safety_risk_analyst_report` | Performs a HAZOP-style hazard assessment (JSON dossier). |
 | Project Manager | `agents/project_manager/project_manager.py` | `requirements`, `basic_pfd`, `basic_hmb_results`, `basic_equipment_template`, `safety_risk_analyst_report` | `approval`, `project_manager_report` | Issues the final gate decision and implementation plan. |
 
 ## Tool Catalogue

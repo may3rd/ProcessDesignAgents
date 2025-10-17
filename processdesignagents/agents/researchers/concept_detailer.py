@@ -45,8 +45,8 @@ def create_concept_detailer(llm, selection_provider_getter=None):
         if not isinstance(evaluations, list) or not evaluations:
             raise ValueError("Concept detailer could not find any concept evaluations to consider.")
 
-        evaluations_markdown = convert_evaluations_json_to_markdown(sanitized_evaluations_json)
-        print(evaluations_markdown, flush=True)
+        # evaluations_markdown = convert_evaluations_json_to_markdown(sanitized_evaluations_json)
+        # print(evaluations_markdown, flush=True)
 
         concept_options = []
         for idx, evaluation in enumerate(evaluations, start=1):
@@ -87,7 +87,7 @@ def create_concept_detailer(llm, selection_provider_getter=None):
             flush=True,
         )
 
-        print("Prepared detailed concept brief.", flush=True)
+        print("* Prepared detailed concept brief...", flush=True)
         base_prompt = concept_detailer_prompt(best_evaluation, requirements_markdown)
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)

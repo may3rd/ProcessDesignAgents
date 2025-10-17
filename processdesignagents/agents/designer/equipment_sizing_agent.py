@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 
-from langchain_core.messages import ToolMessage
 from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -12,9 +11,13 @@ from langchain_core.prompts import (
 
 from dotenv import load_dotenv
 
-from processdesignagents.agents.tools import EQUIPMENT_SIZING_TOOLS
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
+from processdesignagents.agents.utils.json_tools import (
+    convert_streams_json_to_markdown,
+    convert_equipment_json_to_markdown,
+    extract_first_json_document,
+)
 
 load_dotenv()
 
@@ -29,80 +32,74 @@ def create_equipment_sizing_agent(llm):
         requirements_markdown = state.get("requirements", "")
         design_basis_markdown = state.get("design_basis", "")
         basic_pfd_markdown = state.get("basic_pfd", "")
-        basic_hmb_markdown = state.get("basic_hmb_results", "")
+        basic_hmb_json = state.get("basic_hmb_results", "")
         stream_table = state.get("basic_stream_data", "")
         equipment_table_template = state.get("basic_equipment_template", "")
 
         if not equipment_table_template.strip():
             raise ValueError("Equipment template is missing. Run the equipment list builder before sizing.")
 
+        sanitized_stream_json, stream_payload = extract_first_json_document(stream_table) if isinstance(stream_table, str) else ("", None)
+        if stream_payload is None:
+            raise ValueError("Equipment sizing agent requires stream data JSON from the estimator.")
+
+        stream_json_formatted = json.dumps(stream_payload, ensure_ascii=False, indent=2)
+        stream_table_markdown = convert_streams_json_to_markdown(sanitized_stream_json)
+
+        sanitized_equipment_template, equipment_payload = extract_first_json_document(equipment_table_template)
+        if equipment_payload is None:
+            raise ValueError("Equipment sizing agent requires equipment template JSON from the list builder.")
+        equipment_template_formatted = json.dumps(equipment_payload, ensure_ascii=False, indent=2)
+
+        sanitized_hmb_json, hmb_payload = extract_first_json_document(basic_hmb_json) if isinstance(basic_hmb_json, str) else ("", None)
+        if hmb_payload is None:
+            raise ValueError("Equipment sizing agent requires H&MB JSON from the estimator.")
+        
+        hmb_json_formatted = json.dumps(hmb_payload, ensure_ascii=False, indent=2)
+
         base_prompt = equipment_sizing_prompt(
             requirements_markdown,
             design_basis_markdown,
             basic_pfd_markdown,
-            basic_hmb_markdown,
-            stream_table,
-            equipment_table_template,
+            hmb_json_formatted,
+            stream_json_formatted,
+            stream_table_markdown,
+            equipment_template_formatted,
         )
 
-        # tool_enabled_llm = llm.bind_tools(EQUIPMENT_SIZING_TOOLS)
-        
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        conversation = prompt.format_prompt(messages=list(state.get("messages", []))).to_messages()
+        chain = prompt | llm
 
-        new_messages: list = []
-        # response = tool_enabled_llm.invoke(conversation)
-        
-        response = llm.invoke(conversation)
-        
-        # conversation.append(response)
-        # new_messages.append(response)
+        is_done = False
+        try_count = 0
+        sanitized_output = ""
+        response = None
+        while not is_done:
+            response = chain.invoke({"messages": list(state.get("messages", []))})
+            raw_output = (
+                response.content if isinstance(response.content, str) else str(response.content)
+            ).strip()
+            sanitized_output, payload = extract_first_json_document(raw_output)
+            sized_entries = None
+            if isinstance(payload, dict):
+                sized_entries = payload.get("equipment")
+            elif isinstance(payload, list):
+                sized_entries = payload
+            has_equipment = isinstance(sized_entries, list) and len(sized_entries) > 0
+            is_done = bool(has_equipment)
+            try_count += 1
+            if not is_done:
+                print("- Failed to generate sized equipment data. Retrying...", flush=True)
+                if try_count > 10:
+                    print("+ Max try count reached.", flush=True)
+                    exit(-1)
 
-        # iteration_count = 0
-        # max_iterations = 8
-
-        # while getattr(response, "tool_calls", None):
-        #     if iteration_count >= max_iterations:
-        #         guard_message = ToolMessage(
-        #             content=json.dumps({"error": "Tool iteration limit exceeded."}),
-        #             tool_call_id="equipment_sizing_guard",
-        #         )
-        #         conversation.append(guard_message)
-        #         new_messages.append(guard_message)
-        #         break
-
-        #     iteration_count += 1
-
-        #     for tool_call in response.tool_calls:
-        #         tool = _TOOL_REGISTRY.get(tool_call["name"])
-        #         if tool is None:
-        #             tool_output = {"error": f"Tool {tool_call['name']} not found."}
-        #         else:
-        #             try:
-        #                 tool_output = tool.invoke(tool_call["args"])
-        #             except Exception as exc:  # noqa: BLE001
-        #                 tool_output = {"error": str(exc)}
-        #         tool_message = ToolMessage(
-        #             content=json.dumps(tool_output),
-        #             tool_call_id=tool_call["id"],
-        #         )
-        #         conversation.append(tool_message)
-        #         new_messages.append(tool_message)
-
-        #     response = tool_enabled_llm.invoke(conversation)
-        #     conversation.append(response)
-        #     new_messages.append(response)
-
-        markdown_output = (
-            response.content if isinstance(response.content, str) else str(response.content)
-        ).strip()
-
-        print(markdown_output, flush=True)
-
+        equipment_markdown = convert_equipment_json_to_markdown(sanitized_output)
+        print(equipment_markdown, flush=True)
         return {
-            "basic_equipment_template": markdown_output,
-            "messages": new_messages,
+            "basic_equipment_template": sanitized_output,
+            "messages": [response] if response else [],
         }
 
     return equipment_sizing_agent
@@ -113,87 +110,177 @@ def equipment_sizing_prompt(
     design_basis_markdown: str,
     basic_pfd_markdown: str,
     basic_hmb_markdown: str,
-    stream_table: str,
-    equipment_table_template: str,
+    stream_data_json: str,
+    stream_data_markdown: str,
+    equipment_template_json: str,
 ) -> ChatPromptTemplate:
-    system_content = """
-# CONTEXT
-Preliminary design has produced the concept flowsheet, reconciled stream data, and an equipment list populated with placeholders. You are the first pass at quantifying duties and dimensions so that cost, schedule, and risk evaluations can progress with representative numbers.
+    system_content = f"""
+You are a **Lead Equipment Sizing Engineer** responsible for performing first-pass sizing calculations for a conceptual process design.
 
-# TARGET AUDIENCE
-- Cost estimation and project controls teams translating sizes into CAPEX and OPEX.
-- Mechanical and process engineers preparing the next level of design detail.
-- Stakeholders assessing technical feasibility and identifying high-risk equipment.
+**Context:**
 
-# ROLE
-You are the lead equipment engineer completing preliminary sizing calculations for a conceptual design.
+  * You are provided with a preliminary `EQUIPMENT_TEMPLATE` (containing placeholders), a reconciled `STREAM_DATA` table, and the overall `DESIGN_BASIS`.
+  * The project is transitioning from conceptual to preliminary engineering. Your task is to provide the first set of quantitative estimates for major equipment, a critical step for enabling cost estimation, detailed design, and risk assessment.
 
-# TASK
-Update the equipment table with quantitative estimates. Present the final results as a MARKDOWN TABLE plus brief notes.
+**Instructions:**
 
-# INSTRUCTIONS
-- For each equipment entry, verify the flowsheet context (streams, duty expectations) using the stream table and design basis before sizing.
-- Estimate the equipment sizing.
-- Replace every `<value>` placeholder in the template with a numeric estimate and unit; note any assumptions or calculation shortcuts directly in the Notes column.
-- Group equipment by type (e.g., reactors, exchangers, vessels, rotating equipment) so related items appear together.
+  * **Analyze Inputs:** Thoroughly review the `EQUIPMENT_TEMPLATE`, `STREAM_DATA`, and `DESIGN_BASIS` to understand the service, connectivity, and performance requirements for each equipment item.
+  * **Perform Sizing Calculations:** For each piece of equipment, perform preliminary sizing calculations. For example, for heat exchangers, calculate the duty, LMTD, and required area; for pumps, calculate hydraulic power.
+  * **Populate the JSON:** Replace every `<value>` placeholder in the `EQUIPMENT_TEMPLATE` with your calculated numeric estimate (including units). If a value cannot be reasonably estimated, use the string `"TBD"`.
+  * **Document Methods and Assumptions:** In the `notes` field for each item, concisely state the calculation method or key assumption (e.g., "Sized using LMTD method," "Power based on 75% efficiency"). Add any new global assumptions to the `metadata.assumptions` list.
+  * **Format Adherence:** Your final output must be a single, PURE JSON object matching the provided schema. Do not wrap the JSON in code fences or add any commentary outside of the JSON object itself.
 
-# CRITICALS
-- **MUST** return the full equipment table in markdown format.
-- **Output ONLY a valid markdown formatting text. Do not use code block.**
+-----
 
-# MARKDOWN TEMPLATE:
-```
-| Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
-| ... | ... | ... | ... | ... | ... | ... | ... | ... |
+**Example:**
 
-## Detailed Notes
-- E-101: Referenced heat_exchanger_sizing – heat duty = ... kW, heat transfer area = ... m²; assumptions ...
-- V-101: Used vessel_volume_estimate – diameter = ... m; length = ... m; orientation = ...
-```
+  * **DESIGN\_BASIS & STREAM\_DATA:**
+
+    ```json
+    {{
+      "notes": "Ethanol stream (1001) at 10,000 kg/h cools from 80°C to 40°C. Cp is 2.5 kJ/kg-K. Cooling water (2001) enters at 25°C and leaves at 35°C. Pump P-101 provides 1.5 bar of head.",
+      "streams_in": ["1001", "2001"],
+      "streams_out": ["1002", "2002"]
+    }}
+    ```
+
+  * **EQUIPMENT\_TEMPLATE:**
+
+    ```json
+    {{
+      "metadata": {{
+        "assumptions": ["Cooling water temperature rise is 10°C."]
+      }},
+      "equipment": [
+        {{
+          "id": "E-101",
+          "name": "Ethanol Cooler",
+          "type": "Shell-and-tube exchanger",
+          "streams_in": ["1001", "2001"],
+          "streams_out": ["1002", "2002"],
+          "duty_or_load": "<value>",
+          "key_parameters": ["Area: <value>", "U: <value>", "LMTD: <value>"],
+          "notes": "<value>"
+        }}
+      ]
+    }}
+    ```
+
+  * **Response:**
+
+    ```json
+    {{
+      "metadata": {{
+        "groups": [
+          {{
+            "name": "Heat Exchangers",
+            "ids": [
+              "E-101"
+            ]
+          }}
+        ],
+        "assumptions": [
+          "Cooling water temperature rise is fixed at 10°C.",
+          "Overall heat transfer coefficient (U) for shell-and-tube is assumed to be 450 W/m²-K for this service."
+        ]
+      }},
+      "equipment": [
+        {{
+          "id": "E-101",
+          "name": "Ethanol Cooler",
+          "service": "Reduce ethanol temperature prior to storage.",
+          "type": "Shell-and-tube exchanger",
+          "streams_in": [
+            "1001",
+            "2001"
+          ],
+          "streams_out": [
+            "1002",
+            "2002"
+          ],
+          "duty_or_load": "0.278 MW",
+          "key_parameters": [
+            "Area: 24.7 m²",
+            "U (Assumed): 450 W/m²-K",
+            "LMTD (Counter-current): 25.6 °C"
+          ],
+          "notes": "Sized using LMTD method. Duty calculated from ethanol stream data. Area = Q / (U * LMTD)."
+        }}
+      ]
+    }}
+    ```
+
+-----
+
+**Your Task:** Based on the provided `DESIGN_BASIS`, `BASIC PROCESS FLOW DIAGRAM`, `STREAM_DATA`, and `EQUIPMENT_TEMPLATE`, generate ONLY the valid JSON object that precisely follows the structure and rules defined above. Do not include code fences or additional narrative.
 """
 
     human_content = f"""
 # DATA FOR ANALYSIS:
 ---
-**Requirements Summary (Markdown):**
-{requirements_markdown}
-
 **Design Basis (Markdown):**
 {design_basis_markdown}
 
 **Basic Process Flow Diagram (Markdown):**
 {basic_pfd_markdown}
 
-**Preliminary H&MB (Markdown/Table):**
+**Preliminary H&MB (Markdown Overview):**
 {basic_hmb_markdown}
 
-**Equipment Table Template (Markdown):**
-{equipment_table_template}
-
-**STEAM TABLE:**
-{stream_table}
+**Equipment Template (JSON):**
+{equipment_template_json}
 
 ---
 
 # EXAMPLE INPUT:
 For a single exchanger that cools ethanol from 80 C to 40 C with cooling water, estimate the duty from the heat balance, size the heat transfer area using the heat_exchanger_sizing tool, and record cooling water inlet/outlet temperatures along with any approach temperature assumptions in the notes.
 
-# EXPECTED MARKDOWN OUTPUT:
+# EXPECTED JSON OUTPUT:
 ```
-## Equipment Table
-
-### Heat Exchanger
-| Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
-| E-101 | Ethanol Cooler | Reduce ethanol temperature | Shell-and-tube exchanger | 1001, 2001 | 1002, 2002 | 0.28 MW | U=450 W/m2-K; Area=120 m2; LMTD=25 degC | Sized via heat_exchanger_sizing; 1-2 pass configuration |
-
-## Pumps
-
-| Equipment ID | Name | Service | Type | Streams In | Streams Out | Duty / Load | Key Parameters | Notes |
-| P-101 | Product Pump | Transfer cooled ethanol | Centrifugal pump | 1002 | 1003 | 45 kW | Flow=10,000 kg/h; Head=18 m; Eff=0.7 | Pump_sizing assumed density 820 kg/m3 |
-
-## Detailed Notes
-- E-101: heat_exchanger_sizing(duty=2.8e5 W, U=450 W/m2-K, LMTD=25 degC) -> area 24.9 m2; conservatively rounded to 30 m2 bundle with fouling factor.
-- P-101: pump_sizing(flow=10,000 kg/h, head=18 m) -> brake power 42 kW, rounded to 45 kW with 10% contingency.
+{{
+  "metadata": {{
+    "groups": [
+      {{ "name": "Heat Exchangers", "ids": ["E-101"] }},
+      {{ "name": "Pumps", "ids": ["P-101"] }}
+    ],
+    "assumptions": [
+      "Cooling water rise fixed at 10°C.",
+      "Pump efficiency assumed 75%."
+    ]
+  }},
+  "equipment": [
+    {{
+      "id": "E-101",
+      "name": "Ethanol Cooler",
+      "service": "Reduce ethanol temperature",
+      "type": "Shell-and-tube exchanger",
+      "streams_in": ["1001", "2001"],
+      "streams_out": ["1002", "2002"],
+      "duty_or_load": "0.28 MW",
+      "key_parameters": [
+        "Area: 120 m2",
+        "U: 450 W/m2-K",
+        "LMTD: 25 °C"
+      ],
+      "notes": "Sized via heat_exchanger_sizing with 10% fouling allowance."
+    }},
+    {{
+      "id": "P-101",
+      "name": "Product Pump",
+      "service": "Transfer cooled ethanol",
+      "type": "Centrifugal pump",
+      "streams_in": ["1002"],
+      "streams_out": ["1003"],
+      "duty_or_load": "45 kW",
+      "key_parameters": [
+        "Flow: 10,000 kg/h",
+        "Head: 18 m",
+        "Efficiency: 0.75"
+      ],
+      "notes": "pump_sizing(flow=10000 kg/h, head=18 m) -> brake power 42 kW, rounded to 45 kW with contingency."
+    }}
+  ]
+}}
 ```
 """
 
@@ -209,6 +296,3 @@ For a single exchanger that cools ethanol from 80 C to 40 C with cooling water, 
     ]
 
     return ChatPromptTemplate.from_messages(messages)
-
-
-_TOOL_REGISTRY = {tool.name: tool for tool in EQUIPMENT_SIZING_TOOLS}

@@ -24,6 +24,11 @@ from rich.rule import Rule
 from processdesignagents.graph.process_design_graph import ProcessDesignGraph
 from processdesignagents.default_config import DEFAULT_CONNFIG
 from cli.utils import *
+from processdesignagents.agents.utils.json_tools import (
+    convert_streams_json_to_markdown,
+    convert_equipment_json_to_markdown,
+    convert_risk_json_to_markdown,
+)
 
 console = Console()
 
@@ -88,6 +93,12 @@ class MessageBuffer:
             
     def update_report_section(self, section, report):
         if section in self.report_sections:
+            if section in {"basic_stream_data", "basic_hmb_results"} and report:
+                report = convert_streams_json_to_markdown(report)
+            elif section == "basic_equipment_template" and report:
+                report = convert_equipment_json_to_markdown(report)
+            elif section == "safety_risk_analyst_report" and report:
+                report = convert_risk_json_to_markdown(report)
             self.report_sections[section] = report
             self._update_current_report()
             

@@ -12,6 +12,11 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
+from processdesignagents.agents.utils.json_tools import (
+    convert_streams_json_to_markdown,
+    convert_equipment_json_to_markdown,
+    convert_risk_json_to_markdown,
+)
 
 load_dotenv()
 
@@ -39,13 +44,17 @@ def create_project_manager(llm):
         if not isinstance(safety_report, str):
             safety_report = str(safety_report)
 
+        stream_markdown = convert_streams_json_to_markdown(validation_markdown) if validation_markdown else ""
+        equipment_markdown = convert_equipment_json_to_markdown(equipment_table) if equipment_table else ""
+        safety_markdown = convert_risk_json_to_markdown(safety_report) if safety_report else ""
+
         base_prompt = project_manager_prompt(
             requirements_markdown,
             design_basis,
             basic_pfd_markdown,
-            validation_markdown,
-            equipment_table,
-            safety_report,
+            stream_markdown or validation_markdown,
+            equipment_markdown or equipment_table,
+            safety_markdown or safety_report,
         )
 
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]

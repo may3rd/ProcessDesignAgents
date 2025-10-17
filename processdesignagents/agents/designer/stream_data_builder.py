@@ -10,13 +10,17 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
+from processdesignagents.agents.utils.json_tools import (
+    extract_first_json_document,
+    convert_streams_json_to_markdown,
+)
 
 load_dotenv()
 
 
 def create_stream_data_builder(llm):
     def stream_data_builder(state: DesignState) -> DesignState:
-        """Stream Data Builder: Produces a transposed markdown table template for process streams."""
+        """Stream Data Builder: Produces a JSON stream inventory template for process streams."""
         print("\n# Stream Data Template", flush=True)
         
         llm.temperature = 0.7
@@ -38,20 +42,24 @@ def create_stream_data_builder(llm):
         
         is_done = False
         try_count = 0
+        sanitized_json = ""
         while not is_done:
             response = chain.invoke({"messages": list(state.get("messages", []))})
-            table_markdown = (
+            raw_output = (
                 response.content if isinstance(response.content, str) else str(response.content)
             ).strip()
-            is_done = len(table_markdown) > 100
+            sanitized_json, payload = extract_first_json_document(raw_output)
+            has_streams = isinstance(payload, dict) and isinstance(payload.get("streams"), list)
+            is_done = bool(has_streams)
             try_count += 1
             if try_count > 10:
                 print("+ Maximum try is reach.")
                 exit(-1)
 
-        print(table_markdown, flush=True)
+        stream_markdown = convert_streams_json_to_markdown(sanitized_json)
+        print(stream_markdown, flush=True)
         return {
-            "basic_stream_data": table_markdown,
+            "basic_stream_data": sanitized_json,
             "messages": [response],
         }
 
@@ -70,16 +78,27 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
 **Context:**
 
   * You are provided with the approved conceptual design documents (PFD, Design Basis, Requirements).
-  * Your task is to create the canonical stream summary. This document is critical as it serves as the single source of truth for downstream teams who will perform detailed simulations, size equipment, and verify the process flow paths.
+  * Your task is to create the canonical stream summary as a structured JSON payload. This document is critical as it serves as the single source of truth for downstream teams who will perform detailed simulations, size equipment, and verify the process flow paths.
   * Every process, utility, recycle, bypass, and vent stream must be captured to ensure a complete and accurate basis for the next project phase.
 
 **Instructions:**
 
   * **Synthesize Inputs:** Review the provided `DESIGN_DOCUMENTS` to identify and extract every stream mentioned or implied by the process flow.
   * **Assign IDs:** Preserve any existing stream identifiers. For streams without an ID, assign a new sequential number (e.g., 1001, 1002 for process; 2001, 2002 for utilities).
-  * **Populate Table:** Create a single, transposed Markdown table where columns represent individual streams and rows represent their attributes.
-  * **Use Placeholders:** For all numeric data that will be determined later by simulation (e.g., flow rates, compositions), use the format `<value>` but be sure to include the units (e.g., `<8500 kg/h>`). For known design values (e.g., temperatures from the design basis), enter the number directly.
-  * **Format Adherence:** Your final output must be a PURE Markdown document containing only the stream table. Do not add any introductory text, concluding remarks, or formatting (like code blocks) that is not part of the specified template.
+  * **Build JSON Structure:** Return a single JSON object with the following schema:
+    - Top-level keys: `"metadata"` and `"streams"`.
+    - `"metadata"` must include:
+        * `"property_order"`: ordered list of objects `{{ "key": "...", "label": "...", "units": "..." }}` describing each numeric/thermodynamic property column.
+        * `"component_basis"`: text such as `"mol %"` or `"mass %"`.
+        * `"component_order"`: ordered list of component names as they should appear in tabular form.
+        * `"assumptions"`: list of project-wide notes or `[]` if none.
+    - Each entry in `"streams"` must include:
+        * `"id"`, `"name"`, `"description"`, `"from"`, `"to"`, `"phase"`.
+        * `"properties"`: an object keyed by the same identifiers used in `"property_order"` with string values (include units using `<value>` placeholders where unknown, e.g., `"<8500 kg/h>"`).
+        * `"components"`: an object mapping component names to their percentage/fraction strings (placeholders allowed).
+        * `"notes"`: brief text capturing unique considerations for that stream.
+  * **Use Placeholders:** For numeric data that requires later calculation, use the `<value>` format and include the units inside the placeholder. For known design values, record the number directly.
+  * **Output Discipline:** Respond with a single valid JSON object using double quotes and UTF-8 safe characters. Do NOT wrap the response in Markdown, code fences, or provide commentary.
 
 -----
 
@@ -93,25 +112,59 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
 
   * **Response:**
 
-    ```markdown
-    | Attribute          | 1001                    | 1002                       | 2001                   | 2002                   |
-    | ------------------ | ----------------------- | -------------------------- | ---------------------- | ---------------------- |
-    | Name / Description | Hot Ethanol Feed        | Cooled Ethanol Product     | Cooling Water Supply   | Cooling Water Return   |
-    | From               | Upstream Blender        | E-101 Outlet               | Cooling Water Header   | E-101                  |
-    | To                 | E-101 Shell Inlet       | Storage Tank via P-101     | E-101 Tube Inlet       | Cooling Water Header   |
-    | Phase              | Liquid                  | Liquid                     | Liquid                 | Liquid                 |
-    | Mass Flow [kg/h]   | 10000                   | 10000                      | <24000>                | <24000>                |
-    | Temperature [°C]   | 80                      | 40                         | 25                     | 35                     |
-    | Pressure [barg]    | <1.5>                   | <1.3>                      | <2.5>                  | <2.3>                  |
-    | **Key Components** | **(mol %)** | **(mol %)** | **(mol %)** | **(mol %)** |
-    | Ethanol (C₂H₆O)    | 95                      | 95                         | 0                      | 0                      |
-    | Water (H₂O)        | 5                       | 5                          | 100                    | 100                    |
-    | Notes              | Tie-in from upstream    | To fixed-roof storage tank | From utility system    | Return to utility system |
-    ```
+    {{
+      "metadata": {{
+        "property_order": [
+          {{"key": "mass_flow", "label": "Mass Flow", "units": "kg/h"}},
+          {{"key": "temperature", "label": "Temperature", "units": "°C"}},
+          {{"key": "pressure", "label": "Pressure", "units": "barg"}}
+        ],
+        "component_basis": "mol %",
+        "component_order": ["Ethanol (C₂H₆O)", "Water (H₂O)"],
+        "assumptions": []
+      }},
+      "streams": [
+        {{
+          "id": "1001",
+          "name": "Hot Ethanol Feed",
+          "description": "Feed entering exchanger E-101 shell side",
+          "from": "Upstream Blender",
+          "to": "E-101 Shell Inlet",
+          "phase": "Liquid",
+          "properties": {{
+            "mass_flow": "10000",
+            "temperature": "80",
+            "pressure": "<1.5>"
+          }},
+          "components": {{
+            "Ethanol (C₂H₆O)": "95",
+            "Water (H₂O)": "5"
+          }},
+          "notes": "Tie-in from upstream blender."
+        }},
+        {{
+          "id": "2001",
+          "name": "Cooling Water Supply",
+          "description": "Utility water to exchanger tubes",
+          "from": "Cooling Water Header",
+          "to": "E-101 Tube Inlet",
+          "phase": "Liquid",
+          "properties": {{
+            "mass_flow": "<24000 kg/h>",
+            "temperature": "25",
+            "pressure": "<2.5>"
+          }},
+          "components": {{
+            "Water (H₂O)": "100"
+          }},
+          "notes": "Return stream 2002 closes utility loop."
+        }}
+      ]
+    }}
 
 -----
 
-**Your Task:** Based on the provided `DESIGN_DOCUMENTS`, generate ONLY the valid Markdown stream table that precisely follows the structure and rules defined above, **not in code block**.
+**Your Task:** Based on the provided `DESIGN_DOCUMENTS`, generate ONLY the JSON object described above. Do not include code fences or additional narrative.
 """
 
     human_content = f"""

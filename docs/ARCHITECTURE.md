@@ -19,7 +19,7 @@ Equipment Sizing → Safety & Risk → Project Manager
 | `basic_stream_data` | Stream inventory JSON | Stream Data Builder / Stream Data Estimator |
 | `basic_hmb_results` | Heat & material balance JSON payload | Stream Data Estimator |
 | `basic_equipment_template` | Equipment catalogue JSON with sizing data | Equipment List Builder & Equipment Sizing Agent |
-| `safety_risk_analyst_report` | HAZOP-style risk assessment | Safety & Risk Analyst |
+| `safety_risk_analyst_report` | HAZOP-style risk assessment JSON | Safety & Risk Analyst |
 | `project_manager_report` | Final gate approval | Project Manager |
 
 ## Message Flow
