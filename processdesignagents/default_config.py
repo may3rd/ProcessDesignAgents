@@ -9,8 +9,8 @@ def load_config():
         "backend_url": "https://openrouter.ai/api/v1",
         "llm_provider": "openrouter",
         "online_tools": True,
-        "data_dir": "/Users/yluo/Documents/Code/ScAI/FR1-data",
-        "data_cache_dir": "./dataflows/data_cache",
+        "data_dir": "/Users/maetee/Documents/Code/ScAI/FR1-data",
+        "data_cache_dir": "./sizing_tools/data_cache",
         "results_dir": "./results",
         "save_dir": "./reports",
         "max_debate_rounds": 3,
@@ -21,10 +21,10 @@ def load_config():
 DEFAULT_CONNFIG = {
     "project_dir": os.path.abspath(os.path.join(os.path.dirname(__file__), ".")),
     "results_dir": os.getenv("RESULTS_DIR", "./results"),
-    "data_dir": "/Users/yluo/Documents/Code/ScAI/FR1-data",
+    "data_dir": "/Users/maetee/Documents/Code/ScAI/FR1-data",
     "data_cache_dir": os.path.join(
         os.path.abspath(os.path.join(os.path.dirname(__file__), ".")),
-        "dataflows/data_cache",
+        "sizing_tools/data_cache",
     ),
     # LLM settings
     "llm_provider": "openrouter",
@@ -40,5 +40,16 @@ DEFAULT_CONNFIG = {
     # Tool settings
     "online_tools": True,
     "property_data_source": "pubchem",
-    "simulator": "dwsim"
+    "simulator": "dwsim",
+    # Category-level configuration (default for all tools in category)
+    "data_sizing": {
+        "heat_exchanger": "preliminary",
+        "pressurized_vessel": "preliminary",
+        "pump": "preliminary"
+    },
+    # Tool-level configuration (takes precedence over category-level)
+    "tool_sizing": {
+        # Example: "basic_heat_exchanger_sizing": "default",
+        # Example: "basic_pressurized_vessel_sizing": "default",
+    },
 }

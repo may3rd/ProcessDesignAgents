@@ -14,6 +14,11 @@ from langchain_core.tools import tool
 
 from dotenv import load_dotenv
 
+# Tools
+from processdesignagents.agents.utils.agent_utils import (
+    size_heat_exchanger_basic
+)
+
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.json_tools import (
@@ -548,16 +553,16 @@ def estimate_molecular_weight(stream: Dict[str, Any]) -> float:
 # ============================================================================
 
 def create_equipment_sizing_agent(llm):
-    """Create enhanced equipment sizing agent with tool integration"""
-    
-    # Bind tools to LLM
-    tools = [size_heat_exchanger, size_pump, size_vessel, size_compressor]
-    llm.temperature = 0.7
-    llm_with_tools = llm.bind_tools(tools)
-    
     def equipment_sizing_agent(state: DesignState) -> DesignState:
         """Equipment Sizing Agent with automatic tool calling"""
         print("\n# Equipment Sizing with Tool Integration", flush=True)
+        
+        # Bind tools to LLM
+        tools = [
+            size_heat_exchanger_basic
+        ]
+        llm.temperature = 0.0
+        llm_with_tools = llm.bind_tools(tools)
         
         # Extract state data
         requirements_markdown = state.get("requirements", "")
