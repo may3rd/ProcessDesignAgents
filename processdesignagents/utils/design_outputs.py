@@ -11,9 +11,9 @@ def _safe_get_numeric(source: Any, key: str, default: float) -> float:
     return float(default)
 
 
-def generate_hmb(basic_pfd: Any, basic_hmb_results: Any) -> pd.DataFrame:
+def generate_hmb(basic_pfd: Any, stream_list_results: Any) -> pd.DataFrame:
     """Generate a simple Heat and Material Balance table from markdown inputs."""
-    optimized_yield = _safe_get_numeric(basic_hmb_results, "optimized_yield", 90.8)
+    optimized_yield = _safe_get_numeric(stream_list_results, "optimized_yield", 90.8)
 
     hmb_data = {
         "Stream": [
@@ -30,12 +30,12 @@ def generate_hmb(basic_pfd: Any, basic_hmb_results: Any) -> pd.DataFrame:
     return pd.DataFrame(hmb_data)
 
 
-def generate_pfd(basic_pfd: Any, basic_hmb_results: Any) -> graphviz.Digraph:
+def generate_pfd(basic_pfd: Any, stream_list_results: Any) -> graphviz.Digraph:
     """Generate a placeholder PFD graph using available markdown descriptions."""
     dot = graphviz.Digraph(comment="Preliminary PFD")
     dot.node("Feed", "Feed Stream\n1000 kg/h")
     dot.node("Process", "Process Block\nDerived from Basic PFD")
-    yield_percent = _safe_get_numeric(basic_hmb_results, "optimized_yield", 90.8)
+    yield_percent = _safe_get_numeric(stream_list_results, "optimized_yield", 90.8)
     dot.node("Product", f"Product Stream\nYield {yield_percent:.1f}%")
     dot.node("Waste", "Byproducts")
     dot.edge("Feed", "Process")

@@ -4,7 +4,7 @@ ProcessDesignAgents uses a `langgraph` state machine to orchestrate a sequence o
 
 ```
 Problem Statement → Requirements Analyst → Concept Detailer → Design Basis →
-Basic PFD Designer → Stream Data Builder → Stream Data Estimator → Equipment List →
+Basic PFD Designer → Equipments & Streams List Builder → Stream Data Estimator → Equipment List →
 Equipment Sizing → Safety & Risk → Project Manager
 ```
 
@@ -16,9 +16,10 @@ Equipment Sizing → Safety & Risk → Project Manager
 | `selected_concept_details`, `selected_concept_name` | Detailed concept brief and name | Concept Detailer |
 | `design_basis` | Markdown design basis for sizing/validation | Design Basis Analyst |
 | `basic_pfd` | Conceptual flowsheet narrative | Basic PFD Designer |
-| `basic_stream_data` | Stream inventory JSON | Stream Data Builder / Stream Data Estimator |
-| `basic_hmb_results` | Heat & material balance JSON payload | Stream Data Estimator |
-| `basic_equipment_template` | Equipment catalogue JSON with sizing data | Equipment List Builder & Equipment Sizing Agent |
+| `stream_list_template` | Stream inventory JSON template | Equipments & Streams List Builder |
+| `stream_list_results` | Heat & material balance JSON payload | Stream Data Estimator |
+| `equipment_list_template` | Equipment catalogue JSON with placeholders | Equipment List Builder |
+| `equipment_list_results` | Sized equipment catalogue JSON | Equipment Sizing Agent |
 | `safety_risk_analyst_report` | HAZOP-style risk assessment JSON | Safety & Risk Analyst |
 | `project_manager_report` | Final gate approval | Project Manager |
 

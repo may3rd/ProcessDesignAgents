@@ -31,10 +31,10 @@ def create_equipment_list_builder(llm):
         basic_pfd_markdown = state.get("basic_pfd", "")
         design_basis_markdown = state.get("design_basis", "")
         requirements_markdown = state.get("requirements", "")
-        stream_table = state.get("basic_hmb_results", "")
+        stream_table = state.get("stream_list_results", "")
         sanitized_stream_json, stream_payload = extract_first_json_document(stream_table) if isinstance(stream_table, str) else ("", None)
         if stream_payload is None:
-            raise ValueError("Equipment list builder requires stream data JSON from the estimator.")
+            raise ValueError("Equipment list builder requires stream results JSON from the estimator.")
         formatted_stream_json = json.dumps(stream_payload, ensure_ascii=False, indent=2)
         stream_table_markdown = convert_streams_json_to_markdown(sanitized_stream_json)
 
@@ -77,7 +77,7 @@ def create_equipment_list_builder(llm):
         print(equipment_markdown, flush=True)
 
         return {
-            "basic_equipment_template": sanitized_output,
+            "equipment_list_template": sanitized_output,
             "messages": [response] if response else [],
         }
 
@@ -158,7 +158,7 @@ You are a **Process Equipment Engineer** responsible for creating the Master Equ
             "2002"
           ],
           "duty_or_load": "<0.28 MW>",
-          "key_parameters": [
+          "sizing_parameters": [
             "Area: <120 m²>",
             "U-value: <450 W/m²-K>"
           ],
@@ -176,7 +176,7 @@ You are a **Process Equipment Engineer** responsible for creating the Master Equ
             "1003"
           ],
           "duty_or_load": "<5 kW>",
-          "key_parameters": [
+          "sizing_parameters": [
             "Differential Head: <1.5 bar>",
             "Flow Rate: <12 m³/h>"
           ],

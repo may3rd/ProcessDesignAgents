@@ -1,5 +1,5 @@
-from __future__ import annotations
 from pydantic import BaseModel, Field
+import json
 
 from langchain_core.prompts import (
     ChatPromptTemplate,

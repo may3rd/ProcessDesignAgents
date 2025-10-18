@@ -56,7 +56,7 @@ class MessageBuffer:
             "Concept Detailer": "pending",
             # Designer Team
             "Basic PFD Designer": "pending",
-            "Stream Data Builder": "pending",
+            "Equipments & Streams List Builder": "pending",
             "Equipment List Builder": "pending",
             "Stream Data Estimator": "pending",
             "Equipment Sizing Agent": "pending",
@@ -71,9 +71,10 @@ class MessageBuffer:
             "selected_concept_details": None,
             "design_basis": None,
             "basic_pfd": None,
-            "basic_stream_data": None,
-            "basic_hmb_results": None,
-            "basic_equipment_template": None,
+            "stream_list_template": None,
+            "stream_list_results": None,
+            "equipment_list_template": None,
+            "equipment_list_results": None,
             "safety_risk_analyst_report": None,
             "project_manager_report": None,
         }
@@ -93,9 +94,9 @@ class MessageBuffer:
             
     def update_report_section(self, section, report):
         if section in self.report_sections:
-            if section in {"basic_stream_data", "basic_hmb_results"} and report:
+            if section in {"stream_list_template", "stream_list_results"} and report:
                 report = convert_streams_json_to_markdown(report)
-            elif section == "basic_equipment_template" and report:
+            elif section in {"equipment_list_template", "equipment_list_results"} and report:
                 report = convert_equipment_json_to_markdown(report)
             elif section == "safety_risk_analyst_report" and report:
                 report = convert_risk_json_to_markdown(report)
@@ -122,9 +123,10 @@ class MessageBuffer:
                 "selected_concept_details": "Selected Concept Detail",
                 "design_basis": "Design Basis",
                 "basic_pfd": "Basic Process Flow Diagram",
-                "basic_stream_data": "Stream Data",
-                "basic_hmb_results": "Heat & Material Balance",
-                "basic_equipment_template": "Equipment Summary",
+                "stream_list_template": "Stream Template",
+                "stream_list_results": "Heat & Material Balance",
+                "equipment_list_template": "Equipment Template",
+                "equipment_list_results": "Equipment Summary",
                 "safety_risk_analyst_report": "Safety Risk Analyst Report",
                 "project_manager_report": "Project Manager Report",
             }
@@ -179,9 +181,10 @@ class MessageBuffer:
             self.report_sections[section]
             for section in [
                 "basic_pfd",
-                "basic_stream_data",
-                "basic_hmb_results",
-                "basic_equipment_template",
+                "stream_list_template",
+                "stream_list_results",
+                "equipment_list_template",
+                "equipment_list_results",
             ]
         ):
             report_parts.append("## Designer Team Reports")
@@ -189,17 +192,21 @@ class MessageBuffer:
                 report_parts.append(
                     f"### Basic Process Flow Diagram\n{self.report_sections['basic_pfd']}"
                 )
-            if self.report_sections["basic_stream_data"]:
+            if self.report_sections["stream_list_template"]:
                 report_parts.append(
-                    f"### Stream Data\n{self.report_sections['basic_stream_data']}"
+                    f"### Stream Template\n{self.report_sections['stream_list_template']}"
                 )
-            if self.report_sections["basic_hmb_results"]:
+            if self.report_sections["stream_list_results"]:
                 report_parts.append(
-                    f"### Heat & Material Balance\n{self.report_sections['basic_hmb_results']}"
+                    f"### Heat & Material Balance\n{self.report_sections['stream_list_results']}"
                 )
-            if self.report_sections["basic_equipment_template"]:
+            if self.report_sections["equipment_list_template"]:
                 report_parts.append(
-                    f"### Equipment Summary\n{self.report_sections['basic_equipment_template']}"
+                    f"### Equipment Template\n{self.report_sections['equipment_list_template']}"
+                )
+            if self.report_sections["equipment_list_results"]:
+                report_parts.append(
+                    f"### Equipment Summary\n{self.report_sections['equipment_list_results']}"
                 )
 
         # Lead Process Design Engineer Reports
@@ -274,7 +281,7 @@ def update_display(layout, snippet_text=None):
         "Research Team": ["Innovative Researcher", "Conservative Researcher", "Concept Detailer"],
         "Designer Team": [
             "Basic PFD Designer",
-            "Stream Data Builder",
+            "Equipments & Streams List Builder",
             "Stream Data Estimator",
             "Equipment List Builder",
             "Equipment Sizing Agent",
@@ -526,9 +533,10 @@ def display_complete_report(final_state):
             "Designer Team Reports",
             [
                 ("basic_pfd", "Basic Process Flow Diagram"),
-                ("basic_stream_data", "Stream Data"),
-                ("basic_hmb_results", "Heat & Material Balance"),
-                ("basic_equipment_template", "Equipment Summary"),
+                ("stream_list_template", "Stream Template"),
+                ("stream_list_results", "Heat & Material Balance"),
+                ("equipment_list_template", "Equipment Template"),
+                ("equipment_list_results", "Equipment Summary"),
             ],
         ),
         (
@@ -589,7 +597,7 @@ def update_research_team_status(status):
         "Concept Detailer",
         "Design Basis Analyst",
         "Basic PFD Designer",
-        "Stream Data Builder",
+        "Equipments & Streams List Builder",
         "Equipment List Builder",
         "Stream Data Estimator",
         "Equipment Sizing Agent",
@@ -776,36 +784,43 @@ def run_analysis():
                         message_buffer.update_agent_status("Concept Detailer", "completed")
                     message_buffer.update_agent_status("Design Basis Analyst", "in_progress")
 
-                # Designer Team Outputs
-                if chunk.get("basic_pfd"):
-                    message_buffer.update_report_section("basic_pfd", chunk["basic_pfd"])
-                    message_buffer.update_agent_status("Basic PFD Designer", "completed")
-                    message_buffer.update_agent_status("Stream Data Builder", "in_progress")
+        # Designer Team Outputs
+        if chunk.get("basic_pfd"):
+            message_buffer.update_report_section("basic_pfd", chunk["basic_pfd"])
+            message_buffer.update_agent_status("Basic PFD Designer", "completed")
+            message_buffer.update_agent_status("Equipments & Streams List Builder", "in_progress")
 
-                if chunk.get("basic_stream_data"):
-                    message_buffer.update_report_section("basic_stream_data", chunk["basic_stream_data"])
-                    if message_buffer.agents_status.get("Stream Data Builder") != "completed":
-                        message_buffer.update_agent_status("Stream Data Builder", "completed")
-                        message_buffer.update_agent_status("Stream Data Estimator", "in_progress")
-                    else:
-                        message_buffer.update_agent_status("Stream Data Estimator", "completed")
-                        message_buffer.update_agent_status("Equipment List Builder", "in_progress")
+        if chunk.get("stream_list_template"):
+            message_buffer.update_report_section("stream_list_template", chunk["stream_list_template"])
+            if message_buffer.agents_status.get("Equipments & Streams List Builder") != "completed":
+                message_buffer.update_agent_status("Equipments & Streams List Builder", "completed")
+                message_buffer.update_agent_status("Stream Data Estimator", "in_progress")
+            else:
+                message_buffer.update_agent_status("Stream Data Estimator", "completed")
+                message_buffer.update_agent_status("Equipment List Builder", "in_progress")
 
-                if chunk.get("basic_hmb_results"):
-                    message_buffer.update_report_section("basic_hmb_results", chunk["basic_hmb_results"])
-                    message_buffer.update_agent_status("Stream Data Estimator", "completed")
-                    message_buffer.update_agent_status("Equipment List Builder", "in_progress")
+        if chunk.get("stream_list_results"):
+            message_buffer.update_report_section("stream_list_results", chunk["stream_list_results"])
+            message_buffer.update_agent_status("Stream Data Estimator", "completed")
+            message_buffer.update_agent_status("Equipment List Builder", "in_progress")
 
-                if chunk.get("basic_equipment_template"):
-                    message_buffer.update_report_section(
-                        "basic_equipment_template", chunk["basic_equipment_template"]
-                    )
-                    if message_buffer.agents_status.get("Equipment List Builder") != "completed":
-                        message_buffer.update_agent_status("Equipment List Builder", "completed")
-                        message_buffer.update_agent_status("Equipment Sizing Agent", "in_progress")
-                    else:
-                        message_buffer.update_agent_status("Equipment Sizing Agent", "completed")
-                        message_buffer.update_agent_status("Safety Risk Analyst", "in_progress")
+        if chunk.get("equipment_list_template"):
+            message_buffer.update_report_section(
+                "equipment_list_template", chunk["equipment_list_template"]
+            )
+            if message_buffer.agents_status.get("Equipment List Builder") != "completed":
+                message_buffer.update_agent_status("Equipment List Builder", "completed")
+                message_buffer.update_agent_status("Equipment Sizing Agent", "in_progress")
+            else:
+                message_buffer.update_agent_status("Equipment Sizing Agent", "completed")
+                message_buffer.update_agent_status("Safety Risk Analyst", "in_progress")
+
+        if chunk.get("equipment_list_results"):
+            message_buffer.update_report_section(
+                "equipment_list_results", chunk["equipment_list_results"]
+            )
+            message_buffer.update_agent_status("Equipment Sizing Agent", "completed")
+            message_buffer.update_agent_status("Safety Risk Analyst", "in_progress")
 
                 # Lead Team Outputs
                 if chunk.get("safety_risk_analyst_report"):

@@ -29,8 +29,8 @@ def create_safety_risk_analyst(llm):
         requirements_markdown = state.get("requirements", "")
         design_basis_markdown = state.get("design_basis", "")
         basic_pfd_markdown = state.get("basic_pfd", "")
-        equipment_json = state.get("basic_equipment_template", "")
-        stream_data = state.get("basic_hmb_results", "")
+        equipment_json = state.get("equipment_list_results", "") or state.get("equipment_list_template", "")
+        stream_data = state.get("stream_list_results", "")
         if not isinstance(stream_data, str):
             stream_data = str(stream_data)
         if not isinstance(basic_pfd_markdown, str):
@@ -45,7 +45,7 @@ def create_safety_risk_analyst(llm):
         sanitized_equipment_json, equipment_payload = extract_first_json_document(equipment_json) if equipment_json else ("", None)
 
         if stream_payload is None:
-            raise ValueError("Safety analyst requires H&MB JSON from the stream estimator.")
+            raise ValueError("Safety analyst requires stream results JSON from the estimator.")
         if equipment_payload is None:
             raise ValueError("Safety analyst requires equipment JSON from the sizing workflow.")
 

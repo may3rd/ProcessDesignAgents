@@ -16,9 +16,10 @@ class DesignState(TypedDict):
     selected_concept_details: Annotated[str, ""]
     selected_concept_name: Annotated[str, ""]
     basic_pfd: Annotated[str, ""]
-    basic_hmb_results: Annotated[str, ""]
-    basic_equipment_template: Annotated[str, ""]
-    basic_stream_data: Annotated[str, ""]
+    stream_list_results: Annotated[str, ""]
+    equipment_list_template: Annotated[str, ""]
+    equipment_list_results: Annotated[str, ""]
+    stream_list_template: Annotated[str, ""]
     approval: Annotated[str, ""]
     design_basis: NotRequired[str]
     safety_risk_analyst_report: NotRequired[str]
@@ -35,9 +36,10 @@ def create_design_state(
     selected_concept_details: str = "",
     selected_concept_name: str = "",
     basic_pfd: str = "",
-    basic_hmb_results: str = "",
-    basic_equipment_template: str = "",
-    basic_stream_data: str = "",
+    stream_list_results: str = "",
+    equipment_list_template: str = "",
+    equipment_list_results: str = "",
+    stream_list_template: str = "",
     approval: str = "",
     design_basis: Optional[str] = None,
     safety_risk_analyst_report: Optional[str] = None,
@@ -54,9 +56,10 @@ def create_design_state(
         "selected_concept_details": selected_concept_details,
         "selected_concept_name": selected_concept_name,
         "basic_pfd": basic_pfd,
-        "basic_hmb_results": basic_hmb_results,
-        "basic_equipment_template": basic_equipment_template,
-        "basic_stream_data": basic_stream_data,
+        "stream_list_results": stream_list_results,
+        "equipment_list_template": equipment_list_template,
+        "equipment_list_results": equipment_list_results,
+        "stream_list_template": stream_list_template,
         "approval": approval,
     }
 

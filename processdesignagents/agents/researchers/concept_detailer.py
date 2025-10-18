@@ -84,8 +84,6 @@ def create_concept_detailer(llm, selection_provider_getter=None):
             f"Chosen concept: {best_title}\n(Feasibility Score: {best_score if best_score is not None else 'N/A'})",
             flush=True,
         )
-        
-        exit(0)
 
         print("* Prepared detailed concept brief...", flush=True)
         base_prompt = concept_detailer_prompt(best_evaluation, requirements_markdown)
@@ -111,8 +109,8 @@ def create_concept_detailer(llm, selection_provider_getter=None):
 
         print(detail_markdown, flush=True)
         return {
-            "selected_concept_details": detail_markdown,
             "selected_concept_name": best_title,
+            "selected_concept_details": detail_markdown,
             "selected_concept_evaluation": selected_evaluation_json,
             "messages": [response],
         }
@@ -152,6 +150,7 @@ def concept_detailer_prompt(
     selected_evaluation: dict,
     requirements_markdown: str,
 ) -> ChatPromptTemplate:
+    
     selected_concept_json = json.dumps(selected_evaluation, ensure_ascii=False, indent=2)
 
     system_content = f"""
@@ -175,17 +174,6 @@ You are a Lead Conceptual Process Engineer. Your job is to translate a winning d
 
 -----
 
-  * **PROJECT REQUIREMENTS:**
-    ```
-    {{requirements}}
-    ```
-  * **SELECTED CONCEPT EVALUATION (JSON):**
-    ```json
-    {{selected_concept_json}}
-    ```
-
------
-
 **Example:**
 
   * **PROJECT REQUIREMENTS:**
@@ -200,6 +188,16 @@ You are a Lead Conceptual Process Engineer. Your job is to translate a winning d
     {{
       "name": "Ethanol Cooler Module",
       "maturity": "innovative",
+      "description": "A compact plate-and-frame heat exchanger skid cools ethanol using plant cooling water with modular plates enabling rapid maintenance.",
+      "unit_operations": [
+          "Feed/product pumps",
+          "Plate-and-frame heat exchanger",
+          "Isolation & bypass valves"
+      ],
+      "key_benefits": [
+          "Higher overall heat-transfer coefficients reduce required surface area.",
+          "Modular architecture supports rapid cleaning and capacity turndown."
+      ]
       "summary": "Modular plate-and-frame skid offers compact footprint with manageable fouling risk.",
       "feasibility_score": 8,
       "risks": {{
@@ -212,20 +210,6 @@ You are a Lead Conceptual Process Engineer. Your job is to translate a winning d
         "Specify corrosion-resistant gasket materials rated for ethanol service.",
         "Develop cleaning-in-place (CIP) protocol with instrumentation to monitor differential pressure buildup."
       ],
-      "concept": {{
-        "name": "Ethanol Cooler Module",
-        "maturity": "innovative",
-        "description": "A compact plate-and-frame heat exchanger skid cools ethanol using plant cooling water with modular plates enabling rapid maintenance.",
-        "unit_operations": [
-          "Feed/product pumps",
-          "Plate-and-frame heat exchanger",
-          "Isolation & bypass valves"
-        ],
-        "key_benefits": [
-          "Higher overall heat-transfer coefficients reduce required surface area.",
-          "Modular architecture supports rapid cleaning and capacity turndown."
-        ]
-      }}
     }}
     ```
 
@@ -274,10 +258,10 @@ You are a Lead Conceptual Process Engineer. Your job is to translate a winning d
     human_content = f"""
 # DATA FOR ANALYSIS:
 ---
-**Selected Concept Evaluation (JSON):**
+**SELECTED CONCEPT EVALUATION (JSON):**
 {selected_concept_json}
 
-**High-Level Requirements (Markdown):**
+**PROJECT REQUIREMENTS:**
 {requirements_markdown}
 
 # FINAL MARKDOWN OUTPUT:

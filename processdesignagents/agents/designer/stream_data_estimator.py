@@ -31,7 +31,7 @@ def create_stream_data_estimator(llm):
         requirements_markdown = state.get("requirements", "")
         design_basis_markdown = state.get("design_basis", "")
         concept_details_markdown = state.get("selected_concept_details", "")
-        stream_template = state.get("basic_stream_data", "")
+        stream_template = state.get("stream_list_template", "")
 
         if not isinstance(stream_template, str):
             stream_template = str(stream_template)
@@ -74,7 +74,7 @@ def create_stream_data_estimator(llm):
         stream_markdown = convert_streams_json_to_markdown(sanitized_json)
         print(stream_markdown, flush=True)
         return {
-            "basic_hmb_results": sanitized_json,
+            "stream_list_results": sanitized_json,
             "messages": [response],
         }
 

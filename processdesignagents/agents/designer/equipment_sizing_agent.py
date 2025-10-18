@@ -32,16 +32,16 @@ def create_equipment_sizing_agent(llm):
         requirements_markdown = state.get("requirements", "")
         design_basis_markdown = state.get("design_basis", "")
         basic_pfd_markdown = state.get("basic_pfd", "")
-        basic_hmb_json = state.get("basic_hmb_results", "")
-        stream_table = state.get("basic_stream_data", "")
-        equipment_table_template = state.get("basic_equipment_template", "")
+        stream_results_json = state.get("stream_list_results", "")
+        stream_template = state.get("stream_list_template", "")
+        equipment_table_template = state.get("equipment_list_template", "")
 
         if not equipment_table_template.strip():
             raise ValueError("Equipment template is missing. Run the equipment list builder before sizing.")
 
-        sanitized_stream_json, stream_payload = extract_first_json_document(stream_table) if isinstance(stream_table, str) else ("", None)
+        sanitized_stream_json, stream_payload = extract_first_json_document(stream_template) if isinstance(stream_template, str) else ("", None)
         if stream_payload is None:
-            raise ValueError("Equipment sizing agent requires stream data JSON from the estimator.")
+            raise ValueError("Equipment sizing agent requires stream template JSON from the list builder.")
 
         stream_json_formatted = json.dumps(stream_payload, ensure_ascii=False, indent=2)
         stream_table_markdown = convert_streams_json_to_markdown(sanitized_stream_json)
@@ -51,9 +51,9 @@ def create_equipment_sizing_agent(llm):
             raise ValueError("Equipment sizing agent requires equipment template JSON from the list builder.")
         equipment_template_formatted = json.dumps(equipment_payload, ensure_ascii=False, indent=2)
 
-        sanitized_hmb_json, hmb_payload = extract_first_json_document(basic_hmb_json) if isinstance(basic_hmb_json, str) else ("", None)
+        sanitized_hmb_json, hmb_payload = extract_first_json_document(stream_results_json) if isinstance(stream_results_json, str) else ("", None)
         if hmb_payload is None:
-            raise ValueError("Equipment sizing agent requires H&MB JSON from the estimator.")
+            raise ValueError("Equipment sizing agent requires stream results JSON from the estimator.")
         
         hmb_json_formatted = json.dumps(hmb_payload, ensure_ascii=False, indent=2)
 
@@ -98,7 +98,7 @@ def create_equipment_sizing_agent(llm):
         equipment_markdown = convert_equipment_json_to_markdown(sanitized_output)
         print(equipment_markdown, flush=True)
         return {
-            "basic_equipment_template": sanitized_output,
+            "equipment_list_results": sanitized_output,
             "messages": [response] if response else [],
         }
 
@@ -159,7 +159,7 @@ You are a **Lead Equipment Sizing Engineer** responsible for performing first-pa
           "streams_in": ["1001", "2001"],
           "streams_out": ["1002", "2002"],
           "duty_or_load": "<value>",
-          "key_parameters": ["Area: <value>", "U: <value>", "LMTD: <value>"],
+          "sizing_parameters": ["Area: <value>", "U: <value>", "LMTD: <value>"],
           "notes": "<value>"
         }}
       ]
@@ -199,7 +199,7 @@ You are a **Lead Equipment Sizing Engineer** responsible for performing first-pa
             "2002"
           ],
           "duty_or_load": "0.278 MW",
-          "key_parameters": [
+          "sizing_parameters": [
             "Area: 24.7 m²",
             "U (Assumed): 450 W/m²-K",
             "LMTD (Counter-current): 25.6 °C"
@@ -233,7 +233,7 @@ You are a **Lead Equipment Sizing Engineer** responsible for performing first-pa
 ---
 
 # EXAMPLE INPUT:
-For a single exchanger that cools ethanol from 80 C to 40 C with cooling water, estimate the duty from the heat balance, size the heat transfer area using the heat_exchanger_sizing tool, and record cooling water inlet/outlet temperatures along with any approach temperature assumptions in the notes.
+For a single exchanger that cools ethanol from 80 C to 40 C with cooling water, estimate the duty from the heat balance, size the heat transfer area using the `heat_exchanger_sizing` tool, and record cooling water inlet/outlet temperatures along with any approach temperature assumptions in the notes.
 
 # EXPECTED JSON OUTPUT:
 ```
@@ -257,7 +257,7 @@ For a single exchanger that cools ethanol from 80 C to 40 C with cooling water, 
       "streams_in": ["1001", "2001"],
       "streams_out": ["1002", "2002"],
       "duty_or_load": "0.28 MW",
-      "key_parameters": [
+      "sizing_parameters": [
         "Area: 120 m2",
         "U: 450 W/m2-K",
         "LMTD: 25 °C"
@@ -272,7 +272,7 @@ For a single exchanger that cools ethanol from 80 C to 40 C with cooling water, 
       "streams_in": ["1002"],
       "streams_out": ["1003"],
       "duty_or_load": "45 kW",
-      "key_parameters": [
+      "sizing_parameters": [
         "Flow: 10,000 kg/h",
         "Head: 18 m",
         "Efficiency: 0.75"

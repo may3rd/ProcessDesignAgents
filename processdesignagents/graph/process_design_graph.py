@@ -221,8 +221,10 @@ class ProcessDesignGraph:
             "selected_concept_details": final_state.get("selected_concept_details", ""),
             "design_basis": final_state.get("design_basis", ""),
             "basic_pfd": final_state.get("basic_pfd", ""),
-            "basic_hmb_results": final_state.get("basic_hmb_results", ""),
-            "basic_equipment_template": final_state.get("basic_equipment_template", ""),
+            "stream_list_template": final_state.get("stream_list_template", ""),
+            "stream_list_results": final_state.get("stream_list_results", ""),
+            "equipment_list_template": final_state.get("equipment_list_template", ""),
+            "equipment_list_results": final_state.get("equipment_list_results", ""),
             "safety_risk_analyst_report": final_state.get("safety_risk_analyst_report", ""),
             "project_manager_report": final_state.get("project_manager_report", ""),
         }
@@ -237,15 +239,16 @@ class ProcessDesignGraph:
             json.dump(self.log_state_dict, f, indent=4)
         
     def _compose_report_sections(self, final_state: Dict[str, Any]) -> list[tuple[str, str]]:
-        stream_markdown = ""
-        hmb_markdown = ""
+        stream_template_markdown = ""
+        stream_results_markdown = ""
         equipment_markdown = ""
-        if final_state.get("basic_stream_data"):
-            stream_markdown = convert_streams_json_to_markdown(final_state["basic_stream_data"])
-        if final_state.get("basic_hmb_results"):
-            hmb_markdown = convert_streams_json_to_markdown(final_state["basic_hmb_results"])
-        if final_state.get("basic_equipment_template"):
-            equipment_markdown = convert_equipment_json_to_markdown(final_state["basic_equipment_template"])
+        if final_state.get("stream_list_template"):
+            stream_template_markdown = convert_streams_json_to_markdown(final_state["stream_list_template"])
+        if final_state.get("stream_list_results"):
+            stream_results_markdown = convert_streams_json_to_markdown(final_state["stream_list_results"])
+        if final_state.get("equipment_list_results") or final_state.get("equipment_list_template"):
+            equipment_source = final_state.get("equipment_list_results") or final_state.get("equipment_list_template")
+            equipment_markdown = convert_equipment_json_to_markdown(equipment_source)
         safety_markdown = ""
         if final_state.get("safety_risk_analyst_report"):
             safety_markdown = convert_risk_json_to_markdown(final_state["safety_risk_analyst_report"])
@@ -255,10 +258,10 @@ class ProcessDesignGraph:
             ("Process Requirements", final_state.get("requirements", "")),
             ("Concept Detail", final_state.get("selected_concept_details", "")),
             ("Design Basis", final_state.get("design_basis", "")),
-            # ("Stream Data", stream_markdown or final_state.get("basic_stream_data", "")),
             ("Basic Process Flow Diagram", final_state.get("basic_pfd", "")),
-            ("Heat & Material Balance", hmb_markdown or final_state.get("basic_hmb_results", "")),
-            ("Equipment Summary", equipment_markdown or final_state.get("basic_equipment_template", "")),
+            ("Stream Template", stream_template_markdown or final_state.get("stream_list_template", "")),
+            ("Heat & Material Balance", stream_results_markdown or final_state.get("stream_list_results", "")),
+            ("Equipment Summary", equipment_markdown or final_state.get("equipment_list_results", "")),
             ("Safety & Risk Assessment", safety_markdown or final_state.get("safety_risk_analyst_report", "")),
             ("Project Manager Report", final_state.get("project_manager_report", "")),
         ]
