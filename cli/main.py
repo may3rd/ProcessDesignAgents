@@ -22,7 +22,7 @@ from rich.align import Align
 from rich.rule import Rule
 
 from processdesignagents.graph.process_design_graph import ProcessDesignGraph
-from processdesignagents.default_config import DEFAULT_CONNFIG
+from processdesignagents.default_config import DEFAULT_CONFIG
 from cli.utils import *
 from processdesignagents.agents.utils.json_tools import (
     convert_streams_json_to_markdown,
@@ -623,7 +623,7 @@ def run_analysis():
     selections = get_user_selections()
 
     # Create config with selected parameter from selections
-    config = DEFAULT_CONNFIG.copy()
+    config = DEFAULT_CONFIG.copy()
     config["quick_think_llm"] = selections["quick_think_llm"]
     config["deep_think_llm"] = selections["deep_think_llm"]
 

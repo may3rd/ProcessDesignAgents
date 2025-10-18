@@ -4,7 +4,7 @@ from processdesignagents.sizing_tools.interface import equipment_sizing
 
 @tool
 def size_heat_exchanger_basic(
-    basic_heat_exchanger_sizing: Annotated[Dict, {}],
+    heat_exchanger_data: Annotated[Dict, {}],
     hot_stream: Annotated[Dict, {}],
     cold_stream: Annotated[Dict, {}]
 ) -> str:
@@ -17,4 +17,4 @@ def size_heat_exchanger_basic(
     Returns:
         str: An update equipment sizing in JSON format.
     """
-    return equipment_sizing("basic_heat_exchanger_sizing", basic_heat_exchanger_sizing, hot_stream, cold_stream)
+    return equipment_sizing("basic_heat_exchanger_sizing", heat_exchanger_data, hot_stream, cold_stream)

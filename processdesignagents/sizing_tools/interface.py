@@ -103,90 +103,63 @@ def get_vendor(category: str, method: str = None) -> str:
 
 def equipment_sizing(method: str, *args, **kwargs) -> str:
     """Route method calls to appropriate sizing implementation with fallback support."""
+    if method not in SIZING_METHODS:
+        raise ValueError(f"Method '{method}' not suppored.")
+
     category = get_category_for_method(method)
     method_config = get_vendor(category, method)
 
-    primary_methods = [v.strip() for v in method_config.split(',')]
+    primary_methods = [value.strip() for value in method_config.split(",") if value.strip()]
+    if not primary_methods:
+        primary_methods = list(SIZING_METHODS[method].keys())
 
-    if method not in SIZING_METHODS:
-        raise ValueError(f"Method '{method}' not suppored.")
-    
-    # Get all available sizing methods for fallback
-    all_available_methods = list(SIZING_METHODS[method].keys())
-    
-    # Create fallback method list: primary method first, the remaing methods as fallback
-    fallback_vendors = primary_methods.copy()
-    for method in all_available_methods:
-        if method not in primary_methods:
-            fallback_vendors.append(method)
-    
-    # Debug: Print fallback oreding
+    available_methods = list(SIZING_METHODS[method].keys())
+    fallback_vendors = primary_methods + [
+        candidate for candidate in available_methods if candidate not in primary_methods
+    ]
+
     primary_str = " → ".join(primary_methods)
     fallback_str = " → ".join(fallback_vendors)
     print(f"DEBUG: {method} - Primary: [{primary_str}], Fallback: [{fallback_str}]")
 
-    # Track results and execution state
     results = []
-    method_attemp_count = 0
-    any_primanry_method_attempted = False
-    successful_method = None
-    
-    for _method in fallback_vendors:
-        if _method not in SIZING_METHODS[method]:
-            if _method in primary_methods:
-                print(f"INFO: Method '{_method}' not supported for method '{method}', falling back to next method.")
-            continue
-    
-        method_impl = SIZING_METHODS[method][_method]
-        is_primary_method = _method in primary_methods
-        method_attemp_count += 1
-        
-        # Track if we attemped any primary method
-        if is_primary_method:
-            any_primanry_method_attempted = True
+    method_attempt_count = 0
 
-        # Debug: Print current attemp
-        method_type = "PRIMARY" if is_primary_method else "FALLBACK"
-        print(f"DEBUG: Attempting {method_type} method '{_method}' for {method} (attempt #{method_attemp_count})")
-        
-        # Handle list of methods for a _method
-        if isinstance(method_impl, list):
-            method_methods = [(impl, _method) for impl in method_impl]
-            print(f"DEUBG: Method '{_method}' has multiple implementations: {len(method_methods)} functions")
-        else:
-            method_methods = [(method_impl, _method)]
-        
-        # Run methods for this _method
-        method_results = []
-        for impl_func, method_name in method_methods:
+    for vendor_method in fallback_vendors:
+        vendor_impl = SIZING_METHODS[method].get(vendor_method)
+        if vendor_impl is None:
+            if vendor_method in primary_methods:
+                print(f"INFO: Method '{vendor_method}' not supported for '{method}', trying fallback.")
+            continue
+
+        method_attempt_count += 1
+        is_primary = vendor_method in primary_methods
+        method_label = "PRIMARY" if is_primary else "FALLBACK"
+        print(f"DEBUG: Attempting {method_label} method '{vendor_method}' for {method} (attempt #{method_attempt_count})")
+
+        impl_functions = vendor_impl if isinstance(vendor_impl, list) else [vendor_impl]
+        if len(impl_functions) > 1:
+            print(f"DEBUG: Method '{vendor_method}' exposes {len(impl_functions)} implementations")
+
+        vendor_results = []
+        for impl_func in impl_functions:
             try:
-                print(f"DEBUG: Calling {impl_func.__name__} from '{method_name}'...")
-                result = impl_func(*args, **kwargs)
-                method_results.append(result)
-                print(f"SUCCESS: {impl_func.__name__} from '{method_name}' completed successfully")
-            except Exception as e:
-                # Log error but continue with other implementations
-                print(f"FAILED: {impl_func.__name__} from '{method_name}' failed with error: {e}")
-                continue
-            
-        # Add this method's results
-        if method_results:
-            results.extend(method_results)
-            successful_method = _method
-            result_summary = f"Got {len(method_results)} results(s)"
-            print(f"SUCCESS: {result_summary} for method '{method}'")
-            
-            # Stopping logic: Stop after first successful vendor for single-vendor configs
-            # Multiple vendor configs (comma-separated) may want to collect from multiple sources
+                print(f"DEBUG: Calling {impl_func.__name__} via '{vendor_method}'...")
+                vendor_results.append(impl_func(*args, **kwargs))
+                print(f"SUCCESS: {impl_func.__name__} via '{vendor_method}' completed")
+            except Exception as exc:
+                print(f"FAILED: {impl_func.__name__} via '{vendor_method}' raised: {exc}")
+
+        if vendor_results:
+            results.extend(vendor_results)
+            print(f"SUCCESS: Collected {len(vendor_results)} result(s) using '{vendor_method}'")
             if len(primary_methods) == 1:
-                print(f"DEBUG: Stopping after successful method '{_method}' (single-vendor config)")
+                print(f"DEBUG: Stopping after successful method '{vendor_method}' (single-vendor config)")
                 break
         else:
-            print(f"FAILED: No results for method '{method}'")
-        
-    # Final result summary
+            print(f"FAILED: No usable results from method '{vendor_method}'")
+
     if len(results) == 1:
         return results[0]
-    else:
-        # Convert all results to strings and concatenate
-        return '\n'.join(str(result) for result in results)
+
+    return "\n".join(str(result) for result in results)

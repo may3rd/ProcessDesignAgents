@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Annotated, Dict, Any
+from typing import Annotated, Dict, Any, List, Optional, Union, Tuple
 
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
@@ -13,7 +13,8 @@ from langchain_core.prompts import (
 from langchain_core.messages import ToolMessage
 
 from processdesignagents.agents.utils.agent_utils import (
-    size_heat_exchanger_basic
+    size_heat_exchanger_basic,
+    size_pump_basic
 )
 
 from processdesignagents.agents.utils.agent_states import DesignState, create_design_state
@@ -50,7 +51,6 @@ def load_example_data() -> Dict[str, Any]:
     return temp_data
 
 def main():
-    report = ""
     if config["llm_provider"].lower() == "openrouter":
         base_url = "https://openrouter.ai/api/v1"
         api_key = os.getenv("OPENROUTER_API_KEY")
@@ -78,14 +78,14 @@ def main():
 
         # Pares JSONs
         _, hmb_json = extract_first_json_document(hmb_table)
-        _, equipment_json = extract_first_json_document(equipment_table)
+        _, master_equipment_list_json = extract_first_json_document(equipment_table)
 
-        if not all ([hmb_json, equipment_json]):
+        if not all ([hmb_json, master_equipment_list_json]):
             raise ValueError("Required JSON data is missing")
         
         stream_list = hmb_json.get("streams", [])
-        equipment_list = equipment_json.get("equipment", [])
-        equipment_category = equipment_json.get("metadata", {}).get("groups", [])
+        equipment_list = master_equipment_list_json.get("equipment", [])
+        equipment_category = master_equipment_list_json.get("metadata", {}).get("groups", [])
         
         # List the equipment is each category
         for cat in equipment_category:
@@ -97,96 +97,145 @@ def main():
                 if eq:
                     print(f"- {eq_id}: {eq.get('name', '')}")
 
-        print(f"\n---\n")
+        print(f"---")
         
-        # Select Heat Exchanger Category for process
-        heat_exchanger_category = next((cat for cat in equipment_category if cat.get("name", "") == "Heat Exchangers"), None)
-        if not heat_exchanger_category:
-            raise ValueError("Heat Exchanger Category not found")
-        else:
-            heat_exchanger_ids = heat_exchanger_category.get("ids", [])
-            print(f"Heat Exchanger IDs: {heat_exchanger_ids}")
+        #
+        tools_list = [
+            size_heat_exchanger_basic,
+            size_pump_basic
+        ]
+        
+        for category_name in ["Heat Exchangers", "Pumps and Rotating Equipment"]:
+            master_equipment_list_json = size_equipment_by_category(
+                category_name=category_name,
+                stream_list=stream_list,
+                master_equipment_list_json=master_equipment_list_json,
+                state=state,
+                deep_thinking_llm=deep_thinking_llm,
+                quick_thinking_llm=quick_thinking_llm,
+                equipment_category=equipment_category,
+                equipment_list=equipment_list,
+                tools_list=tools_list,
+            )
+        
+        # print(master_equipment_list_json)
+        
+
+def size_equipment_by_category(
+    category_name: str,
+    stream_list: str,
+    master_equipment_list_json: Dict[str, Any],
+    state: Dict[str, Any],
+    deep_thinking_llm: ChatOpenAI,
+    quick_thinking_llm: ChatOpenAI,
+    equipment_category: List[Dict[str, Any]],
+    equipment_list: List[Dict[str, Any]],
+    tools_list: List[Any],
+) -> Dict[str, Any]:
+    # Select Heat Exchanger Category for process
+    equipment_category = next((cat for cat in equipment_category if cat.get("name", "") == category_name), None)
+    if not equipment_category:
+        raise ValueError(f"{category_name} Category not found")
+    else:
+        equipment_ids = equipment_category.get("ids", [])
+        print(f"{category_name} IDs: {equipment_ids}")
+
+        tool_map = {tool.name: tool for tool in tools_list}
+
+        llm_with_tools = deep_thinking_llm.bind_tools(tools_list)
+
+        for eq_id in equipment_ids:
+            # Get the equipment element from equipment list
+            eq_json = next(
+                (eq for eq in equipment_list if eq.get("id", "") == eq_id),
+                None
+            )
+            if not eq_json:
+                raise ValueError(f"Equipment with ID {eq_id} not found")
             
-            tools = [
-                size_heat_exchanger_basic
-            ]
+            print(f"Processing {eq_id}: {eq_json.get('name', '')}")
+            
+            base_prompt = equipment_sizing_prompt_with_tools(
+                stream_data_json=json.dumps(stream_list),
+                equipment_data_json=json.dumps(eq_json)
+            )
+            
+            prompt = ChatPromptTemplate.from_messages(base_prompt.messages)
+            conversation = list(state.get("messages", []))
+            conversation.extend(prompt.format_messages())
 
-            tool_map = {tool.name: tool for tool in tools}
+            result = llm_with_tools.invoke(conversation)
+            conversation.append(result)
 
-            llm_with_tools = quick_thinking_llm.bind_tools(tools)
+            safety_counter = 0
+            max_iterations = 5
 
-            for eq_id in heat_exchanger_ids:
-                # Get the equipment element from equipment list
-                eq_json = next(
-                    (eq for eq in equipment_list if eq.get("id", "") == eq_id),
-                    None
-                )
-                if not eq_json:
-                    raise ValueError(f"Equipment with ID {eq_id} not found")
-                
-                print(f"Processing {eq_id}: {eq_json.get('name', '')}")
-                
-                base_prompt = equipment_sizing_prompt_with_tools(
-                    stream_data_json=json.dumps(stream_list),
-                    equipment_template_json=json.dumps(eq_json),
-                    equipment_list_json=json.dumps(equipment_table)
-                )
-                
-                prompt = ChatPromptTemplate.from_messages(base_prompt.messages)
-                conversation = list(state.get("messages", []))
-                conversation.extend(prompt.format_messages())
+            while getattr(result, "tool_calls", []) and safety_counter < max_iterations:
+                for call in result.tool_calls:
+                    tool_handler = tool_map.get(call["name"])
+                    if tool_handler is None:
+                        error_msg = (
+                            f"Tool '{call['name']}' not available. "
+                            "Returning message for LLM handling."
+                        )
+                        conversation.append(
+                            ToolMessage(content=error_msg, tool_call_id=call["id"])
+                        )
+                        continue
+
+                    tool_result = tool_handler.invoke(call["args"])
+                    if not isinstance(tool_result, str):
+                        try:
+                            tool_result = json.dumps(tool_result)
+                        except (TypeError, ValueError):
+                            tool_result = str(tool_result)
+
+                    conversation.append(
+                        ToolMessage(content=tool_result, tool_call_id=call["id"])
+                    )
 
                 result = llm_with_tools.invoke(conversation)
                 conversation.append(result)
+                safety_counter += 1
 
-                safety_counter = 0
-                max_iterations = 5
+            report = result.content if getattr(result, "content", None) else ""
+            if report:
+                raw_json, _ = extract_first_json_document(report)
+                if raw_json:
+                    report = raw_json.strip()
+                closing_brace = report.rfind("}")
+                closing_bracket = report.rfind("]")
+                closing_index = max(closing_brace, closing_bracket)
+                if closing_index != -1:
+                    report = report[: closing_index + 1]
+            state["messages"] = conversation
 
-                while getattr(result, "tool_calls", []) and safety_counter < max_iterations:
-                    for call in result.tool_calls:
-                        tool_handler = tool_map.get(call["name"])
-                        if tool_handler is None:
-                            error_msg = (
-                                f"Tool '{call['name']}' not available. "
-                                "Returning message for LLM handling."
-                            )
-                            conversation.append(
-                                ToolMessage(content=error_msg, tool_call_id=call["id"])
-                            )
-                            continue
+            # print(f"{report}")
+            
+            # Update the equipment for processed equipment in the master equipment list table
+            updated_payload = json.loads(report)
+            if isinstance(updated_payload, list):
+                updated_payload = next(
+                    (item for item in updated_payload if item.get("id") == eq_id),
+                    None,
+                )
 
-                        tool_result = tool_handler.invoke(call["args"])
-                        if not isinstance(tool_result, str):
-                            try:
-                                tool_result = json.dumps(tool_result)
-                            except (TypeError, ValueError):
-                                tool_result = str(tool_result)
+            if not isinstance(updated_payload, dict):
+                raise ValueError(
+                    f"Expected dict for equipment '{eq_id}', received {type(updated_payload)}"
+                )
 
-                        conversation.append(
-                            ToolMessage(content=tool_result, tool_call_id=call["id"])
-                        )
-
-                    result = llm_with_tools.invoke(conversation)
-                    conversation.append(result)
-                    safety_counter += 1
-
-                report = result.content if getattr(result, "content", None) else ""
-                if report:
-                    raw_json, _ = extract_first_json_document(report)
-                    if raw_json:
-                        report = raw_json.strip()
-                state["messages"] = conversation
-
-                # print(f"The final report is: {report}")
-
-                print(f"---")
-
-    print(f"The final report is: {report}")
+            for eq in master_equipment_list_json.get("equipment", []):
+                if eq.get("id", "") == eq_id:
+                    eq.update(updated_payload)
+                    break
+            print(f"---")
+    return master_equipment_list_json
 
 def equipment_sizing_prompt_with_tools(
     stream_data_json: str,
-    equipment_template_json: str,
-    equipment_list_json: str
+    equipment_data_json: str,
+    equipment_list_json: str = None,
 ) -> ChatPromptTemplate:
     """Create prompt with pre-computed tool results"""
     
@@ -197,14 +246,15 @@ You are a **Lead Equipment Sizing Engineer** responsible for finalizing equipmen
 
   * You have access to sizing calculations tools (heat exchangers, pumps, vessels, compressors).
   * Your task is to use these tools to fill in the missing values in the final equipment specification JSON, adding engineering judgment and filling gaps where tools could not be applied.
-
-**Tool Available:** `size_heat_exchanger_basic`.
+  * I want the equipment list with the upadte sizing_parameter of the equipment provided from user.
+  
+**Tool Available:** `size_heat_exchanger_basic`, `size_pump_basic`, `size_vessel_basic`, `size_compressor_basic`.
 
 **Instructions:**
 
   1. **Use Sizing Tool:** to calculate the equipment specification values.
   
-  2. **Populate Key Parameters:** Use tool results to fill the `key_parameters` array. For example:
+  2. **Populate Sizing Parameters:** Use tool results to fill the `sizing_parameters` array. For example:
      - Heat Exchanger: ["Area: <area_m2> m²", "LMTD: <lmtd_C> °C", "U: <U_design_W_m2K> W/m²·K"]
      - Pump: ["Flow: <flow_m3_hr> m³/h", "Head: <total_head_m> m", "Power: <motor_rating_kW> kW"]
      - Vessel: ["Diameter: <diameter_mm> mm", "Length: <length_mm> mm", "Thickness: <shell_thickness_mm> mm"]
@@ -218,10 +268,9 @@ You are a **Lead Equipment Sizing Engineer** responsible for finalizing equipmen
   
   6. **Update Assumptions:** Add any new global assumptions to `metadata.assumptions`, such as "All pump efficiencies assumed at 75% unless specified."
 
-  7. **Add the Sizing Results:** Add the final result from sizing tool into new `sizing` key. For example:
-    - Heat Exchanger: `{{"sizing": {{"area": "<area> m2", "lmtd": "<lmtd> °C", "U": "<U_design_W_m2K> W/m²·K"}}}}`
-    
-  8. **Maintain JSON Structure:** Output ONLY a valid JSON object matching the equipment template schema. Do NOT use code fences or comments.
+  7. **Maintain JSON Structure:** Output ONLY a valid JSON object matching the equipment template schema. Do NOT use code fences.
+  
+  8. **Update the Equipment List:** Use the results from the tool to update the equipment list.
 
 ```
 
@@ -231,7 +280,6 @@ You are a **Lead Equipment Sizing Engineer** responsible for finalizing equipmen
   - Round to appropriate precision (areas to 0.1 m², power to nearest kW)
   - Reference tool usage in notes for traceability
   - If tool result contains "error", note the issue and provide manual estimate or "TBD"
-  - Use the result from tool update the key_parameters of the equipment
   - **Output ONLY the final equipment list JSON object (no code fences, no additional text).**
 """
 
@@ -242,14 +290,14 @@ You are a **Lead Equipment Sizing Engineer** responsible for finalizing equipmen
 {stream_data_json}
 
 **Equipment Template (JSON):**
-{equipment_template_json}
+{equipment_data_json}
 
 **Equipment List (JSON):**
 {equipment_list_json}
 
 ---
 
-**Output ONLY the final equipment list JSON object (no code fences, no additional text).**
+**Output ONLY the final equipment list with updated sizing parameters (JSON): object (no code fences, no additional text).**
 
 """
 

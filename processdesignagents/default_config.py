@@ -18,7 +18,7 @@ def load_config():
         "simulator": "dwsim"
     }
     
-DEFAULT_CONNFIG = {
+DEFAULT_CONFIG = {
     "project_dir": os.path.abspath(os.path.join(os.path.dirname(__file__), ".")),
     "results_dir": os.getenv("RESULTS_DIR", "./results"),
     "data_dir": "/Users/maetee/Documents/Code/ScAI/FR1-data",
@@ -28,7 +28,7 @@ DEFAULT_CONNFIG = {
     ),
     # LLM settings
     "llm_provider": "openrouter",
-    "deep_think_llm": "google/gemini-2.5-flash-lite",
+    "deep_think_llm": "google/gemini-2.5-flash",
     "quick_think_llm": "google/gemini-2.5-flash-lite",
     "backend_url": "https://openrouter.ai/api/v1",
     "deep_think_temperature": 0.0,

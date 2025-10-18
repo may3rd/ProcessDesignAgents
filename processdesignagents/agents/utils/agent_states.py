@@ -1,4 +1,9 @@
-from typing import Annotated, List, TypedDict, NotRequired
+from typing import Annotated, List, TypedDict, Optional, Sequence
+
+try:  # Python <3.11 fallback
+    from typing import NotRequired  # type: ignore
+except ImportError:  # pragma: no cover
+    from typing_extensions import NotRequired  # type: ignore
 from langgraph.graph import add_messages
 from langchain_core.messages import BaseMessage
 
@@ -17,3 +22,46 @@ class DesignState(TypedDict):
     design_basis: NotRequired[str]
     safety_risk_analyst_report: NotRequired[str]
     project_manager_report: NotRequired[str]
+
+
+def create_design_state(
+    *,
+    messages: Optional[Sequence[BaseMessage]] = None,
+    problem_statement: str = "",
+    requirements: str = "",
+    research_concepts: str = "",
+    selected_concept_details: str = "",
+    selected_concept_name: str = "",
+    basic_pfd: str = "",
+    basic_hmb_results: str = "",
+    basic_equipment_template: str = "",
+    basic_stream_data: str = "",
+    approval: str = "",
+    design_basis: Optional[str] = None,
+    safety_risk_analyst_report: Optional[str] = None,
+    project_manager_report: Optional[str] = None,
+) -> DesignState:
+    """Factory to create a DesignState with sensible defaults."""
+
+    state: DesignState = {
+        "messages": list(messages) if messages is not None else [],
+        "problem_statement": problem_statement,
+        "requirements": requirements,
+        "research_concepts": research_concepts,
+        "selected_concept_details": selected_concept_details,
+        "selected_concept_name": selected_concept_name,
+        "basic_pfd": basic_pfd,
+        "basic_hmb_results": basic_hmb_results,
+        "basic_equipment_template": basic_equipment_template,
+        "basic_stream_data": basic_stream_data,
+        "approval": approval,
+    }
+
+    if design_basis is not None:
+        state["design_basis"] = design_basis
+    if safety_risk_analyst_report is not None:
+        state["safety_risk_analyst_report"] = safety_risk_analyst_report
+    if project_manager_report is not None:
+        state["project_manager_report"] = project_manager_report
+
+    return state

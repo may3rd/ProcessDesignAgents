@@ -3,3 +3,7 @@
 from processdesignagents.agents.utils.heat_exchanger_sizing_tools import (
     size_heat_exchanger_basic
 )
+
+from processdesignagents.agents.utils.pump_sizing_tools import (
+    size_pump_basic
+)

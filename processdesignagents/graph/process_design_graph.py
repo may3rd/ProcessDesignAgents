@@ -16,7 +16,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 import os
 from dotenv import load_dotenv
 
-from processdesignagents.default_config import DEFAULT_CONNFIG
+from processdesignagents.default_config import DEFAULT_CONFIG
 from processdesignagents.agents.utils.json_tools import (
     convert_streams_json_to_markdown,
     convert_equipment_json_to_markdown,
@@ -42,7 +42,7 @@ class ProcessDesignGraph:
             config: Configuration dictionary
         """
         self.debug = debug
-        self.config = config or DEFAULT_CONNFIG
+        self.config = config or DEFAULT_CONFIG
         # Initialize LLMs
         # if self.config["llm_provider"].lower() == "openai" or self.config["llm_provider"] == "ollama" or self.config["llm_provider"] == "openrouter":
         if self.config["llm_provider"] == "openrouter":
