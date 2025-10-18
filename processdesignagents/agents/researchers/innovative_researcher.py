@@ -1,6 +1,5 @@
 from __future__ import annotations
-
-import json
+from pydantic import BaseModel, Field
 
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -8,6 +7,8 @@ from langchain_core.prompts import (
     MessagesPlaceholder,
     SystemMessagePromptTemplate,
 )
+from langchain_core.messages import AIMessage
+
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
@@ -16,6 +17,29 @@ from processdesignagents.agents.utils.json_tools import extract_first_json_docum
 
 load_dotenv()
 
+# Define Concepts Schema as Pydantic Models
+
+class Concepts(BaseModel):
+    name: str = Field(..., description="Descriptive name of the process concept.")
+    maturity: str = Field(
+        ...,
+        description="Classification of the technology's maturity (conventional, innovative, state_of_the_art).",
+    )
+    description: str = Field(
+        ..., description="A concise paragraph explaining the process concept."
+    )
+    unit_operations: list[str] = Field(
+        ..., description="List of essential unit operations involved in the concept."
+    )
+    key_benefits: list[str] = Field(
+        ..., description="List of key benefits or advantages of the concept."
+    )
+
+
+class ConceptsList(BaseModel):
+    concepts: list[Concepts] = Field(
+        ..., description="A list of distinct process concepts."
+    )
 
 def create_innovative_researcher(llm):
     def innovative_researcher(state: DesignState) -> DesignState:
@@ -28,15 +52,21 @@ def create_innovative_researcher(llm):
         base_prompt = innovative_researcher_prompt(requirements_summary)
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm
+        
+        # Create the LLM chain that will force the output to match Pydantic schema
+        structured_llm = llm.with_structured_output(ConceptsList)
+        chain = prompt | structured_llm
         
         is_done = False
         try_count = 0
         while not is_done:
             response = chain.invoke({"messages": list(state.get("messages", []))})
-            research_json = (
-                response.content if isinstance(response.content, str) else str(response.content)
-            ).strip()
+            # research_json = (
+            #     response.content if isinstance(response.content, str) else str(response.content)
+            # ).strip()
+            
+            # print(f"--- Output ---\n{response.model_dump_json(indent=2)}", flush=True)
+            research_json = response.model_dump_json(indent=2)
             is_done = len(research_json) > 100
             try_count += 1
             if not is_done:
@@ -46,12 +76,11 @@ def create_innovative_researcher(llm):
                     print("+ Max try count reached.", flush=True)
                     exit(-1)
 
-        sanitized_json, _ = extract_first_json_document(research_json)
-        research_markdown = convert_concepts_json_to_markdown(sanitized_json)
+        research_markdown = convert_concepts_json_to_markdown(research_json)
         print(research_markdown, flush=True)
         return {
-            "research_concepts": sanitized_json,
-            "messages": [response],
+            "research_concepts": research_json,
+            "messages": [AIMessage(content=research_json)],
         }
 
     return innovative_researcher

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -24,19 +22,19 @@ def create_concept_detailer(llm, selection_provider_getter=None):
         """Concept Detailer: Picks the highest-feasibility concept and elaborates it for downstream design."""
         print("\n# Concept Selection", flush=True)
 
-        evaluations_json_raw = state.get("research_concepts", "")
+        evaluations_json_raw = state.get("research_rateing_results", "")
         if not isinstance(evaluations_json_raw, str):
             evaluations_json_raw = str(evaluations_json_raw)
         requirements_markdown = state.get("requirements", "")
         if not isinstance(requirements_markdown, str):
             requirements_markdown = str(requirements_markdown)
 
-        sanitized_evaluations_json, evaluation_payload = extract_first_json_document(evaluations_json_raw)
+        evaluation_payload = json.loads(evaluations_json_raw)
         if evaluation_payload is None:
             raise ValueError("Concept detailer expected JSON evaluations from conservative researcher.")
 
         if isinstance(evaluation_payload, dict):
-            evaluations = evaluation_payload.get("evaluations")
+            evaluations = evaluation_payload.get("concepts")
         elif isinstance(evaluation_payload, list):
             evaluations = evaluation_payload
         else:
@@ -86,6 +84,8 @@ def create_concept_detailer(llm, selection_provider_getter=None):
             f"Chosen concept: {best_title}\n(Feasibility Score: {best_score if best_score is not None else 'N/A'})",
             flush=True,
         )
+        
+        exit(0)
 
         print("* Prepared detailed concept brief...", flush=True)
         base_prompt = concept_detailer_prompt(best_evaluation, requirements_markdown)

@@ -1,4 +1,4 @@
-from __future__ import annotations
+from pydantic import BaseModel, Field
 
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -6,6 +6,8 @@ from langchain_core.prompts import (
     MessagesPlaceholder,
     SystemMessagePromptTemplate,
 )
+from langchain_core.messages import AIMessage
+
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
@@ -17,6 +19,46 @@ from processdesignagents.agents.utils.json_tools import (
 
 load_dotenv()
 
+# Define Concepts Schema as Pydantic Models
+
+class risk_base(BaseModel):
+    technical: str = Field(..., description="Technical risk description.")
+    economic: str = Field(..., description="Economic risk description.")
+    safety_operational: str = Field(..., description="Safety/Operational risk description.")
+
+class Concept(BaseModel):
+    name: str = Field(..., description="Descriptive name of the process concept.")
+    maturity: str = Field(
+        ...,
+        description="Classification of the technology's maturity (conventional, innovative, state_of_the_art).",
+    )
+    description: str = Field(
+        ..., description="A concise paragraph explaining the process concept."
+    )
+    unit_operations: list[str] = Field(
+        ..., description="List of essential unit operations involved in the concept."
+    )
+    key_benefits: list[str] = Field(
+        ..., description="List of key benefits or advantages of the concept."
+    )
+    summary: str = Field(
+        ..., description="A concise synopsis of the evaluation."
+    )
+    feasibility_score: int = Field(
+        ..., description="Feasibility scroce of this concept"
+    )
+    risk: risk_base = Field(
+        ..., description="Risk evaluation of this concept."
+    )
+    recommendations: list[str] = Field(
+        ..., description="The recommendation for this concept."
+    )
+
+
+class ConceptsList(BaseModel):
+    concepts: list[Concept] = Field(
+        ..., description="A list of distinct process concepts."
+    )
 
 def create_conservative_researcher(llm):
     def conservative_researcher(state: DesignState) -> DesignState:
@@ -38,38 +80,80 @@ def create_conservative_researcher(llm):
 
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm
+        chain = prompt | llm.with_structured_output(ConceptsList)
         
         is_done = False
         try_count = 0
         while not is_done:
             response = chain.invoke({"messages": list(state.get("messages", []))})
-            critique_raw = (
-                response.content if isinstance(response.content, str) else str(response.content)
-            ).strip()
-            sanitized_output, evaluation_payload = extract_first_json_document(critique_raw)
-            has_evaluations = False
-            if isinstance(evaluation_payload, dict):
-                evaluations = evaluation_payload.get("evaluations")
-                has_evaluations = isinstance(evaluations, list) and len(evaluations) > 0
-            is_done = has_evaluations
+            # critique_raw = (
+            #     response.content if isinstance(response.content, str) else str(response.content)
+            # ).strip()
+            # sanitized_output, evaluation_payload = extract_first_json_document(critique_raw)
+            # has_evaluations = False
+            # if isinstance(evaluation_payload, dict):
+            #     evaluations = evaluation_payload.get("evaluations")
+            #     has_evaluations = isinstance(evaluations, list) and len(evaluations) > 0
+            rating_json = response.model_dump_json(indent=2)
+            is_done = len(rating_json) > 100
             try_count += 1
             if not is_done:
                 print("- False to critique concepts. Try again.", flush=True)
-                print(critique_raw, flush=True)
                 if try_count > 10:
                     print("+ Max try count reached.", flush=True)
                     exit(-1)
 
-        critique_markdown = convert_evaluations_json_to_markdown(sanitized_output)
+        critique_markdown = convert_concepts_json_to_markdown(rating_json)
         print(critique_markdown, flush=True)
         return {
-            "research_concepts": sanitized_output,
-            "innovative_concepts": sanitized_concepts_json,
-            "messages": [response],
+            "research_rateing_results": rating_json,
+            "messages": [AIMessage(content=rating_json)],
         }
 
     return conservative_researcher
+
+
+def convert_concepts_json_to_markdown(concepts_json: str) -> str:
+    """Convert structured JSON concept output into a readable Markdown summary."""
+    sanitized_json, payload = extract_first_json_document(concepts_json)
+    if payload is None:
+        return sanitized_json
+
+    concepts = payload if isinstance(payload, list) else payload.get("concepts")
+    if not isinstance(concepts, list):
+        return sanitized_json
+
+    lines: list[str] = []
+    concept_counter = 0
+    for concept in concepts:
+        if not isinstance(concept, dict):
+            continue
+
+        concept_counter += 1
+        name = concept.get("name", "Untitled Concept")
+        summary = concept.get("summary")
+        feasibility_score = concept.get("feasibility_score")
+        risks = concept.get("risks")
+        recommendations = concept.get("recommendations")
+
+        lines.append("---")
+        lines.append(f"## Concept {concept_counter}. {name}")
+        if isinstance(summary, str) and summary:
+            lines.append(f"**Summary:** {summary}")
+        if isinstance(feasibility_score, int):
+            lines.append(f"**Feasibility Score:** {feasibility_score}")
+        if isinstance(risks, dict):
+            lines.append("**Risks:**")
+            for key, value in risks.items():
+                lines.append(f"- {key}: {value}")
+        if isinstance(recommendations, list) and recommendations:
+            lines.append("**Recommendations:**")
+            for recommendation in recommendations:
+                lines.append(f"- {recommendation}")
+    if not lines:
+        return sanitized_json
+
+    return "\n".join(lines)
 
 
 def conservative_researcher_prompt(
@@ -156,10 +240,19 @@ You are a Principal Technology Analyst at a top-tier venture capital firm. Your 
 
     ```json
     {{
-      "evaluations": [
+      "concepts": [
         {{
           "name": "Ethanol Cooling Exchanger Skid",
           "maturity": "conventional",
+          "description": "Standard shell-and-tube exchanger cools hot ethanol using the existing cooling water loop.",
+          "unit_operations": [
+            "Feed/product pumps",
+            "Shell-and-tube heat exchanger"
+          ],
+          "key_benefits": [
+            "Proven design with low execution risk",
+            "Minimal footprint and easy maintenance"
+          ]
           "summary": "Robust baseline option with manageable fouling risk and moderate utility demand.",
           "feasibility_score": 7,
           "risks": {{
@@ -171,20 +264,7 @@ You are a Principal Technology Analyst at a top-tier venture capital firm. Your 
             "Install differential-pressure monitoring and schedule periodic backflushing to manage fouling.",
             "Audit cooling water capacity and add contingency supply for summer peaks.",
             "Add hydrocarbon detectors and isolation valves on the cooling water return to mitigate leak scenarios."
-          ],
-          "concept": {{
-            "name": "Ethanol Cooling Exchanger Skid",
-            "maturity": "conventional",
-            "description": "Standard shell-and-tube exchanger cools hot ethanol using the existing cooling water loop.",
-            "unit_operations": [
-              "Feed/product pumps",
-              "Shell-and-tube heat exchanger"
-            ],
-            "key_benefits": [
-              "Proven design with low execution risk",
-              "Minimal footprint and easy maintenance"
-            ]
-          }}
+          ]
         }}
       ]
     }}

@@ -11,7 +11,7 @@ config["deep_think_llm"] = "x-ai/grok-4-fast"
 
 # config["quick_think_llm"] = "google/gemini-2.5-flash-preview-09-2025"
 # config["deep_think_llm"] = "anthropic/claude-sonnet-4.5"
-config["deep_think_llm"] = "z-ai/glm-4.6"
+# config["deep_think_llm"] = "z-ai/glm-4.6"
 
 # config["llm_provider"] = "google"
 # config["quick_think_llm"] = "gemini-2.5-flash"
@@ -24,7 +24,7 @@ config["deep_think_llm"] = "z-ai/glm-4.6"
 config["quick_think_temperature"] = 0.5
 config["deep_think_temperature"] = 0.5
 
-async def main():
+def main():
     graph = ProcessDesignGraph(debug=False, config=config)
 
     # problem_statement = "design generic compressed air unit for refinery with capacity 300 Nm3/h for plant air and instrument air."
@@ -33,7 +33,7 @@ async def main():
     # problem_statement = f"design the energy recovery from flue gas of LNG burner, 10,000 SCFD, 300°C, 0.1 barg and use it to produce electricity with 30% efficiency."
     problem_statement = "design the carbon capture modular package, the feed to the package can be flue gas from various burner type. The target CO2 purity is 99.5%"
 
-    _ = await graph.propagate(
+    _ = graph.propagate(
         problem_statement=problem_statement, 
         save_markdown="reports/latest_run.md",
         save_word_doc="reports/latest_run.docx",
@@ -41,4 +41,4 @@ async def main():
         )
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import json
 
@@ -13,7 +14,8 @@ from langchain_openai import ChatOpenAI
 # from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-import os
+from langgraph.prebuilt import ToolNode
+
 from dotenv import load_dotenv
 
 from processdesignagents.default_config import DEFAULT_CONFIG
@@ -22,6 +24,11 @@ from processdesignagents.agents.utils.json_tools import (
     convert_equipment_json_to_markdown,
     convert_risk_json_to_markdown,
 )
+from processdesignagents.agents.utils.agent_utils import (
+    size_heat_exchanger_basic,
+    size_pump_basic
+)
+
 from .setup import GraphSetup
 from .propagator import Propagator
 from langgraph.checkpoint.memory import MemorySaver
@@ -68,11 +75,15 @@ class ProcessDesignGraph:
         
         self.checkpointer = MemorySaver()
         
+        # Create tool nodes
+        self.tool_nodes = self._create_tool_nodes()
+                
         delay_time = 15.0 if self.config["llm_provider"].lower() == "google" else 0.5
 
         self.graph_setup = GraphSetup(
             quick_thinking_llm=self.quick_thinking_llm,
             deep_thinking_llm=self.deep_thinking_llm,
+            tool_nodes=self.tool_nodes,
             checkpointer=self.checkpointer,
             delay_time=delay_time,
         )
@@ -83,6 +94,17 @@ class ProcessDesignGraph:
         
         # Set up the graph
         self.graph = self.graph_setup.setup_graph()
+        
+    def _create_tool_nodes(self) -> Dict[str, ToolNode]:
+        """Create tool nodes for different equipment using abstract methods."""
+        return {
+            "equipment_sizing": ToolNode(
+                [
+                    size_heat_exchanger_basic,
+                    size_pump_basic
+                ]
+            ),
+        }
         
     def get_url_by_name(self, name: str) -> str:
         """
@@ -107,7 +129,7 @@ class ProcessDesignGraph:
                 return url
         return None
         
-    async def propagate(
+    def propagate(
         self,
         problem_statement: str = "",
         save_markdown: str | None = None,
@@ -161,7 +183,7 @@ class ProcessDesignGraph:
             if self.debug:
                 # Debug mode with tracing
                 trace = []
-                async for chunk in self.graph.astream(init_agent_state, **args):
+                for chunk in self.graph.astream(init_agent_state, **args):
                     if len(chunk["messages"]) == 0:
                         pass
                     else:
@@ -170,7 +192,7 @@ class ProcessDesignGraph:
                 final_state = trace[-1]
             else:
                 # Run the graph
-                final_state = await self.graph.ainvoke(init_agent_state, **args)
+                final_state = self.graph.invoke(init_agent_state, **args)
                 print(f"\n=========================== Finish Line ===========================", flush=True)
         finally:
             self.graph_setup.concept_selection_provider = previous_provider

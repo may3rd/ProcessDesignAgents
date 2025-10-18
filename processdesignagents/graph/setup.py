@@ -15,12 +15,14 @@ class GraphSetup:
         self,
         quick_thinking_llm: ChatOpenAI,
         deep_thinking_llm: ChatOpenAI,
+        tool_nodes: Dict[str, ToolNode],
         checkpointer=None,
         delay_time: float = 0.5,
     ):
         """Initialize with required components."""
         self.quick_thinking_llm = quick_thinking_llm
         self.deep_thinking_llm = deep_thinking_llm
+        self.tool_nodes = tool_nodes
         self.checkpointer = checkpointer
         self.concept_selection_provider = None
         self.delay_time = delay_time
