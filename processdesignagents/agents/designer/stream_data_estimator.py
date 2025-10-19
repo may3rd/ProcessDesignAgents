@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from langchain_core.messages import AIMessage
 import json
 
 from langchain_core.prompts import (
@@ -11,11 +12,11 @@ from langchain_core.prompts import (
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.utils.json_tools import (
-    extract_first_json_document,
-    convert_streams_json_to_markdown,
+from processdesignagents.agents.utils.agent_utils import (
+    EquipmentsAndStreamsListBuilder,
+    convert_to_markdown,
 )
+from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
 load_dotenv()
 
@@ -28,54 +29,40 @@ def create_stream_data_estimator(llm):
         llm.temperature = 0.7
         
         basic_pfd_markdown = state.get("basic_pfd", "")
-        requirements_markdown = state.get("requirements", "")
         design_basis_markdown = state.get("design_basis", "")
-        concept_details_markdown = state.get("selected_concept_details", "")
-        stream_template = state.get("stream_list_template", "")
-
-        if not isinstance(stream_template, str):
-            stream_template = str(stream_template)
-
-        template_json, template_payload = extract_first_json_document(stream_template)
-        if template_payload is None:
-            raise ValueError("Stream data estimator requires a JSON stream template. Run the builder first.")
-
-        formatted_template = json.dumps(template_payload, ensure_ascii=False, indent=2)
-
+        equipments_and_streams_template = state.get("equipments_and_streams_template", "")
         base_prompt = stream_data_estimator_prompt(
             basic_pfd_markdown,
-            requirements_markdown,
             design_basis_markdown,
-            concept_details_markdown,
-            formatted_template,
+            equipments_and_streams_template,
         )
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm
-        
+        chain = prompt | llm.with_structured_output(EquipmentsAndStreamsListBuilder)
         is_done = False
         try_count = 0
-        sanitized_json = ""
         while not is_done:
-            response = chain.invoke({"messages": list(state.get("messages", []))})
-            raw_output = (
-                response.content if isinstance(response.content, str) else str(response.content)
-            ).strip()
-            sanitized_json, payload = extract_first_json_document(raw_output)
-            has_streams = isinstance(payload, dict) and isinstance(payload.get("streams"), list)
-            is_done = bool(has_streams)
             try_count += 1
-            if not is_done:
-                print("- Failed to create stream data, Retrying...", flush=True)
-                if try_count > 10:
-                    print("+ Max try count reached.", flush=True)
-                    exit(-1)
-
-        stream_markdown = convert_streams_json_to_markdown(sanitized_json)
-        print(stream_markdown, flush=True)
+            if try_count > 10:
+                print("+ Maximum try is reach.")
+                exit(-1)
+            try:
+                response = chain.invoke({"messages": list(state.get("messages", []))})
+                output_json = response.model_dump_json(indent=2)
+                is_done = len(output_json) > 100
+            except Exception as e:
+                print(f"Attempt {try_count} failed: Parsing error - {e}")
+        try:
+            payload = json.loads(output_json)
+            stream_list_result = {"streams": payload.get("streams")}
+        except Exception as e:
+            raise ValueError(f"{e}")
+        _, _, markdown_tables = convert_to_markdown(response)
+        print(markdown_tables, flush=True)
         return {
-            "stream_list_results": sanitized_json,
-            "messages": [response],
+            "equipment_and_stream_list": response.model_dump_json(),
+            "stream_list_results": json.dumps(stream_list_result),
+            "messages": [AIMessage(content=output_json)],
         }
 
     return stream_data_estimator
@@ -83,27 +70,28 @@ def create_stream_data_estimator(llm):
 
 def stream_data_estimator_prompt(
     basic_pfd_markdown: str,
-    requirements_markdown: str,
     design_basis_markdown: str,
-    concept_details_markdown: str,
-    stream_template: str,
+    equipments_and_streams_template: str,
 ) -> ChatPromptTemplate:
     system_content = f"""
 You are a **Senior Process Simulation Engineer** specializing in developing first-pass heat and material balances for conceptual designs.
 
 **Context:**
 
-  * You are provided with a `STREAM_TEMPLATE` JSON document containing placeholder stream information, along with supporting `DESIGN_DOCUMENTS` (concept summary, requirements, design basis).
-  * Your task is to populate the template with realistic, reconciled operating conditions and document key assumptions.
+  * You are provided with a `EQUIPMENTS_STREAMS_TEMPLATE` JSON document containing placeholder stream information, along with supporting `DESIGN_DOCUMENTS` (concept summary, requirements, design basis).
+  * Your task is to populate the template with realistic, reconciled operating conditions and document key assumptions for each streams as much as you can.
+  * Leave Equipments section untouched. It will be done by downstream agents.
   * The resulting JSON becomes the authoritative dataset for downstream equipment sizing, detailed simulation, and cost estimation.
 
 **Instructions:**
 
-  * **Analyze Inputs:** Review the `STREAM_TEMPLATE` and all supporting `DESIGN_DOCUMENTS` to understand unit operations, performance targets, and constraints.
-  * **Perform Balances:** Replace every placeholder (values wrapped in `< >`) with a best-estimate numeric string. Maintain units by appending them (e.g., `"10000 kg/h"`). Ensure mass and component balances are conserved for each unit and overall.
-  * **Update Metadata:** Keep the existing `"property_order"` and `"component_order"` definitions. Populate `"metadata.assumptions"` with concise bullet-style strings summarizing calculation methods (e.g., specific heats, temperature approaches, pressure drops).
+  * **Analyze Inputs:** Review the `EQUIPMENTS_STREAMS_TEMPLATE` and all supporting `DESIGN_DOCUMENTS` to understand unit operations, performance targets, and constraints.
+  * **Perform Balances:** Replace every operating conditions and composisitions of each stream with a best-estimate numeric string. UOM of each value can be changed if needed. Ensure mass and component balances are conserved for each unit and overall.
+  * **Work sequence:** Start by focusing on the main feed to product first, then working in the utilities (if any).
   * **Ensure Completeness:** Check that component fractions per stream sum to 100% on the stated basis. Populate `"notes"` for each stream with context or safeguards that support the estimates.
-  * **Output Discipline:** Respond with a single valid JSON object matching the input schema—top-level `"metadata"` and `"streams"`. Use double quotes, UTF-8 safe characters, and DO NOT wrap the response in Markdown or code fences.
+  * **Compositions:** Ensure that the mass fraction and molar fraction is consistent, means that the value of the molar fraction and mass fraction usually not the same but it is calculated based on MW of each components and calculate mass fraction from molar fraction if both existed. Put 0.0000 for the components that not presenting in stream. **Ensure that the summation of mass fraction and summation of molar fraction is 100.0% for all streams.**
+  * **Output Discipline:** Respond with a single valid JSON object using double quotes and UTF-8 safe characters. Do NOT wrap the response in Markdown, code fences, or provide commentary.
+  * **Equipment List:** Leave `EQUIPMENT` section untouched. It will be done by downstream agents.
 
 -----
 
@@ -115,96 +103,118 @@ You are a **Senior Process Simulation Engineer** specializing in developing firs
     "A shell-and-tube heat exchanger (E-101) cools 10,000 kg/h of 93 mol% ethanol from 80°C to 40°C. Plant cooling water is used, entering at 25°C. Assume Cp of ethanol stream is 2.5 kJ/kg-K and water is 4.18 kJ/kg-K."
     ```
 
-  * **STREAM TEMPLATE (excerpt):**
+  * **DESIGN DOCUMENTS:**
 
-    {{
-      "metadata": {{
-        "property_order": [
-          {{"key": "mass_flow", "label": "Mass Flow", "units": "kg/h"}},
-          {{"key": "temperature", "label": "Temperature", "units": "°C"}},
-          {{"key": "pressure", "label": "Pressure", "units": "barg"}}
-        ],
-        "component_basis": "mol %",
-        "component_order": ["Ethanol (C₂H₆O)", "Water (H₂O)"],
-        "assumptions": []
-      }},
-      "streams": [
-        {{
-          "id": "1001",
-          "name": "Hot Ethanol Feed",
-          "properties": {{
-            "mass_flow": "<value>",
-            "temperature": "<value>",
-            "pressure": "<value>"
-          }},
-          "components": {{
-            "Ethanol (C₂H₆O)": "<value>",
-            "Water (H₂O)": "<value>"
-          }},
-          "notes": "..."
-        }}
-      ]
-    }}
+    ```
+    "A heat exchanger (E-101) cools 10,000 kg/h of 95 mol% ethanol from 80°C to 40°C. It is fed from an upstream blender and pumped to storage. Plant cooling water is used, entering at 25°C and returning to the header at 35°C."
+    ```
 
   * **Response:**
 
     {{
-      "metadata": {{
-        "property_order": [
-          {{"key": "mass_flow", "label": "Mass Flow", "units": "kg/h"}},
-          {{"key": "temperature", "label": "Temperature", "units": "°C"}},
-          {{"key": "pressure", "label": "Pressure", "units": "barg"}}
+        "equipments": [
+            {{
+                "id": "E-101",
+                "name": "Ethanol Cooler",
+                "service": "Reduce hot ethanol temperature prior to storage.",
+                "type": "Shell-and-tube exchanger",
+                "streams_in": ["1001, 2001"],
+                "streams_out": ["1002, 2002"],
+                "design_criteria": "<0.28 MW>",
+                "sizing_parameters": [
+                    {{
+                        "name": "Area",
+                        "quantity": {{"value": 120.0, "unit": "m²"}}
+                    }},
+                    {{
+                        "name": "lmtd",
+                        "quantity": {{"value": 40.0, "unit": "°C"}}
+                    }},
+                    {{
+                        "name": "U-value",
+                        "quantity": {{"value": 450.0, "unit": "W/m²-K"}}
+                    }}
+                ],
+                "notes": "Design for a minimum 5°C approach temperature. Ensure sufficient space for bundle pull during maintenance."
+            }}
         ],
-        "component_basis": "mol %",
-        "component_order": ["Ethanol (C₂H₆O)", "Water (H₂O)"],
-        "assumptions": [
-          "Ethanol Cp = 2.5 kJ/kg-K; Cooling water Cp = 4.18 kJ/kg-K.",
-          "Cooling water temperature rise assumed at 10°C (25→35°C).",
-          "Pressure drop estimated at 0.2 bar per stream through E-101."
-        ]
-      }},
       "streams": [
         {{
-          "id": "1001",
-          "name": "Hot Ethanol Feed",
-          "description": "Feed entering exchanger E-101 shell side",
-          "from": "Upstream Blender",
-          "to": "E-101 Shell Inlet",
-          "phase": "Liquid",
-          "properties": {{
-            "mass_flow": "10000 kg/h",
-            "temperature": "80 °C",
-            "pressure": "1.5 barg"
-          }},
-          "components": {{
-            "Ethanol (C₂H₆O)": "93",
-            "Water (H₂O)": "7"
-          }},
-          "notes": "Assumes steady feed from upstream blender with minimal heat loss."
+            "id": "1001",
+            "name": "Hot Ethanol Feed",
+            "description": "Feed entering exchanger E-101 shell side",
+            "from": "Upstream Blender",
+            "to": "E-101",
+            "phase": "Liquid",
+            "properties": {{
+                "mass_flow": {{"value": 10000, "unit": "kg/h"}},
+                "temperature": {{"value": 80, "unit": "°C"}},
+                "pressure": {{"value": 1.7, "unit": "barg"}}
+            }},
+            "compositions": {{
+                "Ethanol (C2H8O)": {{"value": 0.95, "unit": "molar fraction"}},
+                "Water (H2O)": {{"value": 0.05, "unit": "molar fraction"}}
+            }},
+            "notes": "Tie-in from upstream blender."
         }},
         {{
-          "id": "2001",
-          "name": "Cooling Water Supply",
-          "description": "Utility water to exchanger tubes",
-          "from": "Cooling Water Header",
-          "to": "E-101 Tube Inlet",
-          "phase": "Liquid",
-          "properties": {{
-            "mass_flow": "23923 kg/h",
-            "temperature": "25 °C",
-            "pressure": "2.5 barg"
-          }},
-          "components": {{
-            "Water (H₂O)": "100"
-          }},
-          "notes": "Flow sized for 10°C rise to deliver 0.278 MW heat removal."
+                "id": "1002",
+                "name": "Ethanol Cooler Return",
+                "description": "Feed from exchanger E-101 shell side",
+                "from": "E-101",
+                "to": "Downstream Storage",
+                "phase": "Liquid",
+                "properties": {{
+                    "mass_flow": {{"value": 10000, "unit": "kg/h"}},
+                    "temperature": {{"value": 40, "unit": "°C"}},
+                    "pressure": {{"value": 1.0, "unit": "barg"}}
+            }},
+            "compositions": {{
+                "Ethanol (C2H8O)": {{"value": 0.95, "unit": "molar fraction"}},
+                "Water (H2O)": {{"value": 0.05, "unit": "molar fraction"}}
+            }},
+            "notes": "Cool feed to storage."
+        }},
+        {{
+            "id": "2001",
+            "name": "Cooling Water Supply",
+            "description": "Utility water to exchanger tubes",
+            "from": "Cooling Water Header",
+            "to": "E-101",
+            "phase": "Liquid",
+            "properties": {{
+                "mass_flow": {{"value": 24000, "unit": "kg/h"}},
+                "temperature": {{"value": 25, "unit": "°C"}},
+                "pressure": {{"value": 2.5, "unit": "barg"}}
+            }},
+            "compositions": {{
+                "Water (H2O)": {{"value": 1.00, "unit": "molar fraction"}}
+            }},
+            "notes": "Return stream 2002 closes utility loop."
+        }},
+        {{
+            "id": "2002",
+            "name": "Cooling Water Return",
+            "description": "Utility water from exchanger tubes",
+            "from": "E-101",
+            "to": "Cooling Water Return Header",
+            "phase": "Liquid",
+            "properties": {{
+                "mass_flow": {{"value": 24000, "unit": "kg/h"}},
+                "temperature": {{"value": 35, "unit": "°C"}},
+                "pressure": {{"value": 1.8, "unit": "barg"}}
+            }},
+            "compositions": {{
+                "Water (H2O)": {{"value": 1.00, "unit": "molar fraction"}}
+            }},
+            "notes": "Return stream 2002 closes utility loop."
         }}
       ]
     }}
 
 -----
 
-**Your Task:** Based on the provided `DESIGN_DOCUMENTS` and `STREAM_TEMPLATE`, generate ONLY the JSON object described above. Do not include code fences or additional narrative.
+**Your Task:** Based on the provided `DESIGN_DOCUMENTS`, generate ONLY the JSON object described above. Do not include code fences or additional narrative.
 """
 
     human_content = f"""
@@ -217,8 +227,8 @@ You are a **Senior Process Simulation Engineer** specializing in developing firs
 **Basic Process Flow Diagram (Markdown):**
 {basic_pfd_markdown}
 
-# STREAM TEMPLATE (JSON)
-{stream_template}
+# EQUIPMENTS AND STREAMS TEMPLATE (JSON)
+{equipments_and_streams_template}
 
 """
     

@@ -11,6 +11,7 @@ from langchain_core.messages import AIMessage
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.agent_utils import ConceptsList
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.json_tools import (
     extract_first_json_document,
@@ -19,46 +20,6 @@ from processdesignagents.agents.utils.json_tools import (
 
 load_dotenv()
 
-# Define Concepts Schema as Pydantic Models
-
-class risk_base(BaseModel):
-    technical: str = Field(..., description="Technical risk description.")
-    economic: str = Field(..., description="Economic risk description.")
-    safety_operational: str = Field(..., description="Safety/Operational risk description.")
-
-class Concept(BaseModel):
-    name: str = Field(..., description="Descriptive name of the process concept.")
-    maturity: str = Field(
-        ...,
-        description="Classification of the technology's maturity (conventional, innovative, state_of_the_art).",
-    )
-    description: str = Field(
-        ..., description="A concise paragraph explaining the process concept."
-    )
-    unit_operations: list[str] = Field(
-        ..., description="List of essential unit operations involved in the concept."
-    )
-    key_benefits: list[str] = Field(
-        ..., description="List of key benefits or advantages of the concept."
-    )
-    summary: str = Field(
-        ..., description="A concise synopsis of the evaluation."
-    )
-    feasibility_score: int = Field(
-        ..., description="Feasibility scroce of this concept"
-    )
-    risk: risk_base = Field(
-        ..., description="Risk evaluation of this concept."
-    )
-    recommendations: list[str] = Field(
-        ..., description="The recommendation for this concept."
-    )
-
-
-class ConceptsList(BaseModel):
-    concepts: list[Concept] = Field(
-        ..., description="A list of distinct process concepts."
-    )
 
 def create_conservative_researcher(llm):
     def conservative_researcher(state: DesignState) -> DesignState:
@@ -94,7 +55,7 @@ def create_conservative_researcher(llm):
             # if isinstance(evaluation_payload, dict):
             #     evaluations = evaluation_payload.get("evaluations")
             #     has_evaluations = isinstance(evaluations, list) and len(evaluations) > 0
-            rating_json = response.model_dump_json(indent=2)
+            rating_json = response.model_dump_json()
             is_done = len(rating_json) > 100
             try_count += 1
             if not is_done:

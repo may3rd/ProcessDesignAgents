@@ -1,4 +1,3 @@
-from pydantic import BaseModel, Field
 import json
 
 from langchain_core.prompts import (
@@ -12,34 +11,13 @@ from langchain_core.messages import AIMessage
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.agent_utils import (
+    ConceptsList
+)
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.json_tools import extract_first_json_document
 
 load_dotenv()
-
-# Define Concepts Schema as Pydantic Models
-
-class Concepts(BaseModel):
-    name: str = Field(..., description="Descriptive name of the process concept.")
-    maturity: str = Field(
-        ...,
-        description="Classification of the technology's maturity (conventional, innovative, state_of_the_art).",
-    )
-    description: str = Field(
-        ..., description="A concise paragraph explaining the process concept."
-    )
-    unit_operations: list[str] = Field(
-        ..., description="List of essential unit operations involved in the concept."
-    )
-    key_benefits: list[str] = Field(
-        ..., description="List of key benefits or advantages of the concept."
-    )
-
-
-class ConceptsList(BaseModel):
-    concepts: list[Concepts] = Field(
-        ..., description="A list of distinct process concepts."
-    )
 
 def create_innovative_researcher(llm):
     def innovative_researcher(state: DesignState) -> DesignState:
@@ -61,12 +39,7 @@ def create_innovative_researcher(llm):
         try_count = 0
         while not is_done:
             response = chain.invoke({"messages": list(state.get("messages", []))})
-            # research_json = (
-            #     response.content if isinstance(response.content, str) else str(response.content)
-            # ).strip()
-            
-            # print(f"--- Output ---\n{response.model_dump_json(indent=2)}", flush=True)
-            research_json = response.model_dump_json(indent=2)
+            research_json = response.model_dump_json()
             is_done = len(research_json) > 100
             try_count += 1
             if not is_done:
@@ -153,6 +126,7 @@ You are a Senior R&D Process Engineer specializing in conceptual design and proc
   * Respond with a single valid JSON object using double quotes and UTF-8 safe characters. Do not include Markdown, comments, code fences, or explanatory prose.
   * The JSON must contain a top-level key `"concepts"` whose value is a list of objects. Each concept object MUST include the keys: `"name"` (string), `"maturity"` (one of `"conventional"`, `"innovative"`, `"state_of_the_art"`), `"description"` (string), `"unit_operations"` (list of strings), and `"key_benefits"` (list of strings).
   * Ensure at least one concept is marked `"maturity": "conventional"`, one `"innovative"`, and one `"state_of_the_art"`.
+  * DO NOT create a `feasibilty score` for all concepts, it will be done later.
 
 -----
 

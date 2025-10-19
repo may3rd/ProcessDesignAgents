@@ -22,6 +22,7 @@ class Propagator:
             "selected_concept_details": "",
             "selected_concept_name": "",
             "basic_pfd": "",
+            "equipment_and_stream_list": "",
             "stream_list_results": "",
             "equipment_list_template": "",
             "equipment_list_results": "",

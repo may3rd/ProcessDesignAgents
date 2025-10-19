@@ -26,36 +26,14 @@ def create_project_manager(llm):
         requirements_markdown = state.get("requirements", "")
         design_basis = state.get("design_basis", "")
         basic_pfd_markdown = state.get("basic_pfd", "")
-        validation_markdown = state.get("stream_list_results", "")
-        equipment_table = state.get("equipment_list_results", "") or state.get("equipment_list_template", "")
+        equipment_and_stream_list = state.get("equipment_and_stream_list", "")
         safety_report = state.get("safety_risk_analyst_report", "")
-        
-        if not isinstance(requirements_markdown, str):
-            requirements_markdown = str(requirements_markdown)
-        if not isinstance(basic_pfd_markdown, str):
-            basic_pfd_markdown = str(basic_pfd_markdown)
-        if not isinstance(validation_markdown, str):
-            validation_markdown = str(validation_markdown)
-        if not isinstance(equipment_table, str):
-            equipment_table = str(equipment_table)
-        if not isinstance(safety_report, str):
-            safety_report = str(safety_report)
-
-        sanitized_stream_json, stream_payload = extract_first_json_document(validation_markdown) if validation_markdown else ("", None)
-        sanitized_equipment_json, equipment_payload = extract_first_json_document(equipment_table) if equipment_table else ("", None)
-        sanitized_safety_json, safety_payload = extract_first_json_document(safety_report) if safety_report else ("", None)
-
-        stream_json_formatted = json.dumps(stream_payload, ensure_ascii=False, indent=2) if stream_payload is not None else (validation_markdown or "{}")
-        equipment_json_formatted = json.dumps(equipment_payload, ensure_ascii=False, indent=2) if equipment_payload is not None else (equipment_table or "{}")
-        safety_json_formatted = json.dumps(safety_payload, ensure_ascii=False, indent=2) if safety_payload is not None else (safety_report or "{}")
-
         base_prompt = project_manager_prompt(
             requirements_markdown,
             design_basis,
             basic_pfd_markdown,
-            stream_json_formatted,
-            equipment_json_formatted,
-            safety_json_formatted,
+            equipment_and_stream_list,
+            safety_report
         )
 
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
@@ -93,8 +71,7 @@ def project_manager_prompt(
     project_requirements: str,
     design_basis: str,
     basic_pfd: str,
-    stream_data_json: str,
-    equipment_table_json: str,
+    equipment_and_stream_list: str,
     safety_and_risk_json: str,
 ) -> ChatPromptTemplate:
     system_content = """
@@ -167,11 +144,8 @@ You are a **Project Manager** specializing in stage-gate approval, financial eva
 **Basic Process Flow Diagram (Markdown):**
 {basic_pfd}
 
-**Heat & Material Balance (JSON):**
-{stream_data_json}
-
-**Equipment Summary (JSON):**
-{equipment_table_json}
+**Equipments and Streams Data (JSON):**
+{equipment_and_stream_list}
 
 **Safety & Risk Dossier (JSON):**
 {safety_and_risk_json}

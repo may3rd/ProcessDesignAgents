@@ -29,40 +29,13 @@ def create_safety_risk_analyst(llm):
         requirements_markdown = state.get("requirements", "")
         design_basis_markdown = state.get("design_basis", "")
         basic_pfd_markdown = state.get("basic_pfd", "")
-        equipment_json = state.get("equipment_list_results", "") or state.get("equipment_list_template", "")
-        stream_data = state.get("stream_list_results", "")
-        if not isinstance(stream_data, str):
-            stream_data = str(stream_data)
-        if not isinstance(basic_pfd_markdown, str):
-            basic_pfd_markdown = str(basic_pfd_markdown)
-        if not isinstance(requirements_markdown, str):
-            requirements_markdown = str(requirements_markdown)
-        if not isinstance(equipment_json, str):
-            equipment_json = json.dumps(equipment_json, indent=2)
-        if not isinstance(design_basis_markdown, str):
-            design_basis_markdown = str(design_basis_markdown)
-        sanitized_stream_json, stream_payload = extract_first_json_document(stream_data) if stream_data else ("", None)
-        sanitized_equipment_json, equipment_payload = extract_first_json_document(equipment_json) if equipment_json else ("", None)
-
-        if stream_payload is None:
-            raise ValueError("Safety analyst requires stream results JSON from the estimator.")
-        if equipment_payload is None:
-            raise ValueError("Safety analyst requires equipment JSON from the sizing workflow.")
-
-        stream_json_formatted = json.dumps(stream_payload, ensure_ascii=False, indent=2)
-        equipment_json_formatted = json.dumps(equipment_payload, ensure_ascii=False, indent=2)
-
-        stream_markdown = convert_streams_json_to_markdown(sanitized_stream_json)
-        equipment_markdown = convert_equipment_json_to_markdown(sanitized_equipment_json)
+        equipment_and_stream_list = state.get("equipment_and_stream_list", "")
 
         base_prompt = safety_risk_prompt(
             requirements_markdown,
             design_basis_markdown,
             basic_pfd_markdown,
-            stream_json_formatted,
-            stream_markdown,
-            equipment_json_formatted,
-            equipment_markdown,
+            equipment_and_stream_list,
         )
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
@@ -106,10 +79,7 @@ def safety_risk_prompt(
     process_requirement: str,
     design_basis_markdown: str,
     basic_pfd_markdown: str,
-    stream_data_json: str,
-    stream_data_markdown: str,
-    equipment_data_json: str,
-    equipment_data_markdown: str,
+    equipment_and_stream_list: str,
 ) -> ChatPromptTemplate:
     system_content = """
 You are a **Certified Process Safety Professional (CPSP)** with 20 years of experience facilitating Hazard and Operability (HAZOP) studies for the chemical industry.
@@ -176,12 +146,8 @@ You are a **Certified Process Safety Professional (CPSP)** with 20 years of expe
 **BASIC PROCESS FLOW DIAGRAM (Markdown):**
 {basic_pfd_markdown}
 
-**STREAM DATA (JSON):**
-{stream_data_json}
-
-**EQUIPMENT DETAILS (JSON):**
-{equipment_data_json}
-
+**EQUIPMENT AND STREAMS DATA (JSON):**
+{equipment_and_stream_list}
 """
 
     messages = [

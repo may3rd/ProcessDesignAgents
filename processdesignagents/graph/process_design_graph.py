@@ -19,9 +19,11 @@ from langgraph.prebuilt import ToolNode
 from dotenv import load_dotenv
 
 from processdesignagents.default_config import DEFAULT_CONFIG
+from processdesignagents.agents.utils.agent_utils import (
+    convert_to_markdown,
+    EquipmentsAndStreamsListBuilder,
+)
 from processdesignagents.agents.utils.json_tools import (
-    convert_streams_json_to_markdown,
-    convert_equipment_json_to_markdown,
     convert_risk_json_to_markdown,
 )
 from processdesignagents.agents.utils.agent_utils import (
@@ -225,6 +227,7 @@ class ProcessDesignGraph:
             "stream_list_results": final_state.get("stream_list_results", ""),
             "equipment_list_template": final_state.get("equipment_list_template", ""),
             "equipment_list_results": final_state.get("equipment_list_results", ""),
+            "equipment_and_stream_list": final_state.get("equipment_and_stream_list", ""),
             "safety_risk_analyst_report": final_state.get("safety_risk_analyst_report", ""),
             "project_manager_report": final_state.get("project_manager_report", ""),
         }
@@ -239,29 +242,51 @@ class ProcessDesignGraph:
             json.dump(self.log_state_dict, f, indent=4)
         
     def _compose_report_sections(self, final_state: Dict[str, Any]) -> list[tuple[str, str]]:
-        stream_template_markdown = ""
-        stream_results_markdown = ""
-        equipment_markdown = ""
-        if final_state.get("stream_list_template"):
-            stream_template_markdown = convert_streams_json_to_markdown(final_state["stream_list_template"])
-        if final_state.get("stream_list_results"):
-            stream_results_markdown = convert_streams_json_to_markdown(final_state["stream_list_results"])
-        if final_state.get("equipment_list_results") or final_state.get("equipment_list_template"):
-            equipment_source = final_state.get("equipment_list_results") or final_state.get("equipment_list_template")
-            equipment_markdown = convert_equipment_json_to_markdown(equipment_source)
+        raw_equipment_and_streams = final_state.get("equipment_and_streams_list", "")
+        equipment_and_streams_markdown = ""
+        if raw_equipment_and_streams:
+            print(f"Process equipment and streams: {raw_equipment_and_streams}")
+            try:
+                if isinstance(raw_equipment_and_streams, str):
+                    equipment_and_streams_model = EquipmentsAndStreamsListBuilder.model_validate_json(
+                        raw_equipment_and_streams
+                    )
+                else:
+                    equipment_and_streams_model = EquipmentsAndStreamsListBuilder.model_validate(
+                        raw_equipment_and_streams
+                    )
+                equipment_and_streams_markdown, _, _ = convert_to_markdown(equipment_and_streams_model)
+            except Exception:
+                fallback = raw_equipment_and_streams
+                if not isinstance(fallback, str):
+                    fallback = json.dumps(fallback, indent=2)
+                equipment_and_streams_markdown = fallback
+        else:
+            equipment_list = final_state.get("equipment_list_results", "")
+            stream_list = final_state.get("stream_list_results", "")
+            if stream_list and equipment_list:
+                equipment_json = json.loads(equipment_list)
+                stream_json = json.loads(stream_list)
+                raw_equipment_and_streams = json.dumps({"equipments": equipment_json.get("equipments", []), "streams": stream_json.get("streams", [])})
+            if isinstance(raw_equipment_and_streams, str):
+                equipment_and_streams_model = EquipmentsAndStreamsListBuilder.model_validate_json(
+                    raw_equipment_and_streams
+                )
+            else:
+                equipment_and_streams_model = EquipmentsAndStreamsListBuilder.model_validate(
+                    raw_equipment_and_streams
+                )
+            equipment_and_streams_markdown, _, _ = convert_to_markdown(equipment_and_streams_model)
         safety_markdown = ""
         if final_state.get("safety_risk_analyst_report"):
             safety_markdown = convert_risk_json_to_markdown(final_state["safety_risk_analyst_report"])
-
         sections = [
             ("Problem Statement", final_state.get("problem_statement", "")),
             ("Process Requirements", final_state.get("requirements", "")),
             ("Concept Detail", final_state.get("selected_concept_details", "")),
             ("Design Basis", final_state.get("design_basis", "")),
             ("Basic Process Flow Diagram", final_state.get("basic_pfd", "")),
-            ("Stream Template", stream_template_markdown or final_state.get("stream_list_template", "")),
-            ("Heat & Material Balance", stream_results_markdown or final_state.get("stream_list_results", "")),
-            ("Equipment Summary", equipment_markdown or final_state.get("equipment_list_results", "")),
+            ("Equipment and Streams List", equipment_and_streams_markdown),
             ("Safety & Risk Assessment", safety_markdown or final_state.get("safety_risk_analyst_report", "")),
             ("Project Manager Report", final_state.get("project_manager_report", "")),
         ]
