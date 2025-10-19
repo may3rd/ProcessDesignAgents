@@ -11,6 +11,9 @@ from langchain_core.prompts import (
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.agent_utils import (
+    StreamList,
+)
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.json_tools import (
     extract_first_json_document,

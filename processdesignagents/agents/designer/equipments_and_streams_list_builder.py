@@ -1,5 +1,3 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 import json
 
 from langchain_core.messages import AIMessage
@@ -12,65 +10,14 @@ from langchain_core.prompts import (
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.agent_utils import (
+    EquipmentsAndStreamsListBuilder,
+    convert_to_markdown
+)
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.json_tools import convert_streams_json_to_markdown
 
 load_dotenv()
-
-# Define Concepts Schema as Pydantic Models
-
-class Quantity(BaseModel):
-    value: str = Field(..., description="Value of the quantity.")
-    unit: str = Field(..., description="Unit of the quantity (e.g., 'kg/h', '°C', 'barg').")
-
-class Component(BaseModel):
-    name: str = Field(..., description="Descriptive name of the component.")
-    mole_frac: Optional[Quantity] = Field(None, description="Mole fraction of the component.")
-    mass_frac: Optional[Quantity] = Field(None, description="Mass fraction of the component.")
-
-class Properties(BaseModel):
-    mass_flow: Optional[Quantity] = Field(None, description="Mass flow rate of the stream.")
-    mole_flow: Optional[Quantity] = Field(None, description="Mole flow rate of the stream.")
-    volume_flow: Optional[Quantity] = Field(None, description="Volume flow rate of the stream.")
-    temperature: Quantity = Field(..., description="Temperature of the stream.")
-    pressure: Quantity = Field(..., description="Pressure of the stream.")
-
-class Stream(BaseModel):
-    id: str = Field(..., description="Unique identifier for the stream.")
-    name: str = Field(..., description="Descriptive name of the stream.")
-    description: str = Field(..., description="A concise paragraph describing the stream.")
-    from_unit: str = Field(..., description="Unit that this stream coming from.")
-    to_unit: str = Field(..., description="Unit that this stream going to.")
-    phase: str = Field(..., description="Phase of the stream.")
-    properties: Properties = Field(..., description="Properties of the stream.")
-    components: list[Component] = Field(..., description="Components of the stream.")
-    notes: str = Field(..., description="Notes about the stream.")
-
-class Streams(BaseModel):
-    streams: list[Stream] = Field(..., description="List of streams.")
-
-class DesignParameter(BaseModel):
-    name: str = Field(..., description="Descriptive name of the design parameter.")
-    quantity: Quantity = Field(..., description="Quantity of the design parameter.")
-    notes: Optional[str] = Field(None, description="Notes about the design parameter.")
-
-class Equipment(BaseModel):
-    id: str = Field(..., description="Unique identifier for the equipment.")
-    name: str = Field(..., description="Descriptive name of the equipment.")
-    service: str = Field(..., description="Service provided by the equipment.")
-    type: str = Field(..., description="Type of the equipment.")
-    streams_in: list[str] = Field(..., description="List of streams connected to this equipment.")
-    streams_out: list[str] = Field(..., description="List of streams connected to this equipment.")
-    design_criteria: str = Field(..., description="Design criteria for the equipment.")
-    sizing_parameters: list[DesignParameter] = Field(..., description="Sizing parameters for the equipment.")
-    notes: str = Field(..., description="Notes about the equipment.")
-
-class Equipments(BaseModel):
-    equipments: list[Equipment] = Field(..., description="List of equipments.")
-
-class EquipmentsAndStreamsListBuilder(BaseModel):
-    equipments: list[Equipment] = Field(..., description="List of equipments.")
-    streams: list[Stream] = Field(..., description="List of streams.")
 
 
 def create_equipments_and_streams_list_builder(llm):
@@ -101,19 +48,17 @@ def create_equipments_and_streams_list_builder(llm):
             if try_count > 10:
                 print("+ Maximum try is reach.")
                 exit(-1)
-        # Separate output_json into equipment_list_template and stream_list_template
-        # the equipment_list_template = { "equipments": [...]}
-        # the stream_list_template = { "streams": [...]}
-        equipment_list_template = {}
-        stream_list_template = {}
         try:
             payload = json.loads(output_json)
             equipment_list_template = {"equipments": payload.get("equipments")}
             stream_list_template = {"streams": payload.get("streams")}
         except Exception as e:
             raise ValueError(f"{e}")
-        print(f"equipment_list: {json.dumps(equipment_list_template, indent=2)}", flush=True)
-        print(f"stream_list: {json.dumps(stream_list_template, indent=2)}", flush=True)
+        # print(json.dumps(equipment_list_template, indent=2))
+        # print(json.dumps(stream_list_template, indent=2))
+        markdown_tables = convert_to_markdown(response)
+        print(markdown_tables, flush=True)
+        exit(0)
         return {
             "stream_list_template": json.dumps(stream_list_template, indent=2),
             "equipment_list_template": json.dumps(equipment_list_template, indent=2),
@@ -152,10 +97,10 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
         * `"notes"`: brief text capturing unique considerations for that equipment.
     - Each entry in `"streams"` must include:
         * `"id"`, `"name"`, `"description"`, `"from"`, `"to"`, `"phase"`.
-        * `"properties"`: an object keyed by the same identifiers used in `"property_order"` with string values (include units using `<value>` placeholders where unknown, e.g., `"<8500 kg/h>"`).
-        * `"components"`: an object mapping component names to their percentage/fraction strings (placeholders allowed).
+        * `"properties"`: an object keyed by the same identifiers used in `"property_order"` with string values (include units using `000` placeholders where unknown, e.g., `{{"value": 000, "unit": "kg/h"}}`).
+        * `"components"`: an object mapping component names defined in the design basis to their fraction value (placeholders [null or 000] allowed). **Prefer: molar fraction**
         * `"notes"`: brief text capturing unique considerations for that stream.
-    * **Use Placeholders:** For numeric data that requires later calculation, use the `<value>` format and include the units inside the placeholder. For known design values, record the number directly.
+    * **Use Placeholders:** For numeric data that requires later calculation, use the `000` format and include the units inside the placeholder. For known design values, record the number directly.
     * **Output Discipline:** Respond with a single valid JSON object using double quotes and UTF-8 safe characters. Do NOT wrap the response in Markdown, code fences, or provide commentary.
 
 -----
@@ -183,15 +128,15 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
                 "sizing_parameters": [
                     {{
                         "name": "Area",
-                        "quantity": {{"value": "<120>", "unit": "m²"}}
+                        "quantity": {{"value": 120.0, "unit": "m²"}}
                     }},
                     {{
                         "name": "lmtd",
-                        "quantity": {{"value": "<40>", "unit": "°C"}}
+                        "quantity": {{"value": 40.0, "unit": "°C"}}
                     }},
                     {{
                         "name": "U-value",
-                        "quantity": {{"value": "<450>", "unit": "W/m²-K"}}
+                        "quantity": {{"value": 450.0, "unit": "W/m²-K"}}
                     }}
                 ],
                 "notes": "Design for a minimum 5°C approach temperature. Ensure sufficient space for bundle pull during maintenance."
@@ -206,13 +151,13 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
           "to": "E-101",
           "phase": "Liquid",
           "properties": {{
-            "mass_flow": {{"value": "<10000>", "unit": "kg/h"}},
-            "temperature": {{"value": "<80>", "unit": "°C"}},
-            "pressure": {{"value": "<1.7>", "unit": "barg"}}
+            "mass_flow": {{"value": 10000, "unit": "kg/h"}},
+            "temperature": {{"value": 80, "unit": "°C"}},
+            "pressure": {{"value": 1.7, "unit": "barg"}}
           }},
-          "components": {{
-            "Ethanol (C₂H₆O)": {{"value": "<95>", "unit": "mol%"}},
-            "Water (H₂O)": {{"value": "<5>", "unit": "kg/h"}}
+          "compositions": {{
+            "Ethanol (C2H8O)": {{"value": 0.95, "unit": "molar fraction"}},
+            "Water (H2O)": {{"value": 0.05, "unit": "molar fraction"}}
           }},
           "notes": "Tie-in from upstream blender."
         }},
@@ -224,13 +169,13 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
           "to": "Downstream Storage",
           "phase": "Liquid",
           "properties": {{
-            "mass_flow": {{"value": "<10000>", "unit": "kg/h"}},
-            "temperature": {{"value": "<40>", "unit": "°C"}},
-            "pressure": {{"value": "<1.0>", "unit": "barg"}}
+            "mass_flow": {{"value": 10000, "unit": "kg/h"}},
+            "temperature": {{"value": 40, "unit": "°C"}},
+            "pressure": {{"value": 1.0, "unit": "barg"}}
           }},
-          "components": {{
-            "Ethanol (C₂H₆O)": {{"value": "<95>", "unit": "mol%"}},
-            "Water (H₂O)": {{"value": "<5>", "unit": "kg/h"}}
+          "compositions": {{
+            "Ethanol (C2H8O)": {{"value": 0.95, "unit": "molar fraction"}},
+            "Water (H2O)": {{"value": 0.05, "unit": "molar fraction"}}
           }},
           "notes": "Cool feed to storage."
         }},
@@ -242,12 +187,12 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
           "to": "E-101",
           "phase": "Liquid",
           "properties": {{
-            "mass_flow": {{"value": "<24000>", "unit": "kg/h"}},
-            "temperature": {{"value": "<25>", "unit": "°C"}},
-            "pressure": {{"value": "<2.5>", "unit": "barg"}}
+            "mass_flow": {{"value": 24000, "unit": "kg/h"}},
+            "temperature": {{"value": 25, "unit": "°C"}},
+            "pressure": {{"value": 2.5, "unit": "barg"}}
           }},
-          "components": {{
-            "Water (H₂O)": {{"value": "<100>", "unit": "mol%"}}
+          "compositions": {{
+            "Water (H2O)": {{"value": 1.00, "unit": "molar fraction"}}
           }},
           "notes": "Return stream 2002 closes utility loop."
         }},
@@ -259,12 +204,12 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
           "to": "Cooling Water Return Header",
           "phase": "Liquid",
           "properties": {{
-            "mass_flow": {{"value": "<24000>", "unit": "kg/h"}},
-            "temperature": {{"value": "<35>", "unit": "°C"}},
-            "pressure": {{"value": "<1.8>", "unit": "barg"}}
+            "mass_flow": {{"value": 24000, "unit": "kg/h"}},
+            "temperature": {{"value": 35, "unit": "°C"}},
+            "pressure": {{"value": 1.8, "unit": "barg"}}
           }},
-          "components": {{
-            "Water (H₂O)": {{"value": "<100>", "unit": "mol%"}}
+          "compositions": {{
+            "Water (H2O)": {{"value": 1.00, "unit": "molar fraction"}}
           }},
           "notes": "Return stream 2002 closes utility loop."
         }}

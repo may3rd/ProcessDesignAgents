@@ -1,4 +1,3 @@
-from pydantic import BaseModel, Field
 import json
 
 from langchain_core.prompts import (
@@ -12,34 +11,13 @@ from langchain_core.messages import AIMessage
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
+from processdesignagents.agents.utils.agent_utils import (
+    ConceptsList
+)
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.json_tools import extract_first_json_document
 
 load_dotenv()
-
-# Define Concepts Schema as Pydantic Models
-
-class Concepts(BaseModel):
-    name: str = Field(..., description="Descriptive name of the process concept.")
-    maturity: str = Field(
-        ...,
-        description="Classification of the technology's maturity (conventional, innovative, state_of_the_art).",
-    )
-    description: str = Field(
-        ..., description="A concise paragraph explaining the process concept."
-    )
-    unit_operations: list[str] = Field(
-        ..., description="List of essential unit operations involved in the concept."
-    )
-    key_benefits: list[str] = Field(
-        ..., description="List of key benefits or advantages of the concept."
-    )
-
-
-class ConceptsList(BaseModel):
-    concepts: list[Concepts] = Field(
-        ..., description="A list of distinct process concepts."
-    )
 
 def create_innovative_researcher(llm):
     def innovative_researcher(state: DesignState) -> DesignState:
