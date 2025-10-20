@@ -33,6 +33,11 @@ DEFAULT_CONFIG = {
     "backend_url": "https://openrouter.ai/api/v1",
     "deep_think_temperature": 0.0,
     "quick_think_temperature": 0.0,
+    # Project Directory
+    "data_dir": "/Users/maetee/Documents/Code/Temp",
+    "data_cache_dir": "./sizing_tools/data_cache",
+    "results_dir": "./results",
+    "save_dir": "./reports",
     # Debate and discussion settings
     "max_debate_rounds": 1,
     "max_risk_discuss_rounds": 1,

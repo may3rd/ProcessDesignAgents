@@ -271,7 +271,7 @@ def format_streams_to_markdown(streams: list[Stream], streams_per_table: int = 1
             for comp_name in component_order:
                 row_cells = [f" {comp_name} "]
                 for s in chunk_streams:
-                    frac_val = stream_data_map[s.id]['mass_fracs'].get(comp_name, "N/A")
+                    frac_val = stream_data_map[s.id]['mass_fracs'].get(comp_name, "0.0")
                     row_cells.append(frac_val)
                 md_parts.append("| " + " | ".join(row_cells) + " |")
 
@@ -280,7 +280,7 @@ def format_streams_to_markdown(streams: list[Stream], streams_per_table: int = 1
             for comp_name in component_order:
                 row_cells = [f" {comp_name} "]
                 for s in chunk_streams:
-                    frac_val = stream_data_map[s.id]['mole_fracs'].get(comp_name, "N/A")
+                    frac_val = stream_data_map[s.id]['mole_fracs'].get(comp_name, "0.0")
                     row_cells.append(frac_val)
                 md_parts.append("| " + " | ".join(row_cells) + " |")
 

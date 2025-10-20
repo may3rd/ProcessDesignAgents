@@ -14,6 +14,7 @@ load_dotenv()
 def create_process_requiruments_analyst(llm):
     def process_requirements_analyst(state: DesignState) -> DesignState:
         """Process Requirements Analyst: Extracts key design requirements using LLM."""
+        print(f"# Problem statement: {state['problem_statement']}", flush=True)
         print("# Process Requirements Analysis", flush=True)
         base_prompt = process_requirements_prompt(state["problem_statement"])
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]

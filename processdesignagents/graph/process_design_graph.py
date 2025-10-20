@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import json
+import pypandoc
 
 try:
     from docx import Document
@@ -318,12 +319,47 @@ class ProcessDesignGraph:
         sections = self._compose_report_sections(final_state)
         document = Document()
 
+        output_text = ""
         for title, content in sections:
             if not content:
                 continue
-            document.add_heading(title, level=1)
-            document.add_paragraph(content.strip())
+            # document.add_heading(title, level=1)
+            # document.add_paragraph(content.strip())
+            output_text += f"# {title}\n{content.strip()}\n\n"
 
         output_path = Path(filename)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        document.save(output_path)
+        # document.save(output_path)
+        self._export_markdown_to_word(output_text, output_path)
+
+    def _export_markdown_to_word(self, markdown_string: str, output_filename: str = "report.docx"):
+        """
+        Converts a Markdown string into a formatted Word (.docx) document.
+
+        Args:
+            markdown_string: The string containing your final markdown text.
+            output_filename: The name of the Word file to create (e.g., "my_document.docx").
+        """
+        try:
+            # Use pypandoc to convert the string
+            # 'md' is the source format (Markdown)
+            # 'docx' is the target format (Word)
+            pypandoc.convert_text(
+                markdown_string,
+                'docx',
+                format='md',
+                outputfile=output_filename,
+                extra_args=[
+                    f"--reference-doc={self.config.get("save_dir")}/template.docx",
+                ]
+            )
+            
+            print(f"\nSuccessfully exported Word document to:")
+            print(f"{os.path.abspath(output_filename)}")
+
+        except FileNotFoundError:
+            print("\n--- ERROR ---")
+            print("Pandoc executable not found.")
+            print("Please ensure Pandoc is installed on your system and available in your PATH.")
+        except Exception as e:
+            print(f"\nAn error occurred during conversion: {e}")

@@ -218,6 +218,8 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
 
 -----
 
+**Ensure that all `"value"` is float, not text.**
+
 **Your Task:** Based on the provided `DESIGN_DOCUMENTS`, generate ONLY the JSON object described above. Do not include code fences or additional narrative.
 """
 

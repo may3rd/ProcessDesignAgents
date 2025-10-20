@@ -1,7 +1,8 @@
 venv/
 __pycache__/
+.venv/
 .env
-reports/
+reports/*
 results/
 eval_results/
 GEMINI.md
@@ -9,4 +10,6 @@ GEMINI.md
 #
 test_auth.py
 
+# Forec to upload to GitHub
 !examples/reports/
+!reports/template.docx
