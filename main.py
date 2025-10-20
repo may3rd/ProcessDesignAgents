@@ -9,7 +9,8 @@ config["deep_think_llm"] = "x-ai/grok-4-fast"
 
 # config["deep_think_llm"] = "openai/gpt-oss-120b"
 
-# config["quick_think_llm"] = "google/gemini-2.5-flash-preview-09-2025"
+config["quick_think_llm"] = "google/gemini-2.5-flash-lite-preview-09-2025"
+config["deep_think_llm"] = "google/gemini-2.5-flash-lite-preview-09-2025"
 # config["deep_think_llm"] = "anthropic/claude-sonnet-4.5"
 # config["deep_think_llm"] = "z-ai/glm-4.6"
 
