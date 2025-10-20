@@ -183,7 +183,7 @@ def format_equipment_to_markdown(equipments: list[Equipment]) -> str:
         if eq.notes:
             md_parts.append(f"**Notes:** {eq.notes}")
         count_id += 1
-    return "\n".join(md_parts)
+    return "\n".join(md_parts).strip()
 
 # --- 4. Function to Format Stream List ---
 
@@ -292,7 +292,7 @@ def format_streams_to_markdown(streams: list[Stream], streams_per_table: int = 1
 
         md_parts.append("\n")  # Add space before the next table (if any)
 
-    return "\n".join(md_parts)
+    return "\n".join(md_parts).strip()
 
 # --- 5. UPDATED Main Conversion Function ---
 
@@ -334,7 +334,7 @@ def extract_json_from_markdown(text: str) -> str:
         return match.group(1)
         
     # If still no match, return the original text and let Pydantic try
-    return text
+    return text.strip()
 
 # Import tools from separate utility files
 from processdesignagents.agents.utils.heat_exchanger_sizing_tools import (

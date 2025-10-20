@@ -139,29 +139,20 @@ You are a Principal Technology Analyst at a top-tier venture capital firm. Your 
       * **Assign Score:** Based on your analysis, assign a single integer **feasibility_score** from 1 (very high risk, not viable) to 10 (low risk, ready for near-term deployment).
       * **Provide Recommendations:** Formulate clear, actionable recommendations that directly mitigate the highlighted risks or outline essential next steps for validation (e.g., pilot programs, vendor vetting).
   * **Output Schema:**
-      * Respond with a JSON object containing a top-level key `"evaluations"` holding a list with one element per concept.
+      * Respond with an updated JSON object `concepts`, containing a top-level key `"concepts"` with updating a list with one element per concept.
       * Each element must include:
-          * `"name"`: the concept name (string).
-          * `"maturity"`: the maturity label copied from the concept (string).
+          * `"name"`: the concept name (string). <an object echoing the original concept fields>
+          * `"maturity"`: the maturity label copied from the concept (string). <an object echoing the original concept fields>
+          * `"description"`: the concept description (string). <an object echoing the original concept fields>
+          * `"unit_operations"`: a list of unit operations (string). <an object echoing the original concept fields>
+          * `"key_benefits"`: a list of key benefits (string). <an object echoing the original concept fields>
           * `"summary"`: a concise synopsis of the evaluation (string).
           * `"feasibility_score"`: an integer from 1–10.
           * `"risks"`: an object with the keys `"technical"`, `"economic"`, `"safety_operational"` (strings describing the top risks). Additional keys may be added for other risk themes.
           * `"recommendations"`: a list of actionable recommendation strings (minimum of three).
-          * `"concept"`: an object echoing the original concept fields (`"name"`, `"maturity"`, `"description"`, `"unit_operations"`, `"key_benefits"`) so downstream agents have full context.
   * **Validation Rules:**
       * Include an evaluation for every concept provided—no more, no less.
       * Use double quotes and UTF-8 safe characters. No comments, Markdown, or trailing prose.
-
------
-
-  * **REQUIREMENTS / CONSTRAINTS:**
-    ```
-    {{requirements}}
-    ```
-  * **PROCESS CONCEPTS (JSON):**
-    ```json
-    {{concepts}}
-    ```
 
 -----
 

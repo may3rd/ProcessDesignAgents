@@ -126,7 +126,7 @@ You are a Senior R&D Process Engineer specializing in conceptual design and proc
   * Respond with a single valid JSON object using double quotes and UTF-8 safe characters. Do not include Markdown, comments, code fences, or explanatory prose.
   * The JSON must contain a top-level key `"concepts"` whose value is a list of objects. Each concept object MUST include the keys: `"name"` (string), `"maturity"` (one of `"conventional"`, `"innovative"`, `"state_of_the_art"`), `"description"` (string), `"unit_operations"` (list of strings), and `"key_benefits"` (list of strings).
   * Ensure at least one concept is marked `"maturity": "conventional"`, one `"innovative"`, and one `"state_of_the_art"`.
-  * DO NOT create a `feasibilty score` for all concepts, it will be done later.
+  * **Note:** You MUST NOT create a `feasibilty_score` for any concepts, it will be done later.
 
 -----
 

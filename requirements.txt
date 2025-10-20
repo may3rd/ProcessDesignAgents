@@ -18,3 +18,4 @@ questionary
 typer
 jinja2
 python-docx
+pypandoc

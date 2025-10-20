@@ -96,12 +96,11 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
     - Each entry in `"streams"` must include:
         * `"id"`, `"name"`, `"description"`, `"from"`, `"to"`, `"phase"`.
         * `"properties"`: an object keyed by the same identifiers used in `"property_order"` with string values (include units using `000` placeholders where unknown, e.g., `{{"value": 000, "unit": "kg/h"}}`).
-        * `"components"`: an object mapping component names defined in the design basis to their fraction value (placeholders [null or 000] allowed). **Prefer: molar fraction**
+        * `"components"`: an object mapping unique component names defined in the design basis to their fraction value (placeholders [null or 000] allowed). **Prefer: molar fraction**
         * `"notes"`: brief text capturing unique considerations for that stream.
     * **Use Placeholders:** For numeric data that requires later calculation, use the `000` format and include the units inside the placeholder. For known design values, record the number directly.
     * **Output Discipline:** Respond with a single valid JSON object using double quotes and UTF-8 safe characters. Do NOT wrap the response in Markdown, code fences, or provide commentary.
       * **Equipment List:** You MUST list only equipment in PFD description, not add new equipment.
-
 
 -----
 
