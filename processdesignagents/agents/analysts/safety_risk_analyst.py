@@ -67,7 +67,6 @@ def create_safety_risk_analyst(llm):
             "safety_risk_analyst_report": sanitized_output,
             "messages": [response] if response else [],
         }
-
     return safety_risk_analyst
 
 

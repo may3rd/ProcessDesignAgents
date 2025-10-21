@@ -43,6 +43,7 @@ class ProcessDesignGraph:
         self,
         debug=False,
         config: Dict[str, Any]=None,
+        delay_time: float = 0.5,
     ):
         """Initialize the process design agents graph and component.
         Args:
@@ -78,8 +79,6 @@ class ProcessDesignGraph:
         
         # Create tool nodes
         self.tool_nodes = self._create_tool_nodes()
-                
-        delay_time = 15.0 if self.config["llm_provider"].lower() == "google" else 0.5
 
         self.graph_setup = GraphSetup(
             quick_thinking_llm=self.quick_thinking_llm,
