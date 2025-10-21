@@ -1,5 +1,5 @@
 import json
-from typing import Annotated, Dict, Any
+from typing import Annotated, Dict
 
 #
 def prelim_basic_heat_exchanger_sizing(

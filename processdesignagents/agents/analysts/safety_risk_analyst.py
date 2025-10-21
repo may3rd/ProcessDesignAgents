@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -13,8 +11,6 @@ from dotenv import load_dotenv
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.json_tools import (
-    convert_streams_json_to_markdown,
-    convert_equipment_json_to_markdown,
     convert_risk_json_to_markdown,
     extract_first_json_document,
 )

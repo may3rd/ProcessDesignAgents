@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
-    MessagesPlaceholder,
     SystemMessagePromptTemplate,
 )
 
@@ -13,8 +12,6 @@ from processdesignagents.agents.utils.prompt_utils import (
     jinja_raw,
     strip_markdown_code_fences,
 )
-
-from .static.design_basis_prompts import basic_system_prompt, google_system_prompt
 
 load_dotenv()
 
@@ -48,26 +45,24 @@ def create_design_basis_analyst(llm):
             component_list=component_list,
         )
         # Combine Based prompt
-        prompt = ChatPromptTemplate.from_messages(
-            base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
-        )
+        prompt = ChatPromptTemplate.from_messages(base_prompt.messages)
         chain = prompt | llm
         is_done = False
         try_count = 0
         while not is_done:
-            response = chain.invoke({"messages": list(state.get("messages", []))})
-            design_basis_markdown = (
-                response.content if isinstance(response.content, str) else str(response.content)
-            ).strip()
-            design_basis_markdown = strip_markdown_code_fences(design_basis_markdown)
-            is_done = len(design_basis_markdown) > 100
             try_count += 1
-            if not is_done:
-                print("- Failed to create design basis, Try again.", flush=True)
-                if try_count > 10:
-                    print("+ Max try count reached.", flush=True)
-                    exit(-1)
-
+            if try_count > 3:
+                print("+ Max try count reached.", flush=True)
+                exit(-1)
+            try:
+                response = chain.invoke({"messages": list(state.get("messages", []))})
+                design_basis_markdown = (
+                    response.content if isinstance(response.content, str) else str(response.content)
+                ).strip()
+                design_basis_markdown = strip_markdown_code_fences(design_basis_markdown)
+                is_done = len(design_basis_markdown) > 100
+            except Exception as e:
+                print(f"Attemp {try_count}: {e}")
         print(design_basis_markdown, flush=True)
         return {
             "design_basis": design_basis_markdown,

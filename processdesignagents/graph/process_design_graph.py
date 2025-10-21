@@ -8,8 +8,7 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     Document = None
 
-from langgraph.graph import StateGraph, END
-from typing import TypedDict, Dict, Any
+from typing import Dict, Any
 
 from langchain_openai import ChatOpenAI
 # from langchain_anthropic import ChatAnthropic
@@ -20,16 +19,15 @@ from langgraph.prebuilt import ToolNode
 from dotenv import load_dotenv
 
 from processdesignagents.default_config import DEFAULT_CONFIG
-from processdesignagents.agents.utils.agent_utils import (
-    convert_to_markdown,
-    EquipmentsAndStreamsListBuilder,
-)
 from processdesignagents.agents.utils.json_tools import (
     convert_risk_json_to_markdown,
 )
 from processdesignagents.agents.utils.agent_utils import (
     size_heat_exchanger_basic,
     size_pump_basic
+)
+from processdesignagents.agents.utils.equipment_stream_markdown import (
+    equipments_and_streams_dict_to_markdown,
 )
 
 from .setup import GraphSetup
@@ -243,41 +241,13 @@ class ProcessDesignGraph:
             json.dump(self.log_state_dict, f, indent=4)
         
     def _compose_report_sections(self, final_state: Dict[str, Any]) -> list[tuple[str, str]]:
-        raw_equipment_and_streams = final_state.get("equipment_and_streams_list", "")
-        equipment_and_streams_markdown = ""
-        if raw_equipment_and_streams:
-            print(f"Process equipment and streams: {raw_equipment_and_streams}")
-            try:
-                if isinstance(raw_equipment_and_streams, str):
-                    equipment_and_streams_model = EquipmentsAndStreamsListBuilder.model_validate_json(
-                        raw_equipment_and_streams
-                    )
-                else:
-                    equipment_and_streams_model = EquipmentsAndStreamsListBuilder.model_validate(
-                        raw_equipment_and_streams
-                    )
-                equipment_and_streams_markdown, _, _ = convert_to_markdown(equipment_and_streams_model)
-            except Exception:
-                fallback = raw_equipment_and_streams
-                if not isinstance(fallback, str):
-                    fallback = json.dumps(fallback, indent=2)
-                equipment_and_streams_markdown = fallback
+        raw_equipment_and_streams = final_state.get("equipment_and_stream_list", "")
+        if isinstance(raw_equipment_and_streams, str):
+            raw_equipment_and_streams = json.loads(raw_equipment_and_streams)
+            equipment_and_streams_markdown, _, _ = equipments_and_streams_dict_to_markdown(raw_equipment_and_streams)
         else:
-            equipment_list = final_state.get("equipment_list_results", "")
-            stream_list = final_state.get("stream_list_results", "")
-            if stream_list and equipment_list:
-                equipment_json = json.loads(equipment_list)
-                stream_json = json.loads(stream_list)
-                raw_equipment_and_streams = json.dumps({"equipments": equipment_json.get("equipments", []), "streams": stream_json.get("streams", [])})
-            if isinstance(raw_equipment_and_streams, str):
-                equipment_and_streams_model = EquipmentsAndStreamsListBuilder.model_validate_json(
-                    raw_equipment_and_streams
-                )
-            else:
-                equipment_and_streams_model = EquipmentsAndStreamsListBuilder.model_validate(
-                    raw_equipment_and_streams
-                )
-            equipment_and_streams_markdown, _, _ = convert_to_markdown(equipment_and_streams_model)
+            equipment_and_streams_markdown = ""
+
         safety_markdown = ""
         if final_state.get("safety_risk_analyst_report"):
             safety_markdown = convert_risk_json_to_markdown(final_state["safety_risk_analyst_report"])
@@ -350,7 +320,7 @@ class ProcessDesignGraph:
                 format='md',
                 outputfile=output_filename,
                 extra_args=[
-                    f"--reference-doc={self.config.get("save_dir")}/template.docx",
+                    f"--reference-doc={self.config.get('save_dir')}/template.docx",
                 ]
             )
             

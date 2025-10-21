@@ -1,7 +1,7 @@
-from typing import Dict, Any
-from langchain_core.messages import HumanMessage
-from processdesignagents.agents.utils.agent_states import DesignState
+from typing import Any, Dict
 import uuid
+
+from langchain_core.messages import HumanMessage
 
 class Propagator:
     """Handle state initialization and propagation through the graph."""

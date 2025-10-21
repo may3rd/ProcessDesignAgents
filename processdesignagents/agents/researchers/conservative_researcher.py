@@ -1,4 +1,3 @@
-from pydantic import BaseModel, Field
 import json
 
 from langchain_core.prompts import (
@@ -7,14 +6,12 @@ from langchain_core.prompts import (
     MessagesPlaceholder,
     SystemMessagePromptTemplate,
 )
-from langchain_core.messages import AIMessage
 
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.json_tools import extract_first_json_document
-from processdesignagents.agents.utils.json_utils import extract_json_from_response
 
 load_dotenv()
 
@@ -39,35 +36,28 @@ def create_conservative_researcher(llm):
 
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm
+        llm.temperature = 0.0
+        chain = prompt | llm.with_structured_output(method="json_mode")
         is_done = False
         try_count = 0
         while not is_done:
             try_count += 1
-            if try_count > 10:
+            if try_count > 5:
                 print("+ Max try count reached.", flush=True)
                 exit(-1)
             try:
                 # Get the response from LLM
-                response = chain.invoke({"messages": list(state.get("messages", []))})
+                response_dict = chain.invoke({"messages": list(state.get("messages", []))})
                 
-                cleaned_response_content = extract_json_from_response(response.content)
+                cleaned_response_content = json.dumps(response_dict)
                 
                 is_done = (cleaned_response_content[0]=="{") and (cleaned_response_content[-1]=="}")
             except Exception as e:
                 print(f"Attemp {try_count}: {e}")
-
-        critique_markdown = convert_concepts_json_to_markdown(cleaned_response_content)
-        print(critique_markdown, flush=True)
-        sanitized_json, payload = extract_first_json_document(cleaned_response_content)
-        if payload is None:
-            output_state = sanitized_json
-        else:
-            output_state = json.dumps(payload)
-
+        print(convert_concepts_json_to_markdown(cleaned_response_content), flush=True)
         return {
-            "research_rateing_results": output_state,
-            "messages": [response],
+            "research_rateing_results": cleaned_response_content,
+            "messages": ["Convervative Researcher: Critiques concepts for practicality using LLM."],
         }
 
     return conservative_researcher
@@ -167,7 +157,6 @@ You are a Principal Technology Analyst at a top-tier venture capital firm. Your 
 
   * **PROCESS CONCEPTS (JSON):**
 
-    ```json
     {{
       "concepts": [
         {{
@@ -185,11 +174,9 @@ You are a Principal Technology Analyst at a top-tier venture capital firm. Your 
         }}
       ]
     }}
-    ```
 
   * **Response:**
 
-    ```json
     {{
       "concepts": [
         {{
@@ -219,11 +206,10 @@ You are a Principal Technology Analyst at a top-tier venture capital firm. Your 
         }}
       ]
     }}
-    ```
 
 -----
 
-**Your Task:** Output ONLY the JSON object described above. Do not wrap it in a code block or add any commentary.
+**Your Task:** Output ONLY the valid JSON object described above. Do not wrap it in a code block or add any commentary.
 """
 
     human_content = f"""

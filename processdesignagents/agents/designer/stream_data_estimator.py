@@ -12,11 +12,10 @@ from langchain_core.prompts import (
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.agent_utils import (
-    EquipmentsAndStreamsListBuilder,
-    convert_to_markdown,
-)
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
+from processdesignagents.agents.utils.equipment_stream_markdown import (
+    equipments_and_streams_dict_to_markdown,
+)
 
 load_dotenv()
 
@@ -38,7 +37,7 @@ def create_stream_data_estimator(llm):
         )
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm.with_structured_output(EquipmentsAndStreamsListBuilder)
+        chain = prompt | llm.with_structured_output(method="json_mode")
         is_done = False
         try_count = 0
         while not is_done:
@@ -47,22 +46,20 @@ def create_stream_data_estimator(llm):
                 print("+ Maximum try is reach.")
                 exit(-1)
             try:
-                response = chain.invoke({"messages": list(state.get("messages", []))})
-                output_json = response.model_dump_json(indent=2)
-                is_done = len(output_json) > 100
+                response_dict = chain.invoke({"messages": list(state.get("messages", []))})
+                cleaned_response_content = json.dumps(response_dict, ensure_ascii=False)
+                is_done = True
             except Exception as e:
                 print(f"Attempt {try_count} failed: Parsing error - {e}")
-        try:
-            payload = json.loads(output_json)
-            stream_list_result = {"streams": payload.get("streams")}
-        except Exception as e:
-            raise ValueError(f"{e}")
-        _, _, markdown_tables = convert_to_markdown(response)
-        print(markdown_tables, flush=True)
+        combined_md, equipment_md, streams_md = equipments_and_streams_dict_to_markdown(response_dict)
+        if streams_md:
+            print(streams_md, flush=True)
+        stream_list_result = json.dumps({"streams": response_dict.get("streams", [])})
+        ai_message = AIMessage(content=cleaned_response_content)
+        updated_messages = list(state.get("messages", [])) + [ai_message]
         return {
-            "equipment_and_stream_list": response.model_dump_json(),
-            "stream_list_results": json.dumps(stream_list_result),
-            "messages": [AIMessage(content=output_json)],
+            "equipment_and_stream_list": cleaned_response_content,
+            "messages": updated_messages,
         }
 
     return stream_data_estimator
@@ -90,7 +87,7 @@ You are a **Senior Process Simulation Engineer** specializing in developing firs
   * **Work sequence:** Start by focusing on the main feed to product first, then working in the utilities (if any).
   * **Ensure Completeness:** Check that component fractions per stream sum to 100% on the stated basis. Populate `"notes"` for each stream with context or safeguards that support the estimates.
   * **Compositions:** Ensure that the mass fraction and molar fraction is consistent, means that the value of the molar fraction and mass fraction usually not the same but it is calculated based on MW of each components and calculate mass fraction from molar fraction if both existed. Put 0.0000 for the components that not presenting in stream. **Ensure that the summation of mass fraction and summation of molar fraction is 100.0% for all streams.**
-  * **Output Discipline:** Respond with a single valid JSON object using double quotes and UTF-8 safe characters. Do NOT wrap the response in Markdown, code fences, or provide commentary.
+  * Return a single JSON object matching the schema shown below. Do **not** include code fences, comments, or explanatory prose.
   * **Equipment List:** Leave `EQUIPMENT` section untouched. It will be done by downstream agents.
 
 -----

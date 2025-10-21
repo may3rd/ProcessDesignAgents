@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 
 from langchain_core.prompts import (
@@ -13,7 +12,6 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw, strip_markdown_code_fences
-from processdesignagents.agents.utils.json_tools import extract_first_json_document
 
 load_dotenv()
 

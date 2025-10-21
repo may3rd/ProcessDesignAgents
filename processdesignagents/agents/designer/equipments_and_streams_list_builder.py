@@ -10,22 +10,18 @@ from langchain_core.prompts import (
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.agent_utils import (
-    EquipmentsAndStreamsListBuilder,
-    convert_to_markdown
-)
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.utils.json_tools import convert_streams_json_to_markdown, extract_first_json_document
-from processdesignagents.agents.utils.json_utils import extract_json_from_response
+from processdesignagents.agents.utils.equipment_stream_markdown import (
+    equipments_and_streams_dict_to_markdown,
+)
 
 load_dotenv()
-
 
 def create_equipments_and_streams_list_builder(llm):
     def equipments_and_streams_list_builder(state: DesignState) -> DesignState:
         """Equipments and Streams List Builder: Produces a JSON stream inventory template for process streams."""
         print("\n# Create Equipments and Streams List Template", flush=True)
-        llm.temperature = 0.7
+        llm.temperature = 0
         basic_pfd_markdown = state.get("basic_pfd", "")
         design_basis_markdown = state.get("design_basis", "")
         requirements_markdown = state.get("requirements", "")
@@ -38,39 +34,28 @@ def create_equipments_and_streams_list_builder(llm):
         )
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm
+        chain = prompt | llm.with_structured_output(method="json_mode")
         is_done = False
         try_count = 0
         while not is_done:
             try_count += 1
             if try_count > 10:
-                print("+ Max try count reached.", flush=True)
+                print("+ Maximum try is reach.")
                 exit(-1)
             try:
-                # Get the response from LLM
-                response = chain.invoke({"messages": list(state.get("messages", []))})
-                output_json = (
-                    response.content if isinstance(response.content, str) else str(response.content)
-                ).strip()
-                cleaned_output_json = extract_json_from_response(output_json)
-                
+                response_dict = chain.invoke({"messages": list(state.get("messages", []))})
+                cleaned_response_content = json.dumps(response_dict, ensure_ascii=False)
                 is_done = True
             except Exception as e:
-                print(f"Attemp {try_count}: {e}")
-        try:
-            sanitized_json, payload = extract_first_json_document(cleaned_output_json)
-            equipment_list_template = {"equipments": payload.get("equipments")}
-            stream_list_template = {"streams": payload.get("streams")}
-        except Exception as e:
-            raise ValueError(f"{e}")
-        
-        print(json.dumps(payload, indent=2), flush=True)
-        exit(0)
+                print(f"Attempt {try_count} failed.")
+        combined_md, equipment_md, streams_md = equipments_and_streams_dict_to_markdown(response_dict)
+        if combined_md:
+            print(combined_md, flush=True)
+        ai_message = AIMessage(content=cleaned_response_content)
+        updated_messages = list(state.get("messages", [])) + [ai_message]
         return {
-            "equipment_and_stream_list": response.model_dump_json(),
-            "stream_list_template": json.dumps(stream_list_template),
-            "equipment_list_template": json.dumps(equipment_list_template),
-            "messages": [AIMessage(content=output_json)],
+            "equipment_and_stream_list": cleaned_response_content,
+            "messages": updated_messages,
         }
     return equipments_and_streams_list_builder
 
@@ -109,6 +94,7 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
         * `"components"`: an object mapping unique component names defined in the design basis to their fraction value (placeholders [null or 000] allowed). **Prefer: molar fraction**
         * `"notes"`: brief text capturing unique considerations for that stream.
     * **Use Placeholders:** For numeric data that requires later calculation, use the `000` format and include the units inside the placeholder. For known design values, record the number directly.
+    * You **MUST** following the template strictly. No a little bit deviate, it will lead to failure.
     * **Output Discipline:** Respond with a single valid JSON object using double quotes and UTF-8 safe characters. Do NOT wrap the response in Markdown, code fences, or provide commentary.
       * **Equipment List:** You MUST list only equipment in PFD description, not add new equipment.
 
@@ -227,8 +213,7 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
           "The following critical information must be resolved during the Front-End Engineering Design (FEED) phase:",
           "1.  **Cooling Utility Definition:** The type, temperature profile (inlet/outlet), and available pressure of the cooling medium are **TBD**. This is the single most important factor for sizing E-101.",
           "2.  **Process Pressure:** The operating pressure of the 100°C ethanol stream is **TBD**. This defines the required design pressure rating for the exchanger shell and tubes.",
-          "3.  **Specific Heat (Cp):** The specific heat capacity for 99.5 mol% ethanol at 100°C is assumed for the preliminary duty calculation (Q ≈ 100 kW). This must be verified using thermodynamic property data specific to the final composition.",
-          "4.  **Fouling Factor:** A design fouling factor ($R_f$) for the ethanol stream is **TBD**. A preliminary value of $R_{{f,tube}} = 0.0002 \ m^2 \cdot K/W$ will be used for initial sizing, pending operational history."
+          "3.  **Specific Heat (Cp):** The specific heat capacity for 99.5 mol% ethanol at 100°C is assumed for the preliminary duty calculation (Q ≈ 100 kW). This must be verified using thermodynamic property data specific to the final composition."
       ]
     }}
 

@@ -13,12 +13,10 @@ from langchain_core.prompts import (
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.agent_utils import (
-    EquipmentsAndStreamsListBuilder,
-    convert_to_markdown,
-)
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-
+from processdesignagents.agents.utils.equipment_stream_markdown import (
+    equipments_and_streams_dict_to_markdown,
+)
 
 load_dotenv()
 
@@ -38,7 +36,7 @@ def create_equipment_sizing_agent(llm):
         )
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm.with_structured_output(EquipmentsAndStreamsListBuilder)
+        chain = prompt | llm.with_structured_output(method="json_mode")
         is_done = False
         try_count = 0
         while not is_done:
@@ -47,22 +45,20 @@ def create_equipment_sizing_agent(llm):
                 print("+ Maximum try is reach.")
                 exit(-1)
             try:
-                response = chain.invoke({"messages": list(state.get("messages", []))})
-                output_json = response.model_dump_json(indent=2)
-                is_done = len(output_json) > 100
+                response_dict = chain.invoke({"messages": list(state.get("messages", []))})
+                cleaned_response_content = json.dumps(response_dict, ensure_ascii=False)
+                is_done = True
             except Exception as e:
                 print(f"Attempt {try_count} failed: Parsing error - {e}")
-        try:
-            payload = json.loads(output_json)
-            equipment_list_result = {"equipments": payload.get("equipments")}
-        except Exception as e:
-            raise ValueError(f"{e}")
-        _, markdown_tables, _ = convert_to_markdown(response)
-        print(markdown_tables, flush=True)
+        combined_md, equipment_md, streams_md = equipments_and_streams_dict_to_markdown(response_dict)
+        if equipment_md:
+            print(equipment_md, flush=True)
+        equipment_list_result = json.dumps({"equipments": response_dict.get("equipments", [])})
+        ai_message = AIMessage(content=cleaned_response_content)
+        updated_messages = list(state.get("messages", [])) + [ai_message]
         return {
-            "equipment_and_stream_list": response.model_dump_json(),
-            "equipment_list_results": json.dumps(equipment_list_result),
-            "messages": [AIMessage(content=output_json)],
+            "equipment_and_stream_list": cleaned_response_content,
+            "messages": updated_messages,
         }
 
     return equipment_sizing_agent
@@ -92,7 +88,7 @@ You are a **Lead Equipment Sizing Engineer** responsible for performing first-pa
         * **etc.**
     * **Populate the JSON:** Replace every placeholder in the `EQUIPMESTS_AND_STREAMS_LIST` with your calculated numeric estimate (including units). If a value cannot be reasonably estimated, use the value _null_.
     * **Document Methods and Assumptions:** In the `notes` field for each item, concisely state the calculation method or key assumption (e.g., "Sized using LMTD method," "Power based on 75% efficiency"). Add any new global assumptions to the `metadata.assumptions` list.
-    * **Format Adherence:** Your final output must be a single, PURE JSON object matching the provided schema. Do not wrap the JSON in code fences or add any commentary outside of the JSON object itself.
+    * Return a single JSON object matching the schema shown below. Do **not** include code fences, comments, or explanatory prose.
 
 -----
 
