@@ -36,7 +36,7 @@ class Concept(BaseModel):
     risk: Optional[risk_base] = Field(
         None, description="Risk evaluation of this concept."
     )
-    recommendations: Optional[recommendations_list] = Field(
+    recommendations: Optional[list[str]] = Field(
         None, description="The recommendation for this concept."
     )
 

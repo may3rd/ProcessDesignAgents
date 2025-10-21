@@ -13,4 +13,4 @@ def extract_json_from_response(content: str) -> str:
     if stripped.startswith('{') and stripped.endswith('}'):
         return stripped
     
-    raise ValueError(f"No valid JSON found in response: {content[:2000]}")
+    raise ValueError(f"No valid JSON found in response: {content[:200]} {content[-100:]}")

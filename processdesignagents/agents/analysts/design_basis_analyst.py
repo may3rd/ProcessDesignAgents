@@ -27,18 +27,25 @@ def create_design_basis_analyst(llm):
         requirements_markdown = state.get("requirements", "")
         selected_concept_details = state.get("selected_concept_details", "")
         selected_concept_name = state.get("selected_concept_name", "")
+        component_list = state.get("component_list", "")
+        
+        if not isinstance(problem_statement, str):
+            problem_statement = str(problem_statement)
         if not isinstance(requirements_markdown, str):
             requirements_markdown = str(requirements_markdown)
         if not isinstance(selected_concept_details, str):
             selected_concept_details = str(selected_concept_details)
         if not isinstance(selected_concept_name, str):
             selected_concept_name = str(selected_concept_name)
+        if not isinstance(component_list, str):
+            component_list = str(component_list)
         
         base_prompt = google_prompt_templates(
             problem_statement=problem_statement,
             requirements_markdown=requirements_markdown,
             concept_name=selected_concept_name,
             concept_details_markdown=selected_concept_details,
+            component_list=component_list,
         )
         # Combine Based prompt
         prompt = ChatPromptTemplate.from_messages(
@@ -75,6 +82,7 @@ def google_prompt_templates(
     requirements_markdown: str,
     concept_name: str,
     concept_details_markdown: str,
+    component_list: str,
 ) -> ChatPromptTemplate:
     # Static instructions for SystemMessage
     system_content = f"""
@@ -90,7 +98,7 @@ You are an expert **Senior Process Design Engineer** with deep expertise in chem
 2.  **Establish Assumptions:** Clearly define the project scope boundaries and establish a list of preliminary **Key Design Assumptions** based on industry standard practice where information is absent (e.g., operating hours, design margins).
 3.  **Structure the BoD:** Construct the document using the mandatory section structure. Ensure all key components are addressed.
 4.  **Generate Content:** Populate each section with technical, fact-based content derived from the user's input and your engineering expertise. Ensure all process parameters are clearly articulated and justified as preliminary estimates.
-5.  **Chemical Components:** Just list the master components that will be used as the compositions for each stream in stream list.
+5.  **Chemical Components:** Echo the component list input by the user.
 6.  **Adhere to Constraints:** The output must be a PURE Markdown document. Do not include any introductory or concluding conversational text. The tone must be formal and professional.
 
 -----
@@ -129,10 +137,11 @@ You are an expert **Senior Process Design Engineer** with deep expertise in chem
     | **Typical Reactor Temp.** | 60 - 150 °C                           | °C         | Preliminary Estimate                    |
 
     ## 4. Chemical Components
-    * FFA
-    * Water (H2O)
-    * Ethanol (C2H8O)
-
+    | **Name** | **Formula** | **MW** |
+    | -------- | ----------- | ------ |
+    | Ethanol | C2H6O       | 46.068 |
+    | Water | H2O         | 18.015 |
+    
     ## 5. Feed and Product Specifications
 
     ### Feed Specification (Unrefined Palm Oil)
@@ -187,6 +196,9 @@ You are an expert **Senior Process Design Engineer** with deep expertise in chem
 
 **SELECTED CONCEPT DETAIL:**
 {concept_details_markdown or "Not provided"}
+
+**COMPONENT LIST:**
+{component_list or "Not provided"}
     """
     
     # Construct the template

@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+import json
 
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -11,12 +12,9 @@ from langchain_core.messages import AIMessage
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
-from processdesignagents.agents.utils.agent_utils import ConceptsList
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.utils.json_tools import (
-    extract_first_json_document,
-    convert_evaluations_json_to_markdown,
-)
+from processdesignagents.agents.utils.json_tools import extract_first_json_document
+from processdesignagents.agents.utils.json_utils import extract_json_from_response
 
 load_dotenv()
 
@@ -41,34 +39,35 @@ def create_conservative_researcher(llm):
 
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm.with_structured_output(ConceptsList)
-        
+        chain = prompt | llm
         is_done = False
         try_count = 0
         while not is_done:
-            response = chain.invoke({"messages": list(state.get("messages", []))})
-            # critique_raw = (
-            #     response.content if isinstance(response.content, str) else str(response.content)
-            # ).strip()
-            # sanitized_output, evaluation_payload = extract_first_json_document(critique_raw)
-            # has_evaluations = False
-            # if isinstance(evaluation_payload, dict):
-            #     evaluations = evaluation_payload.get("evaluations")
-            #     has_evaluations = isinstance(evaluations, list) and len(evaluations) > 0
-            rating_json = response.model_dump_json()
-            is_done = len(rating_json) > 100
             try_count += 1
-            if not is_done:
-                print("- False to critique concepts. Try again.", flush=True)
-                if try_count > 10:
-                    print("+ Max try count reached.", flush=True)
-                    exit(-1)
+            if try_count > 10:
+                print("+ Max try count reached.", flush=True)
+                exit(-1)
+            try:
+                # Get the response from LLM
+                response = chain.invoke({"messages": list(state.get("messages", []))})
+                
+                cleaned_response_content = extract_json_from_response(response.content)
+                
+                is_done = (cleaned_response_content[0]=="{") and (cleaned_response_content[-1]=="}")
+            except Exception as e:
+                print(f"Attemp {try_count}: {e}")
 
-        critique_markdown = convert_concepts_json_to_markdown(rating_json)
+        critique_markdown = convert_concepts_json_to_markdown(cleaned_response_content)
         print(critique_markdown, flush=True)
+        sanitized_json, payload = extract_first_json_document(cleaned_response_content)
+        if payload is None:
+            output_state = sanitized_json
+        else:
+            output_state = json.dumps(payload)
+
         return {
-            "research_rateing_results": rating_json,
-            "messages": [AIMessage(content=rating_json)],
+            "research_rateing_results": output_state,
+            "messages": [response],
         }
 
     return conservative_researcher

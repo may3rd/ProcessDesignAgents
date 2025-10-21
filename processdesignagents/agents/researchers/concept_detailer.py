@@ -21,7 +21,6 @@ def create_concept_detailer(llm, selection_provider_getter=None):
     def concept_detailer(state: DesignState) -> DesignState:
         """Concept Detailer: Picks the highest-feasibility concept and elaborates it for downstream design."""
         print("\n# Concept Selection", flush=True)
-
         evaluations_json_raw = state.get("research_rateing_results", "")
         if not isinstance(evaluations_json_raw, str):
             evaluations_json_raw = str(evaluations_json_raw)
@@ -84,29 +83,27 @@ def create_concept_detailer(llm, selection_provider_getter=None):
             f"Chosen concept: {best_title}\n(Feasibility Score: {best_score if best_score is not None else 'N/A'})",
             flush=True,
         )
-
-        print("* Prepared detailed concept brief...", flush=True)
+        print("* Call LLM to generate detailed concept brief...", flush=True)
         base_prompt = concept_detailer_prompt(best_evaluation, requirements_markdown)
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         chain = prompt | llm
-        
         is_done = False
         try_count = 0
         while not is_done:
-            response = chain.invoke({"messages": list(state.get("messages", []))})
-            detail_markdown = (
-                response.content if isinstance(response.content, str) else str(response.content)
-            ).strip()
-            detail_markdown = strip_markdown_code_fences(detail_markdown)
-            is_done = len(detail_markdown) > 20
             try_count += 1
-            if not is_done:
-                print("- Failed to create detailed concept, Try again.")
-                if try_count > 10:
-                    print("+ Max try count reached.", flush=True)
-                    exit(-1)
-
+            if try_count > 3:
+                print("+ Max try count reached.", flush=True)
+                exit(-1)
+            try:
+                response = chain.invoke({"messages": list(state.get("messages", []))})
+                detail_markdown = (
+                    response.content if isinstance(response.content, str) else str(response.content)
+                ).strip()
+                detail_markdown = strip_markdown_code_fences(detail_markdown)
+                is_done = True
+            except Exception as e:
+                print(f"Attemp {try_count}: {e}")
         print(detail_markdown, flush=True)
         return {
             "selected_concept_name": best_title,

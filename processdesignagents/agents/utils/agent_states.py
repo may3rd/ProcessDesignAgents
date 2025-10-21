@@ -15,6 +15,7 @@ class DesignState(TypedDict):
     research_rateing_results: Annotated[str, ""]
     selected_concept_details: Annotated[str, ""]
     selected_concept_name: Annotated[str, ""]
+    component_list: Annotated[str, ""]
     basic_pfd: Annotated[str, ""]
     equipment_and_stream_list: Annotated[str, ""]
     equipment_list_template: Annotated[str, ""]
@@ -36,6 +37,7 @@ def create_design_state(
     research_rateing_results: str = "",
     selected_concept_details: str = "",
     selected_concept_name: str = "",
+    component_list: str = "",
     basic_pfd: str = "",
     equipment_and_stream_list: str = "",
     equipment_list_template: str = "",
@@ -57,6 +59,7 @@ def create_design_state(
         "research_rateing_results": research_rateing_results,
         "selected_concept_details": selected_concept_details,
         "selected_concept_name": selected_concept_name,
+        "component_list": component_list,
         "basic_pfd": basic_pfd,
         "equipment_and_stream_list": equipment_and_stream_list,
         "equipment_list_template": equipment_list_template,

@@ -15,7 +15,8 @@ from processdesignagents.agents.utils.agent_utils import (
     convert_to_markdown
 )
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.utils.json_tools import convert_streams_json_to_markdown
+from processdesignagents.agents.utils.json_tools import convert_streams_json_to_markdown, extract_first_json_document
+from processdesignagents.agents.utils.json_utils import extract_json_from_response
 
 load_dotenv()
 
@@ -37,25 +38,34 @@ def create_equipments_and_streams_list_builder(llm):
         )
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm.with_structured_output(EquipmentsAndStreamsListBuilder)
+        chain = prompt | llm
         is_done = False
         try_count = 0
         while not is_done:
-            response = chain.invoke({"messages": list(state.get("messages", []))})
-            output_json = response.model_dump_json(indent=2)
-            is_done = len(output_json) > 100
             try_count += 1
             if try_count > 10:
-                print("+ Maximum try is reach.")
+                print("+ Max try count reached.", flush=True)
                 exit(-1)
+            try:
+                # Get the response from LLM
+                response = chain.invoke({"messages": list(state.get("messages", []))})
+                output_json = (
+                    response.content if isinstance(response.content, str) else str(response.content)
+                ).strip()
+                cleaned_output_json = extract_json_from_response(output_json)
+                
+                is_done = True
+            except Exception as e:
+                print(f"Attemp {try_count}: {e}")
         try:
-            payload = json.loads(output_json)
+            sanitized_json, payload = extract_first_json_document(cleaned_output_json)
             equipment_list_template = {"equipments": payload.get("equipments")}
             stream_list_template = {"streams": payload.get("streams")}
         except Exception as e:
             raise ValueError(f"{e}")
-        markdown_tables, _, _ = convert_to_markdown(response)
-        print(markdown_tables, flush=True)
+        
+        print(json.dumps(payload, indent=2), flush=True)
+        exit(0)
         return {
             "equipment_and_stream_list": response.model_dump_json(),
             "stream_list_template": json.dumps(stream_list_template),
@@ -212,6 +222,13 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
           }},
           "notes": "Return stream 2002 closes utility loop."
         }}
+      ],
+      "notes and assumptions": [
+          "The following critical information must be resolved during the Front-End Engineering Design (FEED) phase:",
+          "1.  **Cooling Utility Definition:** The type, temperature profile (inlet/outlet), and available pressure of the cooling medium are **TBD**. This is the single most important factor for sizing E-101.",
+          "2.  **Process Pressure:** The operating pressure of the 100°C ethanol stream is **TBD**. This defines the required design pressure rating for the exchanger shell and tubes.",
+          "3.  **Specific Heat (Cp):** The specific heat capacity for 99.5 mol% ethanol at 100°C is assumed for the preliminary duty calculation (Q ≈ 100 kW). This must be verified using thermodynamic property data specific to the final composition.",
+          "4.  **Fouling Factor:** A design fouling factor ($R_f$) for the ethanol stream is **TBD**. A preliminary value of $R_{{f,tube}} = 0.0002 \ m^2 \cdot K/W$ will be used for initial sizing, pending operational history."
       ]
     }}
 
