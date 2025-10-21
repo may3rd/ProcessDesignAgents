@@ -1,5 +1,5 @@
 import json
-
+from langchain_core.messages import AIMessage
 from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.utils.json_tools import extract_first_json_document
 
 load_dotenv()
 
@@ -21,18 +20,14 @@ def create_conservative_researcher(llm):
         """Conservative Researcher: Critiques concepts for practicality using LLM."""
         print("\n# Conservatively Critiqued Concepts", flush=True)
 
-        concepts_json_raw = state.get("research_concepts", "")
+        concepts_json = state.get("research_concepts", "")
         requirements_markdown = state.get("requirements", "")
-        if not isinstance(concepts_json_raw, str):
-            concepts_json_raw = str(concepts_json_raw)
+        if not isinstance(concepts_json, str):
+            concepts_json = str(concepts_json)
         if not isinstance(requirements_markdown, str):
             requirements_markdown = str(requirements_markdown)
-
-        sanitized_concepts_json, concept_payload = extract_first_json_document(concepts_json_raw)
-        if concept_payload is None:
-            raise ValueError("Conservative researcher expected valid JSON concepts from innovative researcher.")
-
-        base_prompt = conservative_researcher_prompt(sanitized_concepts_json, requirements_markdown)
+            
+        base_prompt = conservative_researcher_prompt(concepts_json, requirements_markdown)
 
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
@@ -49,29 +44,27 @@ def create_conservative_researcher(llm):
                 # Get the response from LLM
                 response_dict = chain.invoke({"messages": list(state.get("messages", []))})
                 
-                cleaned_response_content = json.dumps(response_dict)
+                if "concepts" in response_dict:
+                    concepts_json = json.dumps(response_dict)
+                    is_done = True
                 
-                is_done = (cleaned_response_content[0]=="{") and (cleaned_response_content[-1]=="}")
             except Exception as e:
-                print(f"Attemp {try_count}: {e}")
-        print(convert_concepts_json_to_markdown(cleaned_response_content), flush=True)
+                print(f"Attemp {try_count} has failed.")
+        ai_message = AIMessage(content=concepts_json)
+        updated_messages = list(state.get("messages", [])) + [ai_message]
+        print(convert_concepts_to_markdown(response_dict.get("concepts", "")), flush=True)
         return {
-            "research_rateing_results": cleaned_response_content,
-            "messages": ["Convervative Researcher: Critiques concepts for practicality using LLM."],
+            "research_rateing_results": concepts_json,
+            "messages": updated_messages,
         }
 
     return conservative_researcher
 
 
-def convert_concepts_json_to_markdown(concepts_json: str) -> str:
-    """Convert structured JSON concept output into a readable Markdown summary."""
-    sanitized_json, payload = extract_first_json_document(concepts_json)
-    if payload is None:
-        return sanitized_json
-
-    concepts = payload if isinstance(payload, list) else payload.get("concepts")
+def convert_concepts_to_markdown(concepts: list) -> str:
+    """Convert list of concept output into a readable Markdown summary."""
     if not isinstance(concepts, list):
-        return sanitized_json
+        return ""
 
     lines: list[str] = []
     concept_counter = 0
@@ -101,7 +94,7 @@ def convert_concepts_json_to_markdown(concepts_json: str) -> str:
             for recommendation in recommendations:
                 lines.append(f"- {recommendation}")
     if not lines:
-        return sanitized_json
+        return ""
 
     return "\n".join(lines)
 

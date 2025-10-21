@@ -20,8 +20,6 @@ from processdesignagents.agents.utils.agent_sizing_tools import (
 from processdesignagents.agents.utils.agent_states import DesignState, create_design_state
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.json_tools import (
-    convert_streams_json_to_markdown,
-    convert_equipment_json_to_markdown,
     extract_first_json_document,
 )
 

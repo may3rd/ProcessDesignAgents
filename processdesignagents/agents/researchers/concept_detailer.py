@@ -38,9 +38,6 @@ def create_concept_detailer(llm, selection_provider_getter=None):
         if not isinstance(evaluations, list) or not evaluations:
             raise ValueError("Concept detailer could not find any concept evaluations to consider.")
 
-        # evaluations_markdown = convert_evaluations_json_to_markdown(sanitized_evaluations_json)
-        # print(evaluations_markdown, flush=True)
-
         concept_options = []
         for idx, evaluation in enumerate(evaluations, start=1):
             name = evaluation.get("name", f"Concept {idx}")

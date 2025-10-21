@@ -1,5 +1,5 @@
 import json
-
+from langchain_core.messages import AIMessage
 from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.utils.json_tools import extract_first_json_document
+
 load_dotenv()
 
 def create_innovative_researcher(llm):
@@ -37,29 +37,27 @@ def create_innovative_researcher(llm):
                 # Get the response from LLM
                 response_dict = chain.invoke({"messages": list(state.get("messages", []))})
                 
-                cleaned_response_content = json.dumps(response_dict)
-                
-                is_done = (cleaned_response_content[0]=="{") and (cleaned_response_content[-1]=="}")
+                if "concepts" in response_dict:
+                    concepts_json = json.dumps(response_dict)
+                    is_done = True
+
             except Exception as e:
-                print(f"Attemp {try_count}: {e}")
-        print(convert_concepts_json_to_markdown(cleaned_response_content), flush=True)
+                print(f"Attemp {try_count} has failed.")
+        ai_message = AIMessage(content=concepts_json)
+        updated_messages = list(state.get("messages", [])) + [ai_message]
+        print(convert_concepts_list_to_markdown(response_dict.get("concepts", [])), flush=True)
         return {
-            "research_concepts": cleaned_response_content,
-            "messages": ["Innovative Researcher: Proposes novel process concepts using LLM."],
+            "research_concepts": concepts_json,
+            "messages": updated_messages,
         }
 
     return innovative_researcher
 
 
-def convert_concepts_json_to_markdown(concepts_json: str) -> str:
-    """Convert structured JSON concept output into a readable Markdown summary."""
-    sanitized_json, payload = extract_first_json_document(concepts_json)
-    if payload is None:
-        return sanitized_json
-
-    concepts = payload if isinstance(payload, list) else payload.get("concepts")
+def convert_concepts_list_to_markdown(concepts: list) -> str:
+    """Convert list of concept output into a readable Markdown summary."""
     if not isinstance(concepts, list):
-        return sanitized_json
+        return ""
 
     lines: list[str] = []
     concept_counter = 0
@@ -69,10 +67,10 @@ def convert_concepts_json_to_markdown(concepts_json: str) -> str:
 
         concept_counter += 1
         name = concept.get("name", "Untitled Concept")
-        maturity = concept.get("maturity")
-        description = concept.get("description")
-        unit_operations = concept.get("unit_operations") or []
-        key_benefits = concept.get("key_benefits") or []
+        maturity = concept.get("maturity", "unknown")
+        description = concept.get("description", "unknown")
+        unit_operations = concept.get("unit_operations", [])
+        key_benefits = concept.get("key_benefits", [])
 
         lines.append("---")
         lines.append(f"## Concept {concept_counter}. {name}")
@@ -93,7 +91,7 @@ def convert_concepts_json_to_markdown(concepts_json: str) -> str:
                 lines.append(f"- {benefit}")
 
     if not lines:
-        return sanitized_json
+        return ""
 
     return "\n".join(lines)
 

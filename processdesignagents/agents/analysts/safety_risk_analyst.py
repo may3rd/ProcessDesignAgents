@@ -1,5 +1,5 @@
-from __future__ import annotations
-
+import json
+from langchain_core.messages import AIMessage
 from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -10,10 +10,7 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.utils.json_tools import (
-    convert_risk_json_to_markdown,
-    extract_first_json_document,
-)
+from processdesignagents.agents.utils.json_tools import convert_risk_json_to_markdown
 
 load_dotenv()
 
@@ -35,37 +32,31 @@ def create_safety_risk_analyst(llm):
         )
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm
-
+        chain = prompt | llm.with_structured_output(method="json_mode")
         is_done = False
         try_count = 0
-        sanitized_output = ""
-        response = None
         while not is_done:
-            response = chain.invoke({"messages": list(state.get("messages", []))})
-            raw_output = (
-                response.content if isinstance(response.content, str) else str(response.content)
-            ).strip()
-            sanitized_output, payload = extract_first_json_document(raw_output)
-            hazards = None
-            if isinstance(payload, dict):
-                hazards = payload.get("hazards")
-            elif isinstance(payload, list):
-                hazards = payload
-            has_hazards = isinstance(hazards, list) and len(hazards) > 0
-            is_done = has_hazards
             try_count += 1
-            if not is_done:
-                print("- Failed to generate safety assessment. Retrying...", flush=True)
-                if try_count > 10:
-                    print("+ Max try count reached.", flush=True)
-                    exit(-1)
+            if try_count > 10:
+                print("+ Max try count reached.", flush=True)
+                exit(-1)
+            try:
+                # Get the response from LLM
+                response_dict = chain.invoke({"messages": list(state.get("messages", []))})
+                
+                if "hazards" in response_dict:
+                    hazards_json = json.dumps(response_dict)
+                    is_done = True
 
-        risk_markdown = convert_risk_json_to_markdown(sanitized_output)
+            except Exception as e:
+                print(f"Attemp {try_count} has failed.")
+        ai_message = AIMessage(content=hazards_json)
+        updated_messages = list(state.get("messages", [])) + [ai_message]
+        risk_markdown = convert_risk_json_to_markdown(hazards_json)
         print(risk_markdown, flush=True)
         return {
-            "safety_risk_analyst_report": sanitized_output,
-            "messages": [response] if response else [],
+            "safety_risk_analyst_report": hazards_json,
+            "messages": updated_messages,
         }
     return safety_risk_analyst
 
