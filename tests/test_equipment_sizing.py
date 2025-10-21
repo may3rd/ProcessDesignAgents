@@ -12,7 +12,7 @@ from langchain_core.prompts import (
 )
 from langchain_core.messages import ToolMessage
 
-from processdesignagents.agents.utils.agent_utils import (
+from processdesignagents.agents.utils.agent_sizing_tools import (
     size_heat_exchanger_basic,
     size_pump_basic
 )

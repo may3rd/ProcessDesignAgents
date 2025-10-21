@@ -22,7 +22,7 @@ from processdesignagents.default_config import DEFAULT_CONFIG
 from processdesignagents.agents.utils.json_tools import (
     convert_risk_json_to_markdown,
 )
-from processdesignagents.agents.utils.agent_utils import (
+from processdesignagents.agents.utils.agent_sizing_tools import (
     size_heat_exchanger_basic,
     size_pump_basic
 )
