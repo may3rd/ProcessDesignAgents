@@ -83,7 +83,8 @@ You are a **Process Data Engineer** responsible for establishing the foundationa
     * **Build JSON Structure:** Return a single JSON object with the following schema:
     - Top-level keys: `"equipments"`, and `"streams"`.
     - Each entry in `equipments` must iclude:
-        * `"id"`, `"name"`, `"description"`, `"service"`, `"type"`.
+        * `"id"`, `"name"`, `"description"`, `"service"`, `"type"`, `"category"`.
+        * `"category"`: the definition of the equipment category, e.g. Pump, Heat Exchanger, etc.
         * `"streams_in"`, `"stream_out"`: the list of stream id that connected to this equipment.
         * `"design_criteria"`: the information for equipment sizing, i.e. heat duty for heat exchanger, volume or hold up time for vessel.
         * `"sizing_parameters"`: a placeholder for sizing tool or agents.

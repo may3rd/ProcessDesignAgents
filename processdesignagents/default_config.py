@@ -28,11 +28,11 @@ DEFAULT_CONFIG = {
     ),
     # LLM settings
     "llm_provider": "openrouter",
-    "deep_think_llm": "google/gemini-2.5-flash",
-    "quick_think_llm": "google/gemini-2.5-flash-lite",
+    "deep_think_llm": "google/gemini-2.5-flash-lite-preview-09-2025",
+    "quick_think_llm": "google/gemini-2.5-flash-lite-preview-09-2025",
     "backend_url": "https://openrouter.ai/api/v1",
-    "deep_think_temperature": 0.0,
-    "quick_think_temperature": 0.0,
+    "deep_think_temperature": 0.7,
+    "quick_think_temperature": 0.7,
     # Project Directory
     "data_dir": "/Users/maetee/Documents/Code/Temp",
     "data_cache_dir": "./sizing_tools/data_cache",
@@ -50,7 +50,11 @@ DEFAULT_CONFIG = {
     "data_sizing": {
         "heat_exchanger": "preliminary",
         "pressurized_vessel": "preliminary",
-        "pump": "preliminary"
+        "pump": "preliminary",
+        "compressor": "preliminary",
+        "tank": "preliminary",
+        "vertical_pressurized_vessel": "preliminary",
+        "horizontal_pressurized_vessel": "preliminary",
     },
     # Tool-level configuration (takes precedence over category-level)
     "tool_sizing": {

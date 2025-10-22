@@ -14,9 +14,7 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.utils.equipment_stream_markdown import (
-    equipments_and_streams_dict_to_markdown,
-)
+from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
 
 load_dotenv()
 
@@ -114,7 +112,7 @@ You are a **Lead Equipment Sizing Engineer** responsible for performing first-pa
                 "design_criteria": "<0.28 MW>",
                 "sizing_parameters": [
                     {{
-                        "name": "Area",
+                        "name": "area",
                         "quantity": {{"value": 120.0, "unit": "m²"}}
                     }},
                     {{
@@ -122,7 +120,7 @@ You are a **Lead Equipment Sizing Engineer** responsible for performing first-pa
                         "quantity": {{"value": 40.0, "unit": "°C"}}
                     }},
                     {{
-                        "name": "U-value",
+                        "name": "U_value",
                         "quantity": {{"value": 450.0, "unit": "W/m²-K"}}
                     }}
                 ],

@@ -42,7 +42,10 @@ def create_safety_risk_analyst(llm):
                 exit(-1)
             try:
                 # Get the response from LLM
+                print("Call LLM for risk assessment...")
                 response_dict = chain.invoke({"messages": list(state.get("messages", []))})
+                
+                print(response_dict, flush=True)
                 
                 if "hazards" in response_dict:
                     hazards_json = json.dumps(response_dict)

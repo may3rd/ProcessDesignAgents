@@ -10,7 +10,7 @@ from langchain_core.prompts import (
     MessagesPlaceholder,
     SystemMessagePromptTemplate,
 )
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 
 from processdesignagents.agents.utils.agent_sizing_tools import (
     size_heat_exchanger_basic,
@@ -22,13 +22,9 @@ from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.json_tools import (
     extract_first_json_document,
 )
+from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
 
 from processdesignagents.default_config import DEFAULT_CONFIG
-
-config = DEFAULT_CONFIG.copy()
-config["llm_provider"] = "openrouter"
-config["quick_think_llm"] = "google/gemini-2.5-flash-lite"
-config["deep_think_llm"] = "x-ai/grok-4-fast"
 
 def load_example_data() -> Dict[str, Any]:
     """ Example information from last sucessful project. (2025-10-17)"""
@@ -46,7 +42,25 @@ def load_example_data() -> Dict[str, Any]:
     "project_manager_report": "## Executive Summary\n- Approval Status: Conditional\n- Key Rationale: Full approval is contingent upon the engineering verification and specification of critical safety systems and redundancy required to mitigate the high-impact risks identified in the HAZOP dossier.\n\n## Financial Outlook\n| Metric                       | Estimate |\n| ---------------------------- | -------- |\n| CAPEX (USD millions)         | 75       |\n| OPEX (USD millions per year) | 8.2      |\n| Contingency (%)              | 20       |\n\n## Implementation Plan\n1.  **Finalize Safety Instrumented Systems (SIS):** Develop and specify the logic, setpoints, and hardware for all critical alarms and shutdowns (e.g., AT-1002, FAL-4001, PAH-301) identified in the HAZOP to ensure solvent protection and high-pressure equipment safety (Owner: Lead Controls & Safety Engineer, Target: 4 weeks).\n2.  **Complete Detailed Equipment Specification:** Issue detailed datasheets for all major equipment, including specifying 100% redundant pumps for P-101 and P-201, finalizing the dual-bed design for D-301, and confirming the sizing basis for PSV-301 on the compressor discharge (Owner: Lead Mechanical Engineer, Target: 6 weeks).\n3.  **Perform Utility and Energy Integration Study:** Conduct a formal pinch analysis on the heat exchanger network (especially E-101) and re-evaluate the steam balance to identify and implement opportunities for OPEX reduction before final design freeze (Owner: Lead Process Engineer, Target: 8 weeks).\n\n## Final Notes\n- The financial estimates are based on the assumed 110 tonnes/day CO2 capture basis. Final CAPEX/OPEX will be sensitive to the final capacity required by the project.\n- The design basis assumes 90% CO2 recovery; any change to this target will significantly impact solvent circulation, equipment sizing, and utility consumption.\n- The regeneration duty and utility requirements for the CO2 Drying Unit (D-301) are listed as 'TBD' and must be defined to finalize utility balances and operating costs.\n- The HAZOP recommends 100% redundant pumps for solvent circulation (P-101, P-201); this must be incorporated into the final equipment list and CAPEX estimate.\n- A detailed solvent management plan, including the design basis for an Amine Reclamation unit, is required to manage long-term solvent degradation and waste streams (e.g., stream 3002)."
     }
     
+    temp_data = {
+        "problem_statement": "design heat exchanger to cool the ethanol product (99.5% purity molar basis) from 100 C to 40 C. Design flowrate of ethanol feed is 2500 kg/hr.",
+        "requirements": "## Objective\n- Primary goal: Cool a stream of Ethanol product from an inlet temperature of 100\u00b0C to an outlet temperature of 40\u00b0C.\n- Key drivers: Not specified\n\n## Capacity\nThe design capacity for the heat exchanger duty calculation is based on the Ethanol mass flow rate: 2500.0 kg/hr.\n\n## Components\nThe chemical components involved in the process stream are:\n- Ethanol\n- Impurities (assumed to be minor components making up the balance to 100%)\n\n## Purity Target\n- Component: Ethanol\n- Value: 99.5% (Molar Basis)\n\n## Constraints & Assumptions\n- The process fluid (Ethanol product) inlet temperature is 100\u00b0C.\n- The process fluid (Ethanol product) outlet temperature is 40\u00b0C.\n- The mass flow rate of the Ethanol product stream is 2500 kg/hr.\n- The cooling medium (utility fluid) specifications (temperature, flow rate, type) are Not specified.\n- The required heat transfer duty (Q) is Not specified.\n- The target pressure for the process fluid is Not specified.",
+        "research_concepts": "{\"concepts\": [{\"name\": \"Standard Fixed Tubesheet Heat Exchanger (Cooling Water Loop)\", \"maturity\": \"conventional\", \"description\": \"Utilizes a standard fixed tubesheet shell-and-tube heat exchanger. This design is robust, well-understood, and relies on the assumed availability of a standard cooling water utility loop for heat rejection.\", \"unit_operations\": [\"Feed Pump\", \"Fixed Tubesheet Shell-and-Tube Heat Exchanger\", \"Outlet Control Valve\"], \"key_benefits\": [\"High reliability and established maintenance procedures.\", \"Lower initial capital expenditure compared to specialized units.\", \"Simple process control strategy.\"]}, {\"name\": \"Spiral Heat Exchanger for High Fouling Potential\", \"maturity\": \"innovative\", \"description\": \"A spiral heat exchanger is selected to handle the stream, assuming the minor impurities might cause fouling. The design allows for highly turbulent flow and easier mechanical cleaning via water jetting or chemical circulation.\", \"unit_operations\": [\"Feed Pump\", \"Spiral Heat Exchanger\", \"Circulation Pump (for chemical cleaning)\", \"Strainers\"], \"key_benefits\": [\"Superior performance under potential fouling conditions compared to shell-and-tube.\", \"Compact footprint for the required duty.\", \"Ability to operate with a smaller approach temperature difference.\"]}, {\"name\": \"Integrated Heat Recovery with Organic Rankine Cycle (ORC)\", \"maturity\": \"state_of_the_art\", \"description\": \"Instead of rejecting the heat to a standard cooling tower, the 100\\u00b0C ethanol stream is used as the heat source to drive a small Organic Rankine Cycle (ORC) unit, generating useful electricity while cooling the ethanol stream to an intermediate temperature (e.g., 50\\u00b0C). A secondary cooler (air or cooling water) then brings it down to 40\\u00b0C.\", \"unit_operations\": [\"ORC Evaporator (Feed side)\", \"ORC Turbine/Generator\", \"Secondary Air-Cooled Heat Exchanger\", \"Feed Pump\"], \"key_benefits\": [\"Turns a cooling duty into an energy recovery opportunity (electricity generation).\", \"Significantly reduces operational energy costs.\", \"Reduces the load on conventional cooling utilities.\"]}, {\"name\": \"Two-Stage Cooling using Economizer and Cooling Water\", \"maturity\": \"innovative\", \"description\": \"A two-stage approach where the initial cooling from 100\\u00b0C to approximately 60\\u00b0C is achieved using a liquid-liquid plate heat exchanger against a cold return stream (if one exists, acting as an economizer), followed by a final cooling stage to 40\\u00b0C using the primary cooling water utility.\", \"unit_operations\": [\"Feed Pump\", \"Plate Heat Exchanger (Economizer Stage)\", \"Shell-and-Tube Heat Exchanger (Final Cooling Stage)\", \"Temperature Control Valve\"], \"key_benefits\": [\"Maximizes internal heat recovery before resorting to external utilities.\", \"Reduces the duty required from the cooling water loop, saving utility costs.\", \"Plate exchangers offer high efficiency for the initial temperature drop.\"]}]}",
+        "selected_concept_name": "Standard Fixed Tubesheet Heat Exchanger (Cooling Water Loop)",
+        "selected_concept_details": "## Concept Selection: Standard Fixed Tubesheet Heat Exchanger (Cooling Water Loop)\n\nThe **Standard Fixed Tubesheet Heat Exchanger (Cooling Water Loop)** is selected as the baseline design due to its conventional nature, high reliability, and lower initial capital expenditure, aligning with the general preference for established technology when key utility specifications are unknown.\n\n## Process Narrative\n\nThe 99.5% molar basis Ethanol product stream, entering at 100\u00b0C, is pressurized by the Feed Pump (P-101) to overcome the pressure drop across the heat exchanger and associated piping, targeting a nominal operating pressure of TBD barg. This hot stream flows through the shell side of the Fixed Tubesheet Shell-and-Tube Heat Exchanger (E-101). Simultaneously, the cooling utility fluid (assumed to be cooling water) is supplied from the plant utility header and flows through the tube side of E-101. Heat is transferred from the hot ethanol to the cooler utility fluid, reducing the ethanol temperature to the target of 40\u00b0C.\n\nThe cooled ethanol exits E-101 and passes through an Outlet Control Valve (CV-101) to regulate the downstream pressure and flow rate, ensuring stable operation of the entire cooling system and preventing thermal shock to downstream equipment. The utility fluid, now warmed, is returned to the plant's cooling water system for re-cooling. The simplicity of this design relies heavily on the utility fluid being chemically compatible and thermally stable enough to manage the required heat load without causing excessive fouling or thermal stress on the fixed tube bundle.\n\n## Major Equipment & Roles\n\n| Equipment | Function | Critical Operating Notes |\n| :--- | :--- | :--- |\n| P-101 Feed Pump | Provide necessary head to move the ethanol stream through the exchanger and control flow. | Must be sized based on the calculated duty and required pressure drop (TBD). Duty/Standby configuration recommended for reliability. |\n| E-101 Fixed Tubesheet Exchanger | Reject the required heat load ($Q_{design}$) from the ethanol stream using the cooling utility. | Material selection (e.g., Carbon Steel or Stainless Steel) must be confirmed based on utility water chemistry. Fixed design requires careful thermal stress analysis. |\n| CV-101 Outlet Control Valve | Regulate the outlet flow and pressure of the cooled ethanol product stream. | Sized for turndown capability (TBD) and must handle the process fluid at 40\u00b0C. |\n\n## Operating Envelope\n\n| Parameter | Ethanol Process Stream | Cooling Utility Stream |\n| :--- | :--- | :--- |\n| Design Capacity (Flow) | 2500.0 kg/hr | TBD kg/hr |\n| Inlet Temperature | 100\u00b0C | TBD (\u00b0C) |\n| Outlet Temperature | 40\u00b0C | TBD (\u00b0C) |\n| Design Pressure | TBD barg (Target: Moderate Pressure) | TBD barg (Based on Utility Header) |\n| Purity | 99.5% Molar | N/A |\n\n**Special Utilities Required:** Cooling Water Utility (Specification pending).\n\n## Risks & Safeguards\n\n| Process Risk | Consequence | Safeguard / Mitigation Strategy |\n| :--- | :--- | :--- |\n| **Thermal Stress Failure** | Tube-to-tubesheet joint failure due to large $\\Delta T$ between shell and tube sides. | **Safeguard:** Specify a U-tube or floating head design if the utility $\\Delta T$ exceeds 30\u00b0C, overriding the initial CAPEX preference for fixed tubesheet. |\n| **Excessive Fouling** | Heat transfer coefficient drops below design minimum, leading to ethanol outlet temperature $> 40^\\circ\\text{C}$. | **Safeguard:** Design the exchanger with a 25% contingency on the required heat transfer area. Implement a routine monitoring strategy based on differential pressure across the exchanger. |\n| **Tube Leak / Cross-Contamination** | Ethanol leaks into the cooling water loop, creating a fire/environmental hazard in the utility system. | **Safeguard:** Specify a double tube sheet design if the cooling water is non-contact or critical (e.g., potable water). Implement conductivity monitoring on the cooling water return line. |\n| **Loss of Cooling Utility** | Ethanol outlet temperature spikes above 40\u00b0C, potentially damaging downstream equipment or storage integrity. | **Safeguard:** Install a High-Temperature Alarm (ATH) on the ethanol outlet line, tied to an automatic shutdown (ESD) of the Feed Pump (P-101) if the temperature exceeds $45^\\circ\\text{C}$. |\n\n## Data Gaps & Assumptions\n\nThe following critical data points must be resolved during the Front-End Engineering Design (FEED) phase:\n\n1.  **Utility Specifications:** The temperature profile (min/max inlet/outlet) and flow rate of the cooling water utility are **TBD**. This is the single most critical input for sizing E-101.\n2.  **Process Pressure:** The required operating pressure for the ethanol stream is **TBD**. This dictates pump selection (P-101) and valve sizing (CV-101).\n3.  **Heat Duty ($Q$):** The required heat duty must be calculated using the specific heat capacity ($C_p$) of the 99.5% ethanol stream at the operating temperatures. The $C_p$ value is **TBD** and must be confirmed via thermodynamic property software or lab data.\n4.  **Fouling Factor:** The expected fouling resistance ($R_f$) for the ethanol stream is **TBD**. This will determine the necessary surface area contingency.\n5.  **Material Compatibility:** Final material selection for E-101 is **TBD**, pending confirmation of cooling water chemistry and ethanol corrosivity.",
+        "design_basis": "# Preliminary Process Basis of Design (BoD) - Heat Exchanger Unit\n\n## 1. Project Overview and Problem Statement\nThis document establishes the preliminary basis for the design of a dedicated heat exchanger unit responsible for cooling a high-purity Ethanol product stream. The primary objective is to reduce the temperature of the 99.5% molar basis Ethanol stream from an inlet temperature of $100^\\circ\\text{C}$ to a target outlet temperature of $40^\\circ\\text{C}$, utilizing a cooling utility fluid. The selected baseline technology is a Standard Fixed Tubesheet Shell-and-Tube Heat Exchanger (E-101) utilizing a Cooling Water Loop.\n\n## 2. Key Design Assumptions and Exclusions\n*   **Design Basis:** The design is based on the specified mass flow rate of $2500.0 \\text{ kg/hr}$ of Ethanol product.\n*   **Process Technology:** A Fixed Tubesheet Shell-and-Tube Heat Exchanger (E-101) is the preliminary selection. This selection is subject to revision if the required utility $\\Delta T$ necessitates a floating head or U-tube design to manage thermal expansion.\n*   **Cooling Utility:** The cooling medium is assumed to be standard plant Cooling Water (CW). Specific CW temperature profiles and flow rates are **TBD**.\n*   **Operating Hours:** Continuous operation (8,760 hours/year) is assumed for duty calculation purposes.\n*   **Purity Basis:** All thermal calculations will use the properties of 99.5% molar Ethanol, with the minor impurities assumed to have negligible impact on the overall specific heat capacity ($C_p$) for preliminary sizing.\n*   **Exclusions:** Detailed mechanical design, final pressure drop calculations, specific pump sizing (P-101), and final material selection are excluded from this preliminary BoD.\n\n## 3. Design Capacity and Operating Conditions\n\n### Process Stream (Hot Side - Ethanol)\n| Parameter | Value | Units | Basis |\n| :--- | :--- | :--- | :--- |\n| **Design Mass Flow Rate** | 2,500.0 | kg/hr | User Requirement |\n| **Inlet Temperature ($T_{in}$)** | 100 | ${}^\\circ\\text{C}$ | User Requirement |\n| **Outlet Temperature ($T_{out}$)** | 40 | ${}^\\circ\\text{C}$ | User Requirement |\n| **Target Purity** | 99.5 | Molar % | User Requirement |\n| **Design Pressure ($P_{design}$)** | TBD (Assumed Moderate) | barg | Preliminary Estimate |\n| **Required Heat Duty ($Q_{req}$)** | TBD | kW | Requires $C_p$ confirmation |\n\n### Cooling Utility Stream (Cold Side - Cooling Water)\n| Parameter | Value | Units | Basis |\n| :--- | :--- | :--- | :--- |\n| **Design Mass Flow Rate** | TBD | kg/hr | Calculated based on $Q_{req}$ and $\\Delta T_{CW}$ |\n| **Inlet Temperature ($T_{in}$)** | TBD | ${}^\\circ\\text{C}$ | Utility Specification Pending |\n| **Outlet Temperature ($T_{out}$)** | TBD | ${}^\\circ\\text{C}$ | Utility Specification Pending |\n| **Design Pressure ($P_{design}$)** | TBD | barg | Utility Header Pressure |\n\n## 4. Chemical Components\n\n| Name | Formula | MW | Role |\n| :--- | :--- | :--- | :--- |\n| Ethanol | $\\text{C}_2\\text{H}_5\\text{OH}$ | 46.07 | Primary Process Fluid |\n| Water | $\\text{H}_2\\text{O}$ | 18.015 | Assumed Cooling Utility Component |\n\n## 5. Feed and Product Specifications\n\n### Process Fluid (Inlet Stream)\n*   **Composition:** 99.5% Molar Ethanol.\n*   **Inlet Temperature:** $100^\\circ\\text{C}$.\n\n### Process Fluid (Outlet Stream)\n*   **Composition:** 99.5% Molar Ethanol.\n*   **Outlet Temperature:** $40^\\circ\\text{C}$.\n*   **Pressure:** To be determined based on downstream pressure requirements and calculated pressure drop.\n\n## 6. Preliminary Utility Summary\n*   **Primary Utility:** Cooling Water (CW). Specifications (flow, temperature) are **TBD**.\n*   **Secondary Utility:** Electricity required for Feed Pump (P-101).\n*   **Instrument Air:** Required for Control Valve (CV-101) operation.\n\n## 7. Environmental and Regulatory Criteria\n*   **Containment:** The design must ensure zero cross-contamination between the high-purity Ethanol product and the cooling water utility.\n*   **Fire Safety:** As Ethanol is flammable, the heat exchanger area must comply with relevant area classification standards (e.g., NEC/IEC) for flammable liquid handling.\n*   **Wastewater:** The cooling water return stream must be managed according to site discharge limits, though this is typically handled by the central utility system.\n\n## 8. Process Selection Rationale (High-Level)\nThe **Fixed Tubesheet Shell-and-Tube Exchanger** is selected for its simplicity and low initial cost, suitable for preliminary design where utility conditions are not yet finalized. The primary risk associated with this design (thermal expansion) must be mitigated by ensuring the utility $\\Delta T$ is manageable or by upgrading the design to a floating head configuration during FEED if necessary. The process narrative involves pressurizing the hot stream via P-101 to ensure positive flow through the exchanger, followed by pressure let-down via CV-101 downstream.\n\n## 9. Preliminary Material of Construction (MoC) Basis\n*   **Ethanol Side (Shell/Tubes):** Stainless Steel (e.g., 304L or 316L) is recommended due to the presence of high-purity Ethanol, which can be mildly corrosive, and to prevent contamination of the product.\n*   **Cooling Water Side (Shell/Tubes):** Carbon Steel (CS) may be acceptable if the cooling water is non-aggressive (low chloride/low acidity). Final selection depends on CW chemistry analysis.\n*   **Gaskets/Seals:** PTFE or equivalent chemical-resistant material is required for all process connections.\n\n## 10. Data Gaps and Critical Path Items\nThe following items are critical and must be resolved before detailed design (FEED) can commence:\n\n1.  **Specific Heat Capacity ($C_p$):** Accurate $C_p$ data for 99.5% molar Ethanol at the operating temperature range ($40^\\circ\\text{C}$ to $100^\\circ\\text{C}$) is required to calculate the definitive Heat Duty ($Q$).\n2.  **Cooling Water Specifications:** Inlet/Outlet temperatures and flow rate of the cooling utility are mandatory inputs.\n3.  **Pressure Drop Requirements:** The maximum allowable pressure drop across E-101 for both the shell and tube sides must be defined to properly size P-101 and CV-101.\n4.  **Fouling Factor ($R_f$):** A design fouling factor must be established to determine the required heat transfer area contingency.",
+        "basic_pfd": "## Flowsheet Summary\n- Concept: Ethanol Cooling Skid (Fixed Tubesheet)\n- Objective: Reduce hot ethanol from 100\u00b0C to 40\u00b0C using an unspecified cooling utility (assumed Cooling Water).\n- Key Drivers: Establishing the baseline design based on known flow and temperature targets.\n\n## Units\n| ID    | Name                | Type                       | Description                                    |\n| :--- | :--- | :--- | :--- |\n| P-101 | Feed Pump           | Centrifugal pump           | Pressurizes hot ethanol feed to overcome exchanger pressure drop. |\n| E-101 | Ethanol Cooler      | Fixed Tubesheet Exchanger | Shell-and-tube unit rejecting heat from ethanol to cooling water. |\n| CV-101 | Outlet Control Valve | Control Valve              | Regulates downstream pressure and flow of cooled ethanol product. |\n| U-201 | Cooling Water Loop  | Utility Header             | Provides cooling utility supply and receives the warmed return stream. |\n\n## Streams\n| ID   | Stream             | From             | To           | Description                                    |\n| :--- | :--- | :--- | :--- | :--- |\n| 1001 | Hot Ethanol Feed   | Upstream Source  | P-101        | Process ethanol at 100\u00b0C, 2500 kg/hr. Pressure TBD. |\n| 1002 | Pressurized Ethanol| P-101            | E-101 (Shell) | Ethanol stream pressurized to overcome $\\Delta P$. |\n| 1003 | Cooled Ethanol     | E-101 (Shell)    | CV-101       | Product leaving exchanger at target 40\u00b0C. |\n| 1004 | Product Outlet     | CV-101           | Downstream Unit| Regulated flow of 40\u00b0C ethanol product. |\n| 2001 | CW Supply          | U-201            | E-101 (Tube) | Cooling Water enters exchanger at TBD temperature. |\n| 2002 | CW Return          | E-101 (Tube)     | U-201        | Warmed cooling water returns to utility system. |\n\n## Overall Description\nThe process begins with the hot Ethanol Feed (Stream 1001) being pressurized by the Feed Pump (P-101) to create Stream 1002, which enters the shell side of the Fixed Tubesheet Heat Exchanger (E-101). The cooling utility (Stream 2001) enters the tube side of E-101. Heat is rejected from the ethanol to the utility fluid, resulting in the cooled ethanol product (Stream 1003) at $40^\\circ\\text{C}$. This stream passes through the Outlet Control Valve (CV-101) to establish the final regulated flow (Stream 1004). The warmed utility fluid (Stream 2002) is returned to the Cooling Water Loop (U-201).\n\n## Notes\n- **Critical Data Gap:** The required heat duty ($Q$) cannot be calculated without the specific heat capacity ($C_p$) of 99.5% Ethanol. This must be resolved in FEED.\n- **Innovation Note:** While the baseline is a Fixed Tubesheet design, the high inlet temperature ($100^\\circ\\text{C}$) relative to the outlet ($40^\\circ\\text{C}$) suggests a significant temperature differential ($\\Delta T$) between the shell and tube sides is likely. Downstream mechanical design **must** confirm if a Floating Head or U-Tube design is required to prevent thermal stress failure in E-101.\n- **Instrumentation Note:** A High-Temperature Alarm (ATH) should be installed on Stream 1003, interlocked to trip P-101 if the temperature exceeds $45^\\circ\\text{C}$ due to loss of cooling utility.",
+        "equipment_and_stream_list": "{\"equipments\": [{\"id\": \"P-101\", \"name\": \"Feed Pump\", \"description\": \"Pressurizes hot ethanol feed to overcome exchanger pressure drop.\", \"service\": \"Feed pressurization for E-101.\", \"type\": \"Centrifugal pump\", \"category\": \"Pump\", \"streams_in\": [\"1001\"], \"stream_out\": \"1002\", \"design_criteria\": \"Must provide sufficient head to overcome E-101 $\\\\Delta P$ and CV-101 pressure drop.\", \"sizing_parameters\": [{\"name\": \"Required Head\", \"quantity\": {\"value\": \"000\", \"unit\": \"m\"}}, {\"name\": \"Required Flow\", \"quantity\": {\"value\": 2500.0, \"unit\": \"kg/hr\"}}], \"notes\": \"Sizing depends on TBD pressure drop requirements across E-101 and CV-101.\"}, {\"id\": \"E-101\", \"name\": \"Ethanol Cooler\", \"description\": \"Shell-and-tube unit rejecting heat from ethanol to cooling water.\", \"service\": \"Cooling 99.5% Ethanol from 100\u00b0C to 40\u00b0C.\", \"type\": \"Fixed Tubesheet Exchanger\", \"category\": \"Heat Exchanger\", \"streams_in\": [\"1002\", \"2001\"], \"stream_out\": \"1003\", \"design_criteria\": \"Achieve $Q_{req}$ with specified approach temperature.\", \"sizing_parameters\": [{\"name\": \"Heat Duty (Q)\", \"quantity\": {\"value\": \"000\", \"unit\": \"kW\"}}, {\"name\": \"Area\", \"quantity\": {\"value\": \"000\", \"unit\": \"m\u00b2\"}}, {\"name\": \"Overall U\", \"quantity\": {\"value\": \"000\", \"unit\": \"W/m\u00b2-K\"}}], \"notes\": \"Preliminary selection is Fixed Tubesheet. Mechanical design must confirm if U-tube or Floating Head is required to manage thermal stress ($\\\\Delta T$). Shell side: Ethanol; Tube side: Cooling Water.\"}, {\"id\": \"CV-101\", \"name\": \"Outlet Control Valve\", \"description\": \"Regulates downstream pressure and flow of cooled ethanol product.\", \"service\": \"Flow/Pressure Control of Cooled Ethanol.\", \"type\": \"Control Valve\", \"category\": \"Control Valve\", \"streams_in\": [\"1003\"], \"stream_out\": \"1004\", \"design_criteria\": \"Must handle 40\u00b0C Ethanol and provide required pressure let-down.\", \"sizing_parameters\": [{\"name\": \"Cv (Inlet)\", \"quantity\": {\"value\": \"000\", \"unit\": \"m\u00b3/h\"}}], \"notes\": \"Sizing depends on TBD downstream pressure requirements.\"}, {\"id\": \"U-201\", \"name\": \"Cooling Water Loop\", \"description\": \"Utility Header providing cooling utility supply and receiving the warmed return stream.\", \"service\": \"Utility Distribution/Collection\", \"type\": \"Utility Header\", \"category\": \"Utility System\", \"streams_in\": [\"2002\"], \"stream_out\": \"2001\", \"design_criteria\": \"Must maintain specified supply pressure and temperature for E-101.\", \"sizing_parameters\": [], \"notes\": \"Specifications (flow, T_in, P_in) are TBD.\"}], \"streams\": [{\"id\": \"1001\", \"name\": \"Hot Ethanol Feed\", \"description\": \"Process ethanol at 100\u00b0C, 2500 kg/hr, entering the system.\", \"from\": \"Upstream Source\", \"to\": \"P-101\", \"phase\": \"Liquid\", \"properties\": {\"mass_flow\": {\"value\": 2500.0, \"unit\": \"kg/hr\"}, \"temperature\": {\"value\": 100.0, \"unit\": \"\u00b0C\"}, \"pressure\": {\"value\": \"000\", \"unit\": \"barg\"}}, \"compositions\": {\"Ethanol\": {\"value\": 0.995, \"unit\": \"molar fraction\"}, \"Impurities\": {\"value\": 0.005, \"unit\": \"molar fraction\"}}, \"notes\": \"Inlet pressure is TBD.\"}, {\"id\": \"1002\", \"name\": \"Pressurized Ethanol\", \"description\": \"Ethanol stream pressurized by P-101 to overcome $\\\\Delta P$ across E-101.\", \"from\": \"P-101\", \"to\": \"E-101 (Shell)\", \"phase\": \"Liquid\", \"properties\": {\"mass_flow\": {\"value\": 2500.0, \"unit\": \"kg/hr\"}, \"temperature\": {\"value\": 100.0, \"unit\": \"\u00b0C\"}, \"pressure\": {\"value\": \"000\", \"unit\": \"barg\"}}, \"compositions\": {\"Ethanol\": {\"value\": 0.995, \"unit\": \"molar fraction\"}, \"Impurities\": {\"value\": 0.005, \"unit\": \"molar fraction\"}}, \"notes\": \"Discharge pressure from P-101 is TBD based on required pressure drop.\"}, {\"id\": \"1003\", \"name\": \"Cooled Ethanol\", \"description\": \"Product leaving exchanger E-101 shell side at target 40\u00b0C.\", \"from\": \"E-101 (Shell)\", \"to\": \"CV-101\", \"phase\": \"Liquid\", \"properties\": {\"mass_flow\": {\"value\": 2500.0, \"unit\": \"kg/hr\"}, \"temperature\": {\"value\": 40.0, \"unit\": \"\u00b0C\"}, \"pressure\": {\"value\": \"000\", \"unit\": \"barg\"}}, \"compositions\": {\"Ethanol\": {\"value\": 0.995, \"unit\": \"molar fraction\"}, \"Impurities\": {\"value\": 0.005, \"unit\": \"molar fraction\"}}, \"notes\": \"High-Temperature Alarm (ATH) required on this stream, interlocked to trip P-101 if T > 45\u00b0C.\"}, {\"id\": \"1004\", \"name\": \"Product Outlet\", \"description\": \"Regulated flow of 40\u00b0C ethanol product leaving the skid.\", \"from\": \"CV-101\", \"to\": \"Downstream Unit\", \"phase\": \"Liquid\", \"properties\": {\"mass_flow\": {\"value\": 2500.0, \"unit\": \"kg/hr\"}, \"temperature\": {\"value\": 40.0, \"unit\": \"\u00b0C\"}, \"pressure\": {\"value\": \"000\", \"unit\": \"barg\"}}, \"compositions\": {\"Ethanol\": {\"value\": 0.995, \"unit\": \"molar fraction\"}, \"Impurities\": {\"value\": 0.005, \"unit\": \"molar fraction\"}}, \"notes\": \"Final regulated pressure is TBD.\"}, {\"id\": \"2001\", \"name\": \"CW Supply\", \"description\": \"Cooling Water enters exchanger E-101 tube side.\", \"from\": \"U-201\", \"to\": \"E-101 (Tube)\", \"phase\": \"Liquid\", \"properties\": {\"mass_flow\": {\"value\": \"000\", \"unit\": \"kg/hr\"}, \"temperature\": {\"value\": \"000\", \"unit\": \"\u00b0C\"}, \"pressure\": {\"value\": \"000\", \"unit\": \"barg\"}}, \"compositions\": {\"Water\": {\"value\": 1.0, \"unit\": \"molar fraction\"}}, \"notes\": \"Flow rate, inlet temperature, and pressure are TBD based on required duty. Assumed 100% Water for utility stream.\"}, {\"id\": \"2002\", \"name\": \"CW Return\", \"description\": \"Warmed cooling water returns from E-101 tube side to utility system.\", \"from\": \"E-101 (Tube)\", \"to\": \"U-201\", \"phase\": \"Liquid\", \"properties\": {\"mass_flow\": {\"value\": \"000\", \"unit\": \"kg/hr\"}, \"temperature\": {\"value\": \"000\", \"unit\": \"\u00b0C\"}, \"pressure\": {\"value\": \"000\", \"unit\": \"barg\"}}, \"compositions\": {\"Water\": {\"value\": 1.0, \"unit\": \"molar fraction\"}}, \"notes\": \"Outlet temperature is dependent on the unknown heat duty (Q). Assumed 100% Water.\"}]}",
+        "safety_risk_analyst_report": "{\"hazards\": [{\"title\": \"Loss of Cooling Utility Flow (Stream 2001)\", \"severity\": 4, \"likelihood\": 3, \"risk_score\": 12, \"causes\": [\"Failure of CW pump in U-201\", \"Isolation valve XV-201 fails closed\", \"Blockage in CW supply header (U-201)\"], \"consequences\": [\"Ethanol outlet temperature (Stream 1003) rises above 45\\u00b0C (Safety Limit).\", \"Potential for thermal degradation of Ethanol product.\", \"Downstream equipment rated for 40\\u00b0C may experience thermal stress.\"], \"mitigations\": [\"Install High-Temperature Alarm (ATH) on Stream 1003, interlocked to trip Feed Pump (P-101).\", \"Install flow switch (FSH) on Stream 2001, interlocked to trip P-101.\", \"Ensure CW pumps (U-201) are configured with automatic changeover to standby units.\"], \"notes\": [\"This is the primary process safety risk due to the high inlet temperature (100\\u00b0C) and the critical cooling requirement.\", \"The required $C_p$ data is needed to calculate the exact temperature rise rate.\"]}, {\"title\": \"Excessive Thermal Stress on E-101 Fixed Tubesheet\", \"severity\": 4, \"likelihood\": 2, \"risk_score\": 8, \"causes\": [\"Cooling Water Inlet Temperature (Stream 2001) is significantly lower than assumed design basis.\", \"High LMTD resulting from low CW flow rate.\", \"Failure to upgrade design from Fixed Tubesheet to Floating Head/U-Tube.\"], \"consequences\": [\"Catastrophic failure of tube-to-tubesheet welds leading to immediate loss of containment.\", \"Cross-contamination of high-purity Ethanol (Stream 1003) with Cooling Water (Stream 2002).\"], \"mitigations\": [\"Mechanical design must confirm the maximum allowable $\\\\Delta T$ between shell and tube sides.\", \"If $\\\\Delta T$ exceeds limits, mandate design upgrade to Floating Head or U-Tube configuration.\", \"Implement rigorous inspection schedule for tube bundle welds.\"], \"notes\": [\"The fixed tubesheet selection is a preliminary cost-saving measure that introduces a high mechanical risk.\", \"Requires confirmation of CW temperature specifications (TBD).\"]}, {\"title\": \"High Pressure on Ethanol Feed Side (Stream 1002)\", \"severity\": 3, \"likelihood\": 3, \"risk_score\": 9, \"causes\": [\"E-101 Tube Side (Stream 2001) pressure surge due to utility header upset.\", \"CV-101 fails fully closed, causing immediate backpressure on E-101 shell side.\", \"P-101 over-pressurization due to control failure.\"], \"consequences\": [\"Failure of E-101 shell or associated piping/flanges.\", \"Potential rupture of the fixed tubesheet joints.\"], \"mitigations\": [\"Install a Pressure Safety Valve (PSV) on the shell side of E-101, sized for the maximum discharge pressure of P-101.\", \"Ensure CV-101 has reliable pressure control instrumentation (PIC/PSV backup).\", \"Verify P-101 motor trip logic based on discharge pressure (PSH).\"], \"notes\": [\"Design pressure for E-101 and associated piping is currently TBD.\", \"The PSV set point must be below the lowest rated component pressure (E-101 shell or P-101 casing).\"]}, {\"title\": \"Product Contamination (Impurity Carryover)\", \"severity\": 2, \"likelihood\": 2, \"risk_score\": 4, \"causes\": [\"Inadequate purity of inlet stream (Stream 1001) exceeding 99.5% molar.\", \"Phase separation or flashing within E-101 due to unexpected low pressure.\", \"Failure of gaskets/seals in E-101 or CV-101.\"], \"consequences\": [\"Off-spec final product (Stream 1004) requiring reprocessing or disposal.\", \"Potential downstream catalyst poisoning if impurities are reactive.\"], \"mitigations\": [\"Install online purity analyzer on Stream 1004 with high-level alarm (AHL) interlocked to divert flow.\", \"Ensure all wetted parts of E-101 and CV-101 are Stainless Steel (as recommended) to minimize corrosion/leaching.\", \"Confirm operating pressure profile ensures liquid phase throughout E-101.\"], \"notes\": [\"The nature of the 0.5% impurities is unknown, impacting corrosion and fouling risk.\", \"This is primarily a quality/economic risk unless impurities are highly hazardous.\"]}], \"overall_assessment\": {\"risk_level\": \"Medium\", \"compliance_notes\": [\"Critical Data Gap: Finalize $C_p$ for 99.5% Ethanol to calculate definitive Heat Duty ($Q$).\", \"Critical Data Gap: Define Cooling Water (CW) inlet/outlet temperatures and flow rates to confirm exchanger type (Fixed vs. Floating Head).\", \"Ensure PSV sizing for E-101 shell side is completed based on P-101 maximum discharge pressure.\", \"Verify area classification requirements due to the presence of flammable Ethanol.\"]}}",
+        "project_manager_report": "## Executive Summary\n- Approval Status: Conditional\n- Key Rationale: The conceptual design is sound, but advancement to FEED is conditional upon resolving critical data gaps regarding the specific heat capacity of the product and the specifications of the cooling utility, which directly impact the mechanical design of the critical heat exchanger (E-101).\n\n## Financial Outlook\n| Metric                       | Estimate |\n| ---------------------------- | -------- |\n| CAPEX (USD millions)         | 0.85     |\n| OPEX (USD millions per year) | 0.15     |\n| Contingency (%)              | 20       |\n\n## Implementation Plan\n1.  **Resolve Critical Data Gaps (Owner: Process Engineering):** Immediately initiate procurement of thermodynamic data for 99.5% Ethanol ($C_p$) and secure firm specifications (T_in, Flow) for the Cooling Water Utility (Stream 2001). (Target: 3 weeks)\n2.  **Finalize E-101 Mechanical Design Basis (Owner: Mechanical Engineering):** Based on confirmed $C_p$ and utility data, finalize the required heat duty ($Q$) and determine definitively whether the Fixed Tubesheet design for E-101 is acceptable or if a Floating Head/U-Tube design must be adopted to manage thermal expansion risk.\n3.  **Complete Safety Review & Sizing (Owner: Safety/Piping):** Finalize the maximum discharge pressure for P-101 and size the required Pressure Safety Valve (PSV) on the shell side of E-101, ensuring compliance with Hazard ID #3.\n\n## Final Notes\n- The preliminary CAPEX estimate ($0.85M) assumes the baseline Fixed Tubesheet design for E-101 is confirmed in Step 2. If a Floating Head design is required, CAPEX is estimated to increase by 25-35%.\n- The unknown nature of the 0.5% impurities in Stream 1001 requires a conservative fouling factor ($R_f$) of $0.0004 \\text{ m}^2\\text{K/W}$ to be used in the FEED heat transfer calculations until further analysis is complete.\n- Area classification review must be completed for the skid area due to the flammability of Ethanol."
+    }
+    
     return temp_data
+
+config = DEFAULT_CONFIG.copy()
+config["llm_provider"] = "openrouter"
+config["quick_think_llm"] = "openai/gpt-5-nano"
+config["deep_think_llm"] = "openai/gpt-5-nano"
 
 def main():
     if config["llm_provider"].lower() == "openrouter":
@@ -55,94 +69,172 @@ def main():
         deep_thinking_llm = ChatOpenAI(model=config["deep_think_llm"], base_url=base_url, api_key=api_key)
         quick_thinking_llm = ChatOpenAI(model=config["quick_think_llm"], base_url=base_url, api_key=api_key)
 
-        quick_thinking_llm.temperature = 0.0
+        quick_thinking_llm.temperature = 0.5
+        deep_thinking_llm.temperature = 0.5
         
         # Load example data
-        temp_data: Dict[str, Any]= load_example_data()
+        with open("eval_results/ProcessDesignAgents_logs/full_states_log.json", "r") as f:
+            temp_data = json.load(f)
+        
+        # temp_data: Dict[str, Any]= json.load("eval_results/ProcessDesignAgents_logs/full_states_log.json")
         requirement_md = temp_data.get("requirements", "")
         design_basis_md = temp_data.get("design_basis", "")
         basic_pfd_md = temp_data.get("basic_pfd", "")
-        hmb_table = temp_data.get("stream_list_results", "{}")
-        equipment_table = temp_data.get("equipment_list_template", "{}")
+        equipment_stream_list_str = temp_data.get("equipment_and_stream_list", "")
         
         # Adapt agent_state
         state = create_design_state(
             requirements=requirement_md,
             design_basis=design_basis_md,
             basic_pfd=basic_pfd_md,
-            equipment_list_template=equipment_table,
-            stream_list_template=hmb_table,
-            stream_list_results=hmb_table
+            equipment_and_stream_list=equipment_stream_list_str,
         )
-
-        # Pares JSONs
-        _, hmb_json = extract_first_json_document(hmb_table)
-        _, master_equipment_list_json = extract_first_json_document(equipment_table)
-
-        if not all ([hmb_json, master_equipment_list_json]):
-            raise ValueError("Required JSON data is missing")
         
-        stream_list = hmb_json.get("streams", [])
-        equipment_list = master_equipment_list_json.get("equipment", [])
-        equipment_category = master_equipment_list_json.get("metadata", {}).get("groups", [])
+        equipment_category_set = set()  # define as set
+        equipment_stream_list_dict = json.loads(equipment_stream_list_str)
         
-        # List the equipment is each category
-        for cat in equipment_category:
-            cat_name = cat.get("name", "")
-            cat_ids = cat.get("ids", [])
-            print(f"Category: {cat_name}")
-            for eq_id in cat_ids:
-                eq = next((eq for eq in equipment_list if eq.get("id", "") == eq_id), None)
-                if eq:
-                    print(f"- {eq_id}: {eq.get('name', '')}")
-
-        print(f"---")
+        if "equipments" in equipment_stream_list_dict:
+            # Get the equipment list from master dict
+            equipment_list = equipment_stream_list_dict["equipments"]
+            
+            # Loop throught equipment list
+            for eq in equipment_list:
+                equipment_category_set.add(eq.get("category", ""))
+                
+            equipment_category_names = list(equipment_category_set)
+            
+            print(equipment_category_names)
+            
+            equipment_category = [
+                {
+                    "name": name,
+                    "ids": [eq.get("id", "") for eq in equipment_list if eq.get("category", "") == name]
+                }
+                for name in equipment_category_names
+            ]
+            
+            for cat in equipment_category:
+                print(cat)
+        else:
+            raise ValueError("Equipments not found")
         
-        #
+        # Tools
         tools_list = [
             size_heat_exchanger_basic,
             size_pump_basic
         ]
         
-        for category_name in ["Heat Exchangers", "Pumps and Rotating Equipment"]:
+        master_equipment_list_json = json.loads(equipment_stream_list_str)
+        
+        for category_name in ["Heat Exchanger", "Pump"]:
             master_equipment_list_json = size_equipment_by_category(
                 category_name=category_name,
-                stream_list=stream_list,
-                master_equipment_list_json=master_equipment_list_json,
+                equipment_stream_list_dict=master_equipment_list_json,
                 state=state,
                 deep_thinking_llm=deep_thinking_llm,
                 quick_thinking_llm=quick_thinking_llm,
                 equipment_category=equipment_category,
-                equipment_list=equipment_list,
                 tools_list=tools_list,
             )
         
         # print(master_equipment_list_json)
+        combined_md, equipment_md, streams_md = equipments_and_streams_dict_to_markdown(master_equipment_list_json)
+        print(equipment_md)
         
 
 def size_equipment_by_category(
     category_name: str,
-    stream_list: str,
-    master_equipment_list_json: Dict[str, Any],
+    equipment_stream_list_dict: Dict[str, Any],
     state: Dict[str, Any],
     deep_thinking_llm: ChatOpenAI,
     quick_thinking_llm: ChatOpenAI,
     equipment_category: List[Dict[str, Any]],
-    equipment_list: List[Dict[str, Any]],
     tools_list: List[Any],
 ) -> Dict[str, Any]:
     # Select Heat Exchanger Category for process
+    if not "equipments" in equipment_stream_list_dict:
+        raise ValueError("Equipments not found")
+    else:
+        equipment_list = equipment_stream_list_dict["equipments"]
+
+    if not "streams" in equipment_stream_list_dict:
+        raise ValueError("Streams not found")
+    else:
+        stream_list = equipment_stream_list_dict["streams"]
+
     equipment_category = next((cat for cat in equipment_category if cat.get("name", "") == category_name), None)
+    
     if not equipment_category:
-        raise ValueError(f"{category_name} Category not found")
+        print(f"{category_name} Category not found")
     else:
         equipment_ids = equipment_category.get("ids", [])
-        print(f"{category_name} IDs: {equipment_ids}")
+        print(f"DEBUG: {category_name} IDs: {equipment_ids}")
 
         tool_map = {tool.name: tool for tool in tools_list}
 
-        llm_with_tools = deep_thinking_llm.bind_tools(tools_list)
+        base_llm_with_tools = quick_thinking_llm.bind_tools(tools_list)
+        structured_enabled = True
+        try:
+            llm_with_tools = base_llm_with_tools.with_structured_output(
+                method="json_mode",
+                include_raw=True,
+            )
+        except (AttributeError, TypeError, ValueError, NotImplementedError):
+            llm_with_tools = base_llm_with_tools
+            structured_enabled = False
 
+        def unpack_structured_result(
+            output: Any,
+        ) -> Tuple[BaseMessage, Optional[Any], Optional[BaseException]]:
+            if isinstance(output, dict):
+                raw_msg = output.get("raw")
+                parsed_payload = output.get("parsed")
+                parsing_error = output.get("parsing_error")
+                if raw_msg is None:
+                    if parsed_payload is not None:
+                        if isinstance(parsed_payload, (dict, list)):
+                            try:
+                                raw_content = json.dumps(parsed_payload)
+                            except (TypeError, ValueError):
+                                raw_content = str(parsed_payload)
+                        else:
+                            raw_content = str(parsed_payload)
+                    else:
+                        raw_content = ""
+                    raw_msg = AIMessage(content=raw_content)
+                return raw_msg, parsed_payload, parsing_error
+            if isinstance(output, BaseMessage):
+                return output, None, None
+            raise TypeError(
+                f"Unexpected output type from llm_with_tools: {type(output)}"
+            )
+
+        def is_structured_mode_provider_error(error: Exception) -> bool:
+            if not isinstance(error, ValueError):
+                return False
+            if not error.args:
+                return False
+            payload = error.args[0]
+            if isinstance(payload, dict):
+                code = payload.get("code")
+                metadata = payload.get("metadata")
+                provider = metadata.get("provider_name") if isinstance(metadata, dict) else None
+                return code == 502 or provider == "Google AI Studio"
+            if isinstance(payload, str):
+                return "Provider returned error" in payload and "502" in payload
+            return False
+
+        def safe_invoke(messages: List[BaseMessage]) -> Any:
+            nonlocal llm_with_tools, structured_enabled
+            try:
+                return llm_with_tools.invoke(messages)
+            except Exception as exc:
+                if structured_enabled and is_structured_mode_provider_error(exc):
+                    llm_with_tools = base_llm_with_tools
+                    structured_enabled = False
+                    return llm_with_tools.invoke(messages)
+                raise
+        
         for eq_id in equipment_ids:
             # Get the equipment element from equipment list
             eq_json = next(
@@ -152,7 +244,7 @@ def size_equipment_by_category(
             if not eq_json:
                 raise ValueError(f"Equipment with ID {eq_id} not found")
             
-            print(f"Processing {eq_id}: {eq_json.get('name', '')}")
+            print(f"DEBUG: Processing {eq_id}: {eq_json.get('name', '')}")
             
             base_prompt = equipment_sizing_prompt_with_tools(
                 stream_data_json=json.dumps(stream_list),
@@ -163,14 +255,15 @@ def size_equipment_by_category(
             conversation = list(state.get("messages", []))
             conversation.extend(prompt.format_messages())
 
-            result = llm_with_tools.invoke(conversation)
-            conversation.append(result)
+            result = safe_invoke(conversation)
+            result_message, parsed_payload, parsing_error = unpack_structured_result(result)
+            conversation.append(result_message)
 
             safety_counter = 0
             max_iterations = 5
 
-            while getattr(result, "tool_calls", []) and safety_counter < max_iterations:
-                for call in result.tool_calls:
+            while getattr(result_message, "tool_calls", []) and safety_counter < max_iterations:
+                for call in result_message.tool_calls:
                     tool_handler = tool_map.get(call["name"])
                     if tool_handler is None:
                         error_msg = (
@@ -193,23 +286,38 @@ def size_equipment_by_category(
                         ToolMessage(content=tool_result, tool_call_id=call["id"])
                     )
 
-                result = llm_with_tools.invoke(conversation)
-                conversation.append(result)
+                result = safe_invoke(conversation)
+                result_message, parsed_payload, parsing_error = unpack_structured_result(result)
+                conversation.append(result_message)
                 safety_counter += 1
 
-            report = result.content if getattr(result, "content", None) else ""
-            if report:
-                raw_json, _ = extract_first_json_document(report)
-                if raw_json:
-                    report = raw_json.strip()
-                closing_brace = report.rfind("}")
-                closing_bracket = report.rfind("]")
-                closing_index = max(closing_brace, closing_bracket)
-                if closing_index != -1:
-                    report = report[: closing_index + 1]
+            # print(result_message)
+            
+            if structured_enabled and parsed_payload is not None and parsing_error is None:
+                if isinstance(parsed_payload, (dict, list)):
+                    try:
+                        report = json.dumps(parsed_payload)
+                    except (TypeError, ValueError):
+                        report = str(parsed_payload)
+                else:
+                    report = str(parsed_payload)
+            else:
+                report = result_message.content if getattr(result_message, "content", None) else ""
+                if report:
+                    raw_json, _ = extract_first_json_document(report)
+                    if raw_json:
+                        report = raw_json.strip()
+                    closing_brace = report.rfind("}")
+                    closing_bracket = report.rfind("]")
+                    closing_index = max(closing_brace, closing_bracket)
+                    if closing_index != -1:
+                        report = report[: closing_index + 1]
+                else:
+                    report = '{"message":"error"}'
+
             state["messages"] = conversation
 
-            # print(f"{report}")
+            # print(f"id = {eq_id}, report = {report}")
             
             # Update the equipment for processed equipment in the master equipment list table
             updated_payload = json.loads(report)
@@ -224,12 +332,19 @@ def size_equipment_by_category(
                     f"Expected dict for equipment '{eq_id}', received {type(updated_payload)}"
                 )
 
-            for eq in master_equipment_list_json.get("equipment", []):
+            for eq in equipment_stream_list_dict.get("equipments", []):
+                # print(f"DEBUG: {eq.get('id', '')} == {eq_id}")
                 if eq.get("id", "") == eq_id:
-                    eq.update(updated_payload)
-                    break
+                    # print(f"- Update new sizing_parameters for {eq_id}")
+                    # print(f"-- {updated_payload.get('sizing_parameters', '')}")
+                    if "sizing_parameters" not in eq:
+                        eq["sizing_parameters"] = []
+                    else:
+                        eq["sizing_parameters"] = updated_payload.get("sizing_parameters", [])
+                        break
             print(f"---")
-    return master_equipment_list_json
+    # print(equipment_stream_list_dict)
+    return equipment_stream_list_dict
 
 def equipment_sizing_prompt_with_tools(
     stream_data_json: str,
