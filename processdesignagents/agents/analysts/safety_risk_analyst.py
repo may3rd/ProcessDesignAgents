@@ -1,4 +1,4 @@
-import json
+import re
 from langchain_core.messages import AIMessage
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -10,9 +10,19 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.utils.json_tools import convert_risk_json_to_markdown
 
 load_dotenv()
+
+
+def strip_markdown_code_block(text: str) -> str:
+    """Return text without enclosing ```markdown ``` code fences."""
+    if not isinstance(text, str):
+        return text
+    pattern = re.compile(r"```(?:markdown)?\s*([\s\S]*?)```", re.IGNORECASE)
+    match = pattern.search(text)
+    if match:
+        return match.group(1).strip()
+    return text
 
 
 def create_safety_risk_analyst(llm):
@@ -32,7 +42,7 @@ def create_safety_risk_analyst(llm):
         )
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm.with_structured_output(method="json_mode")
+        chain = prompt | llm
         is_done = False
         try_count = 0
         while not is_done:
@@ -42,24 +52,16 @@ def create_safety_risk_analyst(llm):
                 exit(-1)
             try:
                 # Get the response from LLM
-                print("Call LLM for risk assessment...")
-                response_dict = chain.invoke({"messages": list(state.get("messages", []))})
-                
-                print(response_dict, flush=True)
-                
-                if "hazards" in response_dict:
-                    hazards_json = json.dumps(response_dict)
-                    is_done = True
-
+                response = chain.invoke({"messages": list(state.get("messages", []))})
+                is_done = True
             except Exception as e:
                 print(f"Attemp {try_count} has failed.")
-        ai_message = AIMessage(content=hazards_json)
-        updated_messages = list(state.get("messages", [])) + [ai_message]
-        risk_markdown = convert_risk_json_to_markdown(hazards_json)
-        print(risk_markdown, flush=True)
+        cleaned_content = strip_markdown_code_block(response.content)
+        print(cleaned_content, flush=True)
+        ai_message = AIMessage(content=cleaned_content)
         return {
-            "safety_risk_analyst_report": hazards_json,
-            "messages": updated_messages,
+            "safety_risk_analyst_report": cleaned_content,
+            "messages": [ai_message],
         }
     return safety_risk_analyst
 
@@ -77,7 +79,7 @@ You are a **Certified Process Safety Professional (CPSP)** with 20 years of expe
 
   * You are given structured `DESIGN_DOCUMENTS` covering the process narrative, stream inventory, and equipment list.
   * Your task is to produce a preliminary HAZOP-style assessment highlighting the most critical hazards.
-  * Stakeholders require the results as a JSON dossier that can be tracked programmatically.
+  * Stakeholders require the results as a markdown code only.
 
 **Instructions:**
 
@@ -91,37 +93,39 @@ You are a **Certified Process Safety Professional (CPSP)** with 20 years of expe
       - `causes`, `consequences`, `mitigations`, `notes` (arrays of concise statements referencing stream IDs/equipment tags where relevant)
   * Summarize the overall risk posture in `overall_assessment` with `risk_level` (Low | Medium | High) and `compliance_notes` (array of follow-up actions or reminders).
   * Use `"TBD"` where data is genuinely unavailable; otherwise provide reasoned estimates.
-  * Return a single JSON object matching the schema shown below. Do **not** include code fences, comments, or explanatory prose.
+  * Return a markdown code only.
 
 **Example Output:**
+## Hazards
 
-{
-  "hazards": [
-    {
-      "title": "Loss of Cooling Water Flow",
-      "severity": 3,
-      "likelihood": 3,
-      "risk_score": 9,
-      "causes": ["Cooling water control valve XV-201 fails closed", "Utility header pressure drops during maintenance"],
-      "consequences": ["Ethanol outlet > 50 °C causing vapor in downstream storage", "Potential overpressure at vent system"],
-      "mitigations": ["Install redundant cooling water pumps with automatic switchover", "Add high-temperature alarm TAH-101 with shutdown logic"],
-      "notes": ["Streams 1001/1002 and equipment E-101 impacted; verify relief design for temperature excursion."]
-    }
-  ],
-  "overall_assessment": {
-    "risk_level": "Medium",
-    "compliance_notes": [
-      "Confirm redundancy test for cooling water network before commissioning.",
-      "Finalize corrosion monitoring program for E-101 tubes."
-    ]
-  }
-}
+### 1. Loss of Cooling Water Flow
+**Severity:** 3 | **Likelihood:** 3 | **Risk Score:** 9
 
-**Output Requirements:**
+**Causes:**
+- Cooling water control valve XV-201 fails closed
+- Utility header pressure drops during maintenance
 
-  * All numeric ratings must be integers.
-  * Lists may be empty but should remain present.
-  * Do not wrap the JSON in code fences or add commentary outside the JSON object.
+**Consequences:**
+- Ethanol outlet > 50 °C causing vapor in downstream storage
+- Potential overpressure at vent system
+
+**Mitigations:**
+- Install redundant cooling water pumps with automatic switchover
+- Add high-temperature alarm TAH-101 with shutdown logic
+
+**Notes:**
+Streams 1001/1002 and equipment E-101 impacted; verify relief design for temperature excursion.
+
+---
+
+## Overall Assessment
+
+**Risk Level:** Medium
+
+**Compliance Notes:**
+- Confirm redundancy test for cooling water network before commissioning.
+- Finalize corrosion monitoring program for E-101 tubes.
+
 """
     human_content = f"""
 # DATA FOR HAZOP ANALYSIS

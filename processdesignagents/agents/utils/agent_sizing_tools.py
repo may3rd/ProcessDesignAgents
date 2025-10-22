@@ -14,4 +14,5 @@ from processdesignagents.sizing_tools.tools.pump_sizing_tools import size_pump_b
 __all__ = [
     "size_heat_exchanger_basic",
     "size_pump_basic",
+    "size_shell_and_tube_heat_exchanger"
 ]

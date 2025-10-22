@@ -67,17 +67,13 @@ def prelim_basic_heat_exchanger_sizing(
         hot_stream_in (Dict): hot stream in data
         hot_stream_out (Dict): hot stream out data
         cold_stream_in (Dict): cold stream in data
-        cold_stream_out (Dict): cold stream out
+        cold_stream_out (Dict): cold stream out data
     Returns:
         str: An update equipment sizing in JSON format.
     """
-    print(f"DEBUG: prelim_basic_heat_exchanger_sizing: {basic_heat_exchanger}")
-    print(f"DEBUG: prelim_basic_heat_exchanger_sizing: {hot_stream_in}")
-    print(f"DEBUG: prelim_basic_heat_exchanger_sizing: {hot_stream_out}")
-    print(f"DEBUG: prelim_basic_heat_exchanger_sizing: {cold_stream_in}")
-    print(f"DEBUG: prelim_basic_heat_exchanger_sizing: {cold_stream_out}")
-       
-    # determine the lmtd, assume counter-current flow
+    # Todo: input valiation
+    
+    # Calculate LMTD
     T_hot_in = hot_stream_in.get("properties", {}).get("temperature", {}).get("value", 0.0)
     T_hot_out = hot_stream_out.get("properties", {}).get("temperature", {}).get("value", 0.0)
     T_cold_in = cold_stream_in.get("properties", {}).get("temperature", {}).get("value", 0.0)
@@ -87,6 +83,7 @@ def prelim_basic_heat_exchanger_sizing(
         lmtd_C = 10.1
     else:
         lmtd_C = calculate_lmtd(T_hot_in, T_hot_out, T_cold_in, T_cold_out, "counter")
+    
     duty_kW = 2500.0 # kW
     U_design = basic_heat_exchanger.get("sizing_parameters", {}).get("U-value", {}).get("value", 850.1)
     
@@ -152,16 +149,21 @@ def prelim_tank_sizing(volume: str) -> str:
 
 def prelim_pump_sizing(
     pump_data: Annotated[Dict, {}],
-    process_stream: Annotated[Dict, {}],
+    stream_in: Annotated[Dict, {}],
+    stream_out: Annotated[Dict, {}]
 ) -> str:
     """
     Sizing the basic heat exchanger.
     Agrs:
         pump_data (Dict): the information of pump extracted from equipment list
-        process_stream (Dict): process stream data
+        stream_in (Dict): process stream in data
+        stream_out (Dict): process stream out data
     Returns:
         str: An update equipment sizing in JSON format.
     """
+    
+    # Todo: input valiation
+    
     
     return_json = {
         "flow_kg_hr": 99.0,

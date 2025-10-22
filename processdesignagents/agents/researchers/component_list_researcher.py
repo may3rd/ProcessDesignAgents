@@ -1,8 +1,3 @@
-from __future__ import annotations
-
-from langchain_core.messages import AIMessage
-import json
-
 from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -45,7 +40,7 @@ def create_component_list_researcher(llm):
 
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm.with_structured_output(method="json_mode")
+        chain = prompt | llm
         is_done = False
         try_count = 0
         while not is_done:
@@ -55,17 +50,14 @@ def create_component_list_researcher(llm):
                 exit(-1)
             try:
                 # Get the response from LLM
-                response_dict = chain.invoke({"messages": list(state.get("messages", []))})
+                response = chain.invoke({"messages": list(state.get("messages", []))})
                 is_done = True
             except Exception as e:
                 print(f"Attemp {try_count}: {e}")
-        output_json = json.dumps(response_dict, indent=2)
-        print(output_json, flush=True)
-        ai_message = AIMessage(content=output_json)
-        updated_messages = list(state.get("messages", [])) + [ai_message]
+        print(response.content, flush=True)
         return {
-            "component_list": json.dumps(response_dict),
-            "messages": updated_messages,
+            "component_list": response.content,
+            "messages": [response],
         }
 
     return component_list_researcher
@@ -83,7 +75,7 @@ You are a **Senior Process Design Engineer** with 20 years of experience special
 **Context:**
 
   * You will be provided with vetted project documentation, including a `DESIGN BASIS` and `REQUIREMENTS`.
-  * Your task is to translate these documents into a **structured JSON object** that details all chemical components that will be involved in the process.
+  * Your task is to translate these documents into a component list that has the details all chemical components that will be involved in the process.
   * This component list is a critical deliverable that serves as the backbone for downstream engineering, including stream definition, equipment sizing, safety assessment, and project approval.
 
 **Instructions:**
@@ -92,7 +84,9 @@ You are a **Senior Process Design Engineer** with 20 years of experience special
   * **List the component list:** List of the possible distinct major components that be involved in the process, including name, chemical formula, and molecular weight.
   * Use provided `Components List (CSV)` as a reference.
   * **Format Adherence:** Your final output must be a PURE Markdown document. Do not wrap it in code blocks or add any text outside the specified template. Ensure all tables are complete and correctly formatted.
-
+  * If possible the table is sorted by boiling point of the component. Low boiling to high boiling.
+  * Keep the list as minimum as possible. For general process the main components is less than 10.
+  
 **Example:**
 
   * **REQUIREMENTS:**
@@ -108,28 +102,14 @@ You are a **Senior Process Design Engineer** with 20 years of experience special
     ```
 
   * **Response:**
-    {{
-        "components": [
-            {{
-                "name": "Ethanol",
-                "formula": "C2H6O",
-                "MW": 46.07
-            }},
-            {{
-                "name": "Water",
-                "formula": "H2O",
-                "MW": 18.015
-            }}
-        ],
-        "notes": [
-            "**Ethanal:** Target Product",
-            "**Water:** Cooling water / impurity on Ethanol product"
-        ]
-    }}
+  
+  | **Name** | **Formula** | **MW** |
+  |----------|-------------|--------|
+  | Ethanol | C2H6O | 46.07 |
+  | Water | H2O | 18.015 |
 
 -----
 
-**Output ONLY a valid JSON object matching the schema described above. Do not wrap the JSON in a code block. Do not add any comment text.**
 """
     human_content = f"""
 # DESIGN INPUTS

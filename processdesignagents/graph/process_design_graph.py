@@ -95,6 +95,8 @@ class ProcessDesignGraph:
         # Set up the graph
         self.graph = self.graph_setup.setup_graph()
         
+        self.graph.get_graph().print_ascii()
+        
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different equipment using abstract methods."""
         return {
@@ -249,7 +251,7 @@ class ProcessDesignGraph:
 
         safety_markdown = ""
         if final_state.get("safety_risk_analyst_report"):
-            safety_markdown = convert_risk_json_to_markdown(final_state["safety_risk_analyst_report"])
+            safety_markdown = final_state["safety_risk_analyst_report"]
         sections = [
             ("Problem Statement", final_state.get("problem_statement", "")),
             ("Process Requirements", final_state.get("requirements", "")),
@@ -323,8 +325,7 @@ class ProcessDesignGraph:
                 ]
             )
             
-            print(f"\nSuccessfully exported Word document to:")
-            print(f"{os.path.abspath(output_filename)}")
+            print(f"\nSuccessfully exported Word document to: {os.path.abspath(output_filename)}\n")
 
         except FileNotFoundError:
             print("\n--- ERROR ---")
