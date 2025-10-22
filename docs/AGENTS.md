@@ -1,37 +1,41 @@
 # Agent Responsibilities
 
-Below is a concise reference for each agent, its inputs, outputs, and key prompts. Review the source files for full details.
+`ProcessDesignGraph` wires a sequential LangGraph over the factories exported in `processdesignagents/agents/__init__.py`. Each agent consumes a subset of the shared `DesignState` and produces Markdown or JSON artefacts that drive the next stage. This page supplements `AGENTS.md` with module-level detail and notes on current behaviour.
 
-| Agent | Module | Reads | Writes | Purpose |
-|-------|--------|-------|--------|---------|
-| Process Requirements Analyst | `agents/analysts/process_requirements_analyst.py` | `problem_statement`, `messages` | `requirements` | Extracts objectives, constraints, components, and assumptions from the raw brief. |
-| Innovative Researcher | `agents/researchers/innovative_researcher.py` | `requirements` | `research_concepts` | Proposes multiple process concepts. |
-| Conservative Researcher | `agents/researchers/conservative_researcher.py` | `research_concepts`, `requirements` | Refined `research_concepts` (overwrites prior concepts) | Stress-tests concepts and adds feasibility commentary. |
-| Concept Detailer | `agents/researchers/concept_detailer.py` | `research_concepts`, `requirements` | `selected_concept_details`, `selected_concept_name` | Selects the best concept and elaborates it for downstream agents (can prompt for manual choice). |
-| Design Basis Analyst | `agents/analysts/design_basis_analyst.py` | `problem_statement`, `requirements`, concept detail | `design_basis` | Produces the formal design basis document. |
-| Basic PFD Designer | `agents/designer/basic_pfd_designer.py` | `selected_concept_details`, `design_basis`, `requirements` | `basic_pfd` | Generates the conceptual flowsheet narrative. |
-| Equipments & Streams List Builder | `agents/designer/equipments_and_streams_list_builder.py` | `basic_pfd`, `design_basis`, `requirements`, `selected_concept_details` | `equipment_and_stream_list`, `stream_list_template`, `equipment_list_template` | Builds the canonical equipment + stream JSON scaffold for downstream estimation. |
-| Stream Data Estimator | `agents/designer/stream_data_estimator.py` | `equipment_and_stream_list`, `basic_pfd`, `design_basis` | `stream_list_results`, updated `equipment_and_stream_list` | Estimates temperatures, pressures, flows, and compositions while keeping equipment placeholders intact. |
-| Equipment List Builder | `agents/designer/equipment_list_builder.py` | `stream_list_results`, `basic_pfd`, `design_basis`, `requirements` | `equipment_list_template` | Optional helper for future workflows (the current graph relies on the combined artefact instead). |
-| Equipment Sizing Agent | `agents/designer/equipment_sizing_agent.py` | `equipment_and_stream_list`, `stream_list_results`, `design_basis` | updated `equipment_and_stream_list`, `equipment_list_results` | Uses built-in sizing tools to populate duty/size fields and notes. |
-| Safety & Risk Analyst | `agents/analysts/safety_risk_analyst.py` | `basic_pfd`, `stream_list_results`, `equipment_list_results`, `requirements` | `safety_risk_analyst_report` | Performs a HAZOP-style hazard assessment (JSON dossier). |
-| Project Manager | `agents/project_manager/project_manager.py` | `requirements`, `basic_pfd`, `stream_list_results`, `equipment_list_results`, `safety_risk_analyst_report` | `approval`, `project_manager_report` | Issues the final gate decision and implementation plan. |
+## Execution Order & Artefacts
 
-## Tool Catalogue
+| Step | Agent | Module | Reads | Writes | Output Format |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Process Requirements Analyst | `agents/analysts/process_requirements_analyst.py` | `problem_statement`<br>`messages` | `requirements`<br>`messages` | Markdown requirements brief |
+| 2 | Innovative Researcher | `agents/researchers/innovative_researcher.py` | `requirements`<br>`messages` | `research_concepts`<br>`messages` | JSON `{ "concepts": [...] }` |
+| 3 | Conservative Researcher | `agents/researchers/conservative_researcher.py` | `research_concepts`<br>`requirements`<br>`messages` | `research_rateing_results`<br>`messages` | JSON with feasibility scores + risks |
+| 4 | Concept Detailer | `agents/researchers/concept_detailer.py` | `research_rateing_results`<br>`requirements`<br>`messages` | `selected_concept_name`<br>`selected_concept_details`<br>`selected_concept_evaluation`<br>`messages` | Markdown concept brief + stored JSON |
+| 5 | Component List Researcher | `agents/researchers/component_list_researcher.py` | `requirements`<br>`selected_concept_details`<br>`selected_concept_name`<br>`design_basis` (fallbacks to empty)<br>`messages` | `component_list`<br>`messages` | Markdown component table |
+| 6 | Design Basis Analyst | `agents/analysts/design_basis_analyst.py` | `problem_statement`<br>`requirements`<br>`selected_concept_details`<br>`selected_concept_name`<br>`component_list`<br>`messages` | `design_basis`<br>`messages` | Markdown basis-of-design |
+| 7 | Basic PFD Designer | `agents/designer/basic_pfd_designer.py` | `requirements`<br>`design_basis`<br>`selected_concept_details`<br>`selected_concept_name`<br>`messages` | `basic_pfd`<br>`messages` | Markdown flowsheet narrative |
+| 8 | Equipments & Streams List Builder | `agents/designer/equipments_and_streams_list_builder.py` | `basic_pfd`<br>`design_basis`<br>`requirements`<br>`selected_concept_details`<br>`messages` | `equipment_and_stream_list`<br>`messages` | JSON with `equipments[]` and `streams[]` placeholders |
+| 9 | Stream Data Estimator | `agents/designer/stream_data_estimator.py` | `basic_pfd`<br>`design_basis`<br>`messages` | `equipment_and_stream_list` (updated)<br>`messages` | JSON with estimated stream properties |
+| 10 | Equipment Sizing Agent | `agents/designer/equipment_sizing_agent.py` | `design_basis`<br>`basic_pfd`<br>`equipment_and_stream_list`<br>`messages` | `equipment_and_stream_list` (updated)<br>`messages` | JSON with sizing parameters filled |
+| 11 | Safety & Risk Analyst | `agents/analysts/safety_risk_analyst.py` | `requirements`<br>`design_basis`<br>`basic_pfd`<br>`equipment_and_stream_list`<br>`messages` | `safety_risk_analyst_report`<br>`messages` | Markdown HAZOP-style report |
+| 12 | Project Manager | `agents/project_manager/project_manager.py` | `requirements`<br>`design_basis`<br>`basic_pfd`<br>`equipment_and_stream_list`<br>`safety_risk_analyst_report`<br>`messages` | `project_manager_report`<br>`approval`<br>`messages` | Markdown approval memo |
 
-The equipment sizing stage currently registers tools in `processdesignagents/graph/process_design_graph.py`:
+## Behaviour Notes
 
-- `size_heat_exchanger_basic`
-- `size_pump_basic`
+### Concept Selection
+- By default, the concept detailer selects the option with the highest `feasibility_score`. Passing `manual_concept_selection=True` to `ProcessDesignGraph.propagate(...)` injects a callback that prompts the operator to choose instead.
+- The chosen concept's evaluation JSON is stored under `selected_concept_evaluation` for reference even though the typed state does not yet expose that field explicitly.
 
-Additional sizing helpers can be exposed by importing them in `ProcessDesignGraph._create_tool_nodes()` and adding them to the `ToolNode` list.
+### Combined Equipment & Stream Artefact
+- The equipment/stream JSON is treated as a single canonical artefact. The list builder seeds placeholders, the stream data estimator rewrites stream properties, and the equipment sizing agent enriches the equipment entries. Separate `stream_list_*` and `equipment_list_*` fields remain empty today—activating them would require updates to the agents, CLI panels, and export helpers.
+- `equipments_and_streams_dict_to_markdown` (in `agents/utils/equipment_stream_markdown.py`) is used by the CLI to render the JSON into readable tables.
 
-## Prompt Conventions
+### Tool Access
+- The only tool node currently registered is `"equipment_sizing"`, which exposes `size_heat_exchanger_basic` and `size_pump_basic`. Add new sizing helpers by importing them in `processdesignagents/graph/process_design_graph.py` and appending to the `ToolNode` list.
+- Sizing helpers live under `processdesignagents/agents/utils/agent_sizing_tools.py` and `processdesignagents/sizing_tools/`.
 
-- Intermediate artefacts are shared as Markdown summaries or structured JSON depending on the agent (see table above).
-- When JSON values are unknown, emit `null` so downstream agents can detect open items explicitly.
-- Agents downstream from the simulator treat stream and equipment payloads as canonical sources, so keep identifiers consistent.
+### Reporting & Logging
+- `ProcessDesignGraph.propagate` writes the final state snapshot to `eval_results/ProcessDesignAgents_logs/full_states_log.json`.
+- Set `save_markdown` or `save_word_doc` when running `propagate` to export compiled reports. DOCX export assumes Pandoc is installed and uses the template located at `reports/template.docx`.
+- The Rich CLI (`python -m cli.main`) streams `messages` alongside the report sections; panels for `stream_list_template` and `stream_list_results` are currently placeholders.
 
-For reference runs, inspect the sample reports in `examples/reports/`.
-
-Referencing source prompts when modifying behaviour is strongly recommended to maintain compatibility across the pipeline.
+When modifying prompts or hand-offs, update both this document and `AGENTS.md` so contributors have an accurate reference.
