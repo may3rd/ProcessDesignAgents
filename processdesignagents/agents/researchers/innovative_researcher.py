@@ -1,4 +1,5 @@
 import json
+from json_repair import repair_json
 from langchain_core.messages import AIMessage
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -11,6 +12,7 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
+from processdesignagents.agents.utils.json_tools import get_json_str_from_llm
 
 load_dotenv()
 
@@ -19,36 +21,29 @@ def create_innovative_researcher(llm):
         """Innovative Researcher: Proposes novel process concepts using LLM."""
         print("\n# Innovative Research Concepts", flush=True)
 
+        # Get the requirement summary from state
         requirements_summary = state.get("requirements", "")
         if not isinstance(requirements_summary, str):
             requirements_summary = str(requirements_summary)
+            
+        # Create system prompt and user prompt
         base_prompt = innovative_researcher_prompt(requirements_summary)
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm.with_structured_output(method="json_mode")
-        is_done = False
-        try_count = 0
-        while not is_done:
-            try_count += 1
-            if try_count > 10:
-                print("+ Max try count reached.", flush=True)
-                exit(-1)
-            try:
-                # Get the response from LLM
-                response_dict = chain.invoke({"messages": list(state.get("messages", []))})
-                
-                if "concepts" in response_dict:
-                    concepts_json = json.dumps(response_dict)
-                    is_done = True
-
-            except Exception as e:
-                print(f"Attemp {try_count} has failed.")
-        ai_message = AIMessage(content=concepts_json)
-        updated_messages = list(state.get("messages", [])) + [ai_message]
+        
+        # Call function to execute LLM with expecting JSON in response.content
+        response, response_content = get_json_str_from_llm(llm, prompt, state)
+        
+        # Convert str to dict
+        response_dict = json.loads(repair_json(response_content))
+        
+        # Display the generated concepts
         print(convert_concepts_list_to_markdown(response_dict.get("concepts", [])), flush=True)
+        
+        # Update the current states.
         return {
-            "research_concepts": concepts_json,
-            "messages": updated_messages,
+            "research_concepts": response_content,
+            "messages": [response]
         }
 
     return innovative_researcher
