@@ -11,26 +11,30 @@ from json_repair import repair_json
 
 def get_json_str_from_llm(llm, prompt, state, max_try_count: int = 10) -> Tuple[Any, str]:
     chain = prompt | llm
-    is_done = False
     try_count = 0
-    while not is_done:
+    response: Any = None
+    response_content: str = ""
+
+    while True:
         try_count += 1
         if try_count > max_try_count:
             print("+ Max try count reached.", flush=True)
             exit(-1)
+
         try:
-            # Get the response from LLM
+            print(f"DEBUG: Try to get the output from LLM {try_count}")
             response = chain.invoke({"messages": list(state.get("messages", []))})
             response_content = response.content if isinstance(response.content, str) else str(response.content)
-            if len(response_content) <= 1:
-                print(f"response_content is empty.")
+            if len(response_content.strip()) == 0:
+                print("response_content is empty.", flush=True)
                 continue
-            response_dict = json.loads(repair_json(response_content))
+
+            json.loads(repair_json(response_content))
             return response, response_content
         except Exception as e:
-            print(f"Attemp {try_count} has failed. {e}")
-            print(response_content, flush=True)
-    return response, response_content
+            print(f"Attempt {try_count} has failed. {e}", flush=True)
+            if response_content:
+                print(response_content, flush=True)
 
 
 def extract_first_json_document(raw_text: str) -> tuple[str, object | None]:

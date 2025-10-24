@@ -178,7 +178,7 @@ def _build_stream_chunk_table(streams: list[dict]) -> list[str]:
         for component in row_component_names:
             values = [
                 _format_fraction(
-                    (stream.get("components") or {}).get(component),
+                    (stream.get("compositions") or {}).get(component),
                     target="mass",
                 )
                 for stream in streams
@@ -191,7 +191,7 @@ def _build_stream_chunk_table(streams: list[dict]) -> list[str]:
         for component in row_component_names:
             values = [
                 _format_fraction(
-                    (stream.get("components") or {}).get(component),
+                    (stream.get("compositions") or {}).get(component),
                     target="mole",
                 )
                 for stream in streams
@@ -210,6 +210,8 @@ def _collect_component_names(streams: list[dict]) -> tuple[list[str], list[str],
 
     for stream in streams:
         components = stream.get("components")
+        if components is None:
+            components = stream.get("compositions")
         if not isinstance(components, dict):
             continue
         for name, entry in components.items():

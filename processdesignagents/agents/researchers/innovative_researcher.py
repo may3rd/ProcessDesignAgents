@@ -31,18 +31,36 @@ def create_innovative_researcher(llm):
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         
-        # Call function to execute LLM with expecting JSON in response.content
-        response, response_content = get_json_str_from_llm(llm, prompt, state)
-        
-        # Convert str to dict
-        response_dict = json.loads(repair_json(response_content))
-        
-        # Display the generated concepts
-        print(convert_concepts_list_to_markdown(response_dict.get("concepts", [])), flush=True)
-        
+        try:
+            # Call function to execute LLM with expecting JSON in response.content
+            response, response_content = get_json_str_from_llm(llm, prompt, state)
+            
+            # print(f"DEBUG: {response_content}", flush=True)
+            
+            # Convert str to dict
+            response_dict = json.loads(repair_json(response_content))
+            
+            # Get correct item if return list
+            if isinstance(response_dict, list):
+                for a in response_dict:
+                    print(a)
+                    if "concepts" in a:
+                        response_dict = a
+                        break
+                print("DEBUG: Fail to create concepts list.")
+                exit(-1)
+
+            # Display the generated concepts
+            print(convert_concepts_list_to_markdown(response_dict.get("concepts", [])), flush=True)
+        except Exception as e:
+            # Handle errors
+            print(f"Error: {e}")
+            print(response_dict)
+            exit(-1)
+
         # Update the current states.
         return {
-            "research_concepts": response_content,
+            "research_concepts": json.dumps(response_dict),
             "messages": [response]
         }
 
@@ -212,7 +230,8 @@ def innovative_researcher_prompt(requirements_markdown: str) -> ChatPromptTempla
       <constraint>Do not include explanatory prose outside the JSON</constraint>
       <constraint>Do not include comments within the JSON</constraint>
       <constraint>Do not include feasibility_score key in any concept object</constraint>
-      <constraint>Minimum 3 concepts, maximum 6 concepts</constraint>
+      <constraint>Do not include other thing later than the JSON</constraint>
+      <constraint>Minimum 3 concepts, maximum 10 concepts</constraint>
       <constraint>Must include at least one concept of each maturity level: conventional, innovative, state_of_the_art</constraint>
     </constraints>
   </output_schema>

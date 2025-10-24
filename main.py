@@ -7,14 +7,16 @@ config["llm_provider"] = "openrouter"
 config["quick_think_llm"] = "google/gemini-2.5-flash-preview-09-2025"
 config["deep_think_llm"] = "x-ai/grok-4-fast"
 
-# config["deep_think_llm"] = "openai/gpt-oss-120b"
-
 config["quick_think_llm"] = "google/gemini-2.5-flash-lite-preview-09-2025"
 config["deep_think_llm"] = "google/gemini-2.5-flash-lite-preview-09-2025"
+
 # config["deep_think_llm"] = "anthropic/claude-sonnet-4.5"
 # config["deep_think_llm"] = "z-ai/glm-4.6"
 
-delay_time = 0.0
+# config["quick_think_llm"] = "x-ai/grok-4-fast"
+# config["deep_think_llm"] = "x-ai/grok-4-fast"
+
+delay_time = 0.1
 
 # config["llm_provider"] = "google"
 # config["quick_think_llm"] = "gemini-2.5-flash"

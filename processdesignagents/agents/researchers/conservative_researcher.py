@@ -11,31 +11,49 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.utils.json_tools import get_json_str_from_llm
+from processdesignagents.agents.utils.json_tools import get_json_str_from_llm, extract_first_json_document
+
 
 load_dotenv()
+
 
 def create_conservative_researcher(llm):
     def conservative_researcher(state: DesignState) -> DesignState:
         """Conservative Researcher: Critiques concepts for practicality using LLM."""
         print("\n# Conservatively Critiqued Concepts", flush=True)
+        
+        # Get problem requirement and research concepts list
         concepts_json = state.get("research_concepts", "")
         requirements_markdown = state.get("requirements", "")
-        if not isinstance(concepts_json, str):
-            concepts_json = str(concepts_json)
-        if not isinstance(requirements_markdown, str):
-            requirements_markdown = str(requirements_markdown)
-            
+        
+        # Create system prompt and user prompt
         base_prompt = conservative_researcher_prompt(concepts_json, requirements_markdown)
-
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        response, response_content = get_json_str_from_llm(llm, prompt, state)
-        response_dict = json.loads(repair_json(response_content))
-        print(convert_concepts_to_markdown(response_dict.get("concepts", "")), flush=True)
-        exit(0)
+        
+        try:
+            # Call function to execute LLM with expecting JSON in response.content
+            response, response_content = get_json_str_from_llm(llm, prompt, state)
+            
+            response_dict = json.loads(repair_json(response_content))
+            
+            # Get correct item if return list
+            if isinstance(response_dict, list):
+                for a in response_dict:
+                    if "concepts" in a:
+                        response_dict = a
+                        break
+                print("DEBUG: Fail to create concepts list.")
+                exit(-1)
+            
+            print(convert_concepts_to_markdown(response_dict.get("concepts", "")), flush=True)
+        except Exception as e:
+            # Handle errors
+            print(f"Error: {e}")
+            print(response_content)
+            exit(-1)
         return {
-            "research_rateing_results": response_content,
+            "research_rateing_results": json.dumps(response_dict),
             "messages": [response],
         }
 

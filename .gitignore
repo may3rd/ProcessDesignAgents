@@ -8,6 +8,7 @@ eval_results/
 GEMINI.md
 .DS_Store
 */.DS_Store
+**/.DS_Store
 
 #
 test_auth.py
