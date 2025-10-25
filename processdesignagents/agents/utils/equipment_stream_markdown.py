@@ -160,9 +160,9 @@ def _build_stream_chunk_table(streams: list[dict]) -> list[str]:
     add_row("**Phase**", [stream.get("phase", "") for stream in streams])
 
     # Properties
-    for prop_key, label in property_order:
-        values = [_format_quantity((stream.get("properties") or {}).get(prop_key)) for stream in streams]
-        add_row(label, values)
+    # for prop_key, label in property_order:
+    #     values = [_format_quantity((stream.get("properties") or {}).get(prop_key)) for stream in streams]
+    #     add_row(label, values)
 
     for prop_key in extra_property_keys:
         values = [_format_quantity((stream.get("properties") or {}).get(prop_key)) for stream in streams]

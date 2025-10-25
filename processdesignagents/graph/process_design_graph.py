@@ -29,6 +29,9 @@ from processdesignagents.agents.utils.agent_sizing_tools import (
 from processdesignagents.agents.utils.equipment_stream_markdown import (
     equipments_and_streams_dict_to_markdown,
 )
+from processdesignagents.utils.pydantic_utils import (
+    EquipmentAndStreamList,
+)
 
 from .setup import GraphSetup
 from .propagator import Propagator
@@ -57,8 +60,30 @@ class ProcessDesignGraph:
         if self.config["llm_provider"] == "openrouter":
             base_url = self.get_url_by_name(self.config["llm_provider"].lower())
             api_key = os.getenv("OPENROUTER_API_KEY")
+            
+            # Get the JSON schema from the Pydanitc model
+            schema = EquipmentAndStreamList.model_json_schema()
+            
+            # Build the exact response_format object OpenRouter expects
+            response_format = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "equipment_and_stream_list",
+                    "strict": True,
+                    "schema": schema
+                }
+            }
+            
+            # Initialize ChatOpenAI to use OpenRouter
             self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=base_url, api_key=api_key)
-            self.quick_thinking_llm = ChatOpenAI(model=self.config["quick_think_llm"], base_url=base_url, api_key=api_key)
+            self.quick_thinking_llm = ChatOpenAI(
+                model=self.config["quick_think_llm"],
+                base_url=base_url,
+                api_key=api_key,
+                model_kwargs={
+                    "response_format": response_format
+                    }
+            )
         elif self.config["llm_provider"] == "ollama":
             base_url = self.get_url_by_name(self.config["llm_provider"].lower())
             self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=base_url)

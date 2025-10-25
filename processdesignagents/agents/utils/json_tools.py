@@ -10,7 +10,8 @@ from typing import Tuple, Any
 from json_repair import repair_json
 
 def get_json_str_from_llm(llm, prompt, state, max_try_count: int = 10) -> Tuple[Any, str]:
-    chain = prompt | llm
+    json_llm = llm.bind(response_format={"type": "json_object"})
+    chain = prompt | json_llm
     try_count = 0
     response: Any = None
     response_content: str = ""
@@ -22,14 +23,15 @@ def get_json_str_from_llm(llm, prompt, state, max_try_count: int = 10) -> Tuple[
             exit(-1)
 
         try:
-            print(f"DEBUG: Try to get the output from LLM {try_count}")
+            # print(f"DEBUG: Try to get the output from LLM {try_count}")
             response = chain.invoke({"messages": list(state.get("messages", []))})
             response_content = response.content if isinstance(response.content, str) else str(response.content)
             if len(response_content.strip()) == 0:
                 print("response_content is empty.", flush=True)
                 continue
 
-            json.loads(repair_json(response_content))
+            json_dict = json.loads(repair_json(response_content))
+            # print(json_dict, flush=True)
             return response, response_content
         except Exception as e:
             print(f"Attempt {try_count} has failed. {e}", flush=True)
