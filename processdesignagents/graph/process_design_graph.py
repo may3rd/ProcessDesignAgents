@@ -55,9 +55,14 @@ class ProcessDesignGraph:
         """
         self.debug = debug
         self.config = config or DEFAULT_CONFIG
+        
+        self.response_format = {}
+        self.quick_thinking_llm = None
+        self.deep_thinking_llm = None
+        
         # Initialize LLMs
         # if self.config["llm_provider"].lower() == "openai" or self.config["llm_provider"] == "ollama" or self.config["llm_provider"] == "openrouter":
-        if self.config["llm_provider"] == "openrouter":
+        if self.config["llm_provider"].lower() == "openrouter":
             base_url = self.get_url_by_name(self.config["llm_provider"].lower())
             api_key = os.getenv("OPENROUTER_API_KEY")
             
@@ -65,7 +70,7 @@ class ProcessDesignGraph:
             schema = EquipmentAndStreamList.model_json_schema()
             
             # Build the exact response_format object OpenRouter expects
-            response_format = {
+            self.response_format = {
                 "type": "json_schema",
                 "json_schema": {
                     "name": "equipment_and_stream_list",
@@ -75,19 +80,29 @@ class ProcessDesignGraph:
             }
             
             # Initialize ChatOpenAI to use OpenRouter
-            self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=base_url, api_key=api_key)
-            self.quick_thinking_llm = ChatOpenAI(
-                model=self.config["quick_think_llm"],
+            self.deep_thinking_llm = ChatOpenAI(
                 base_url=base_url,
                 api_key=api_key,
-                model_kwargs={
-                    "response_format": response_format
-                    }
+                model=self.config["deep_think_llm"],
             )
-        elif self.config["llm_provider"] == "ollama":
+            self.quick_thinking_llm = ChatOpenAI(
+                base_url=base_url,
+                api_key=api_key,
+                model=self.config["quick_think_llm"],
+                # model_kwargs={
+                #     "response_format": response_format
+                #     }
+            )
+        elif self.config["llm_provider"].lower() == "ollama":
             base_url = self.get_url_by_name(self.config["llm_provider"].lower())
-            self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=base_url)
-            self.quick_thinking_llm = ChatOpenAI(model=self.config["quick_think_llm"], base_url=base_url)
+            self.deep_thinking_llm = ChatOpenAI(
+                base_url=base_url,
+                model=self.config["deep_think_llm"],
+            )
+            self.quick_thinking_llm = ChatOpenAI(
+                base_url=base_url,
+                model=self.config["quick_think_llm"]
+            )
         # elif self.config["llm_provider"].lower() == "anthropic":
         #     self.deep_thinking_llm = ChatAnthropic(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
         #     self.quick_thinking_llm = ChatAnthropic(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
@@ -97,15 +112,19 @@ class ProcessDesignGraph:
         else:
             raise ValueError(f"Unsupported LLM provider: {self.config['llm_provider']}")
 
+        # Set temperature for LLM
         self.deep_thinking_llm.temperature = self.config["deep_think_temperature"]
         self.quick_thinking_llm.temperature = self.config["quick_think_temperature"]
         
+        # Initialize checkpointer
         self.checkpointer = MemorySaver()
         
         # Create tool nodes
         self.tool_nodes = self._create_tool_nodes()
 
+        # Create the graph
         self.graph_setup = GraphSetup(
+            llm_provider=self.config["llm_provider"].lower(),
             quick_thinking_llm=self.quick_thinking_llm,
             deep_thinking_llm=self.deep_thinking_llm,
             tool_nodes=self.tool_nodes,
@@ -113,13 +132,17 @@ class ProcessDesignGraph:
             delay_time=delay_time,
         )
         
+        # Initialize the propagator
         self.propagator = Propagator()
+        
+        # Initialize state
         self.problem_statement = None
         self.log_state_dict = {}
         
         # Set up the graph
         self.graph = self.graph_setup.setup_graph()
         
+        # Print the graph
         self.graph.get_graph().print_ascii()
         
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:

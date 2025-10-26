@@ -19,7 +19,7 @@ from processdesignagents.agents.utils.json_tools import get_json_str_from_llm, e
 load_dotenv()
 
 
-def create_equipments_and_streams_list_builder(llm):
+def create_equipments_and_streams_list_builder(llm, llm_provider: str = "openrouter"):
     def equipments_and_streams_list_builder(state: DesignState) -> DesignState:
         """Equipments and Streams List Builder: Produces a JSON stream inventory template for process streams."""
         print("\n# Create Equipments and Streams List Template", flush=True)
@@ -38,6 +38,8 @@ def create_equipments_and_streams_list_builder(llm):
         is_done = False
         while not is_done:
             try:
+                if llm_provider == "openrouter":
+                    pass
                 response, response_content = get_json_str_from_llm(llm, prompt, state)
                 sanitized_response, response_dict = extract_first_json_document(repair_json(response_content))
                 if isinstance(response_dict, dict):

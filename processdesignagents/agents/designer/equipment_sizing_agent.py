@@ -19,7 +19,7 @@ from processdesignagents.agents.utils.json_tools import get_json_str_from_llm, e
 load_dotenv()
 
 
-def create_equipment_sizing_agent(llm):
+def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
     def equipment_sizing_agent(state: DesignState) -> DesignState:
         """Equipment Sizing Agent: populates the equipment table using tool-assisted estimates."""
         print("\n# Equipment Sizing", flush=True)

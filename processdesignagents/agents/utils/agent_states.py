@@ -8,6 +8,7 @@ from langgraph.graph import add_messages
 from langchain_core.messages import BaseMessage
 
 class DesignState(TypedDict):
+    llm_provider: Annotated[str, ""]
     messages: Annotated[List[BaseMessage], add_messages]
     problem_statement: Annotated[str, "problem_statement"]
     requirements: Annotated[str, ""]
@@ -30,6 +31,7 @@ class DesignState(TypedDict):
 
 def create_design_state(
     *,
+    llm_provider: str = "",
     messages: Optional[Sequence[BaseMessage]] = None,
     problem_statement: str = "",
     requirements: str = "",
@@ -52,6 +54,7 @@ def create_design_state(
     """Factory to create a DesignState with sensible defaults."""
 
     state: DesignState = {
+        "llm_provider": llm_provider,
         "messages": list(messages) if messages is not None else [],
         "problem_statement": problem_statement,
         "requirements": requirements,

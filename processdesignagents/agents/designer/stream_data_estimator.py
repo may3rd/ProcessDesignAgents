@@ -18,7 +18,7 @@ from processdesignagents.agents.utils.json_tools import get_json_str_from_llm, e
 load_dotenv()
 
 
-def create_stream_data_estimator(llm):
+def create_stream_data_estimator(llm, llm_provider: str = "openrouter"):
     def stream_data_estimator(state: DesignState) -> DesignState:
         """Stream Data Estimator: Generates JSON stream data with reconciled estimates."""
         print("\n# Stream Data Estimator", flush=True)
