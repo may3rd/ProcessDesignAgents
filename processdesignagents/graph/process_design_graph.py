@@ -19,12 +19,9 @@ from langgraph.prebuilt import ToolNode
 from dotenv import load_dotenv
 
 from processdesignagents.default_config import DEFAULT_CONFIG
-from processdesignagents.agents.utils.json_tools import (
-    convert_risk_json_to_markdown,
-)
 from processdesignagents.agents.utils.agent_sizing_tools import (
     size_heat_exchanger_basic,
-    size_pump_basic
+    size_pump_basic,
 )
 from processdesignagents.agents.utils.equipment_stream_markdown import (
     equipments_and_streams_dict_to_markdown,
@@ -59,11 +56,12 @@ class ProcessDesignGraph:
         self.response_format = {}
         self.quick_thinking_llm = None
         self.deep_thinking_llm = None
+        self.structured_llm = None
         
         # Initialize LLMs
         # if self.config["llm_provider"].lower() == "openai" or self.config["llm_provider"] == "ollama" or self.config["llm_provider"] == "openrouter":
         if self.config["llm_provider"].lower() == "openrouter":
-            base_url = self.get_url_by_name(self.config["llm_provider"].lower())
+            base_url = self._get_url_by_name(self.config["llm_provider"].lower())
             api_key = os.getenv("OPENROUTER_API_KEY")
             
             # Get the JSON schema from the Pydanitc model
@@ -93,13 +91,25 @@ class ProcessDesignGraph:
                 #     "response_format": response_format
                 #     }
             )
+            self.structured_llm = ChatOpenAI(
+                base_url=base_url,
+                api_key=api_key,
+                model=self.config["quick_think_llm"],
+                model_kwargs={
+                    "response_format": self.response_format
+                    }
+            )
         elif self.config["llm_provider"].lower() == "ollama":
-            base_url = self.get_url_by_name(self.config["llm_provider"].lower())
+            base_url = self._get_url_by_name(self.config["llm_provider"].lower())
             self.deep_thinking_llm = ChatOpenAI(
                 base_url=base_url,
                 model=self.config["deep_think_llm"],
             )
             self.quick_thinking_llm = ChatOpenAI(
+                base_url=base_url,
+                model=self.config["quick_think_llm"]
+            )
+            self.structured_llm = ChatOpenAI(
                 base_url=base_url,
                 model=self.config["quick_think_llm"]
             )
@@ -109,12 +119,14 @@ class ProcessDesignGraph:
         elif self.config["llm_provider"].lower() == "google":
             self.deep_thinking_llm = ChatGoogleGenerativeAI(model=self.config["deep_think_llm"])
             self.quick_thinking_llm = ChatGoogleGenerativeAI(model=self.config["quick_think_llm"])
+            self.structured_llm = ChatGoogleGenerativeAI(model=self.config["quick_think_llm"])
         else:
             raise ValueError(f"Unsupported LLM provider: {self.config['llm_provider']}")
 
         # Set temperature for LLM
         self.deep_thinking_llm.temperature = self.config["deep_think_temperature"]
         self.quick_thinking_llm.temperature = self.config["quick_think_temperature"]
+        self.structured_llm.temperature = self.config["quick_think_temperature"]
         
         # Initialize checkpointer
         self.checkpointer = MemorySaver()
@@ -127,6 +139,7 @@ class ProcessDesignGraph:
             llm_provider=self.config["llm_provider"].lower(),
             quick_thinking_llm=self.quick_thinking_llm,
             deep_thinking_llm=self.deep_thinking_llm,
+            structured_llm=self.structured_llm,
             tool_nodes=self.tool_nodes,
             checkpointer=self.checkpointer,
             delay_time=delay_time,
@@ -144,40 +157,6 @@ class ProcessDesignGraph:
         
         # Print the graph
         self.graph.get_graph().print_ascii()
-        
-    def _create_tool_nodes(self) -> Dict[str, ToolNode]:
-        """Create tool nodes for different equipment using abstract methods."""
-        return {
-            "equipment_sizing": ToolNode(
-                [
-                    size_heat_exchanger_basic,
-                    size_pump_basic
-                ]
-            ),
-        }
-        
-    def get_url_by_name(self, name: str) -> str:
-        """
-        Retrieves the URL associated with a given name from a predefined list of base URLs.
-
-        Args:
-            name (str): The name of the API provider (e.g., 'OpenAI', 'Anthropic').
-
-        Returns:
-            str | None: The corresponding URL if found, otherwise None.
-        """
-        BASE_URLS = [
-            ("openai", "https://api.openai.com/v1"),
-            ("anthropic", "https://api.anthropic.com/"),
-            ("google", "https://generativelanguage.googleapis.com/v1"),
-            ("openrouter", "https://openrouter.ai/api/v1"),
-            ("ollama", "http://localhost:11434/v1"),        
-        ]
-        
-        for provider, url in BASE_URLS:
-            if provider.lower() == name.lower():
-                return url
-        return None
         
     def propagate(
         self,
@@ -260,6 +239,40 @@ class ProcessDesignGraph:
             self._write_word_report(final_state, save_word_doc)
         
         return final_state
+        
+    def _create_tool_nodes(self) -> Dict[str, ToolNode]:
+        """Create tool nodes for different equipment using abstract methods."""
+        return {
+            "equipment_sizing": ToolNode(
+                [
+                    size_heat_exchanger_basic,
+                    size_pump_basic
+                ]
+            ),
+        }
+        
+    def _get_url_by_name(self, name: str) -> str:
+        """
+        Retrieves the URL associated with a given name from a predefined list of base URLs.
+
+        Args:
+            name (str): The name of the API provider (e.g., 'OpenAI', 'Anthropic').
+
+        Returns:
+            str | None: The corresponding URL if found, otherwise None.
+        """
+        BASE_URLS = [
+            ("openai", "https://api.openai.com/v1"),
+            ("anthropic", "https://api.anthropic.com/"),
+            ("google", "https://generativelanguage.googleapis.com/v1"),
+            ("openrouter", "https://openrouter.ai/api/v1"),
+            ("ollama", "http://localhost:11434/v1"),        
+        ]
+        
+        for provider, url in BASE_URLS:
+            if provider.lower() == name.lower():
+                return url
+        return None
     
     def _log_state(self, final_state):
         """Log the final state to a JSON file."""

@@ -51,6 +51,8 @@ def create_component_list_researcher(llm):
             try:
                 # Get the response from LLM
                 response = chain.invoke({"messages": list(state.get("messages", []))})
+                if len(response.content) < 20:
+                    continue
                 is_done = True
             except Exception as e:
                 print(f"Attemp {try_count}: {e}")

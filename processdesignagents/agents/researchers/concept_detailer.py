@@ -97,6 +97,9 @@ def create_concept_detailer(llm, selection_provider_getter=None):
                     response.content if isinstance(response.content, str) else str(response.content)
                 ).strip()
                 detail_markdown = strip_markdown_code_fences(detail_markdown)
+                if len(detail_markdown) < 10:
+                    print(f"DEBUG: Try number {try_count} is failed.")
+                    continue
                 is_done = True
             except Exception as e:
                 print(f"Attemp {try_count}: {e}")

@@ -25,7 +25,7 @@ def create_stream_data_estimator(llm, llm_provider: str = "openrouter"):
         basic_pfd_markdown = state.get("basic_pfd")
         design_basis_markdown = state.get("design_basis")
         equipments_and_streams_list = state.get("equipment_and_stream_list")
-        print(f"Basis: {len(design_basis_markdown)}, PFD: {len(basic_pfd_markdown)}, Streams: {len(equipments_and_streams_list)}", flush=True)
+        # print(f"DEBUG: Basis: {len(design_basis_markdown)}, PFD: {len(basic_pfd_markdown)}, Streams: {len(equipments_and_streams_list)}", flush=True)
         base_prompt = stream_data_estimator_prompt(
             basic_pfd_markdown,
             design_basis_markdown,
@@ -41,6 +41,7 @@ def create_stream_data_estimator(llm, llm_provider: str = "openrouter"):
         is_done = False
         response = None
         sanitized_response = ""
+        response_dict = {}
         streams_md = ""
         while not is_done:
             try:
@@ -417,6 +418,7 @@ def stream_data_estimator_prompt(
     </json_formatting_rules>
 
     <composition_validation_rules>
+      <rule>Ensure Calculate Consistent Composition Representations is completed</rule>
       <rule>Sum of all molar fractions per stream must equal 1.0 ± 0.001 (100% ± 0.1%)</rule>
       <rule>Sum of all mass fractions per stream must equal 1.0 ± 0.001 (100% ± 0.1%)</rule>
       <rule>For components not present in stream, set value to 0.0 (not null or omitted)</rule>
@@ -738,8 +740,10 @@ def stream_data_estimator_prompt(
     human_content = f"""
 # DATA FOR ANALYSIS
 ---
-**Equipments and Streams Template (JSON):**
+**EQUIPMENTS_STREAMS_TEMPLATE:**
 {equipments_and_streams_list}
+
+**DESIGN DOCUMENTS:**
 
 **Design Basis (Markdown):**
 {design_basis_markdown}

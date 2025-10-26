@@ -16,6 +16,7 @@ class GraphSetup:
         llm_provider: str,
         quick_thinking_llm: ChatOpenAI,
         deep_thinking_llm: ChatOpenAI,
+        structured_llm: ChatOpenAI,
         tool_nodes: Dict[str, ToolNode],
         checkpointer=None,
         delay_time: float = 0.5,
@@ -24,6 +25,7 @@ class GraphSetup:
         self.llm_provider = llm_provider
         self.quick_thinking_llm = quick_thinking_llm
         self.deep_thinking_llm = deep_thinking_llm
+        self.structured_llm = structured_llm
         self.tool_nodes = tool_nodes
         self.checkpointer = checkpointer
         self.concept_selection_provider = None
@@ -51,9 +53,9 @@ class GraphSetup:
         component_list_researcher = self._wrap_with_delay(create_component_list_researcher(self.quick_thinking_llm))
         design_basis_analyst = self._wrap_with_delay(create_design_basis_analyst(self.quick_thinking_llm))
         basic_pfd_designer = self._wrap_with_delay(create_basic_pfd_designer(self.quick_thinking_llm))
-        equipments_and_streams_list_builder = self._wrap_with_delay(create_equipments_and_streams_list_builder(self.quick_thinking_llm, self.llm_provider))
-        stream_data_estimator = self._wrap_with_delay(create_stream_data_estimator(self.deep_thinking_llm))
-        equipment_sizing_agent = self._wrap_with_delay(create_equipment_sizing_agent(self.deep_thinking_llm))
+        equipments_and_streams_list_builder = self._wrap_with_delay(create_equipments_and_streams_list_builder(self.structured_llm))
+        stream_data_estimator = self._wrap_with_delay(create_stream_data_estimator(self.structured_llm))
+        equipment_sizing_agent = self._wrap_with_delay(create_equipment_sizing_agent(self.structured_llm))
         safety_risk_analyst = self._wrap_with_delay(create_safety_risk_analyst(self.quick_thinking_llm))
         project_manager = self._wrap_with_delay(create_project_manager(self.quick_thinking_llm))
         

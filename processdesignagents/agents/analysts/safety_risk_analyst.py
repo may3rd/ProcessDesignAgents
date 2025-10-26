@@ -58,10 +58,9 @@ def create_safety_risk_analyst(llm):
                 print(f"Attemp {try_count} has failed.")
         cleaned_content = strip_markdown_code_block(response.content)
         print(cleaned_content, flush=True)
-        ai_message = AIMessage(content=cleaned_content)
         return {
             "safety_risk_analyst_report": cleaned_content,
-            "messages": [ai_message],
+            "messages": [response],
         }
     return safety_risk_analyst
 
@@ -670,6 +669,9 @@ Equipment E-101, Stream 1002, and control system TC-101/TAH-101 involved. Temper
 
 **EQUIPMENT AND STREAMS DATA (JSON):**
 {equipment_and_stream_list}
+
+**You must output is markdown format.**
+---
 """
 
     messages = [
