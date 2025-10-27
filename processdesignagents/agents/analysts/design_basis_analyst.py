@@ -346,14 +346,14 @@ This document provides the preliminary basis for the design of a new continuous 
 | **Typical Reactor Temp.** | 60 - 150 °C | °C | Preliminary Estimate |
 
 ### 4. Chemical Components
-| **Name** | **Formula** | **MW** |
-|---|---|---|
-| Methanol | CH3OH | 32.042 |
-| Sulfuric Acid | H2SO4 | 98.079 |
-| Sodium Hydroxide | NaOH | 40.005 |
-| Biodiesel (FAME) | Variable | 290–310 |
-| Glycerin | C3H8O3 | 92.094 |
-| Water | H2O | 18.015 |
+| **Name** | **Formula** | **MW** | **BP** |
+|---|---|---|---|
+| Methanol | CH3OH | 32.042 | 78.4 |
+| Sulfuric Acid | H2SO4 | 98.079 | 100.0 |
+| Sodium Hydroxide | NaOH | 40.005 | 100.0 |
+| Biodiesel (FAME) | Variable | 290–310 | Variable |
+| Glycerin | C3H8O3 | 92.094 | 100.0 |
+| Water | H2O | 18.015 | 100.0 |
 
 ### 5. Feed and Product Specifications
 

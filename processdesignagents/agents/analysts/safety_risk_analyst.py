@@ -18,6 +18,15 @@ def strip_markdown_code_block(text: str) -> str:
     """Return text without enclosing ```markdown ``` code fences."""
     if not isinstance(text, str):
         return text
+    
+    # Remove the text outside mardown code
+    text = text.strip()
+    if not text.startswith("```markdown"):
+        return text
+    if not text.endswith("```"):
+        return text
+    
+    # use re to capture text inside ``` markdown ```
     pattern = re.compile(r"```(?:markdown)?\s*([\s\S]*?)```", re.IGNORECASE)
     match = pattern.search(text)
     if match:
@@ -90,11 +99,11 @@ def safety_risk_prompt(
         <description>Complete process design documentation</description>
         <contains>
           <item>Process narrative and flowsheet summary</item>
-          <item>Stream inventory with properties and compositions</item>
+          <item>Stream list with properties and compositions</item>
           <item>Equipment list with specifications and sizing parameters</item>
-          <item>Operating envelopes and design constraints</item>
-          <item>Utility system requirements and availability</item>
-          <item>Control system strategy and instrumentation plan</item>
+          <item>Optional: Operating envelopes and design constraints</item>
+          <item>Optional: Utility system requirements and availability</item>
+          <item>Optional: Control system strategy and instrumentation plan</item>
         </contains>
       </input>
     </inputs>
@@ -119,8 +128,8 @@ def safety_risk_prompt(
           * Stream connectivity (source → destination for all process and utility streams)
           * Operating envelopes (temperatures, pressures, compositions at each step)
           * Equipment types and sizes
-          * Control points and instrumentation
-          * Utility systems (cooling, heating, pressurization)
+          * Control points and instrumentation (if any)
+          * Utility systems (cooling, heating, pressurization) (if any)
         - Identify critical equipment and high-energy streams
         - Note any unusual operating conditions or constraints
       </details>
@@ -148,7 +157,7 @@ def safety_risk_prompt(
     <instruction id="3">
       <title>Select Critical Hazards for Assessment</title>
       <details>
-        - Identify at least 3 and at most 5 hazards covering the most critical risk drivers
+        - Identify at least 3 and at most 7 hazards covering the most critical risk drivers
         - Ensure diversity across different hazard categories:
           * Temperature/pressure excursions
           * Loss of key utility
@@ -348,7 +357,7 @@ def safety_risk_prompt(
     <structure>
       <section id="1">
         <n>Hazards</n>
-        <markdown_header>## Hazards</markdown_header>
+        <markdown_header>## Preliminary HAZOP-Style Assessment</markdown_header>
         
         <hazard_subsection>
           <markdown_header>### [Number]. [Hazard Title]</markdown_header>
@@ -527,7 +536,7 @@ def safety_risk_prompt(
       <summary>Ethanol cooling system: E-101 cools 10,000 kg/h ethanol from 80°C to 40°C using plant cooling water. P-101 transfers product to storage at 2.45 barg. Cooling water supplied from utility header at 25°C, 2.5 barg.</summary>
     </design_documents>
 
-    <expected_markdown_output>## Hazards
+    <expected_markdown_output>## Preliminary HAZOP-Style Assessment
 
 ### 1. Loss of Cooling Water Flow
 
@@ -670,7 +679,7 @@ Equipment E-101, Stream 1002, and control system TC-101/TAH-101 involved. Temper
 **EQUIPMENT AND STREAMS DATA (JSON):**
 {equipment_and_stream_list}
 
-**You must output is markdown format.**
+**You must output only pure markdown format, not code blocks, XML, or JSON.**
 ---
 """
 

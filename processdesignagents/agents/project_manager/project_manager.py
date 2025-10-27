@@ -604,21 +604,21 @@ def project_manager_prompt(
 """
 
     human_content = f"""
-# DESIGN PACKAGE (Mixed Format)
+Create a project summary based on the following data:
 
-**Requirements Summary (Markdown):**
+**Requirements Summary:**
 {project_requirements}
 
-**Design Basis (Markdown):**
+**Design Basis:**
 {design_basis}
 
-**Basic Process Flow Diagram (Markdown):**
+**Basic Process Flow Diagram:**
 {basic_pfd}
 
-**Equipments and Streams Data (JSON):**
+**Equipments and Streams Data:**
 {equipment_and_stream_list}
 
-**Safety & Risk Dossier (JSON):**
+**Safety & Risk Assessments:**
 {safety_and_risk_json}
 """
 

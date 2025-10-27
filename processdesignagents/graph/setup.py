@@ -13,19 +13,21 @@ class GraphSetup:
     
     def __init__(
         self,
-        llm_provider: str,
-        quick_thinking_llm: ChatOpenAI,
-        deep_thinking_llm: ChatOpenAI,
-        structured_llm: ChatOpenAI,
-        tool_nodes: Dict[str, ToolNode],
-        checkpointer=None,
+        llm_provider: str = "",
+        quick_thinking_llm: ChatOpenAI = None,
+        deep_thinking_llm: ChatOpenAI = None,
+        quick_structured_llm: ChatOpenAI = None,
+        deep_structured_llm: ChatOpenAI = None,
+        tool_nodes: Dict[str, ToolNode] = None,
+        checkpointer = None,
         delay_time: float = 0.5,
     ):
         """Initialize with required components."""
         self.llm_provider = llm_provider
         self.quick_thinking_llm = quick_thinking_llm
         self.deep_thinking_llm = deep_thinking_llm
-        self.structured_llm = structured_llm
+        self.quick_structured_llm = quick_structured_llm
+        self.deep_structured_llm = deep_structured_llm
         self.tool_nodes = tool_nodes
         self.checkpointer = checkpointer
         self.concept_selection_provider = None
@@ -46,18 +48,32 @@ class GraphSetup:
         """Set up and complie the agent graph."""
         graph = StateGraph(DesignState)
         
-        process_requirements_analyst = self._wrap_with_delay(create_process_requiruments_analyst(self.quick_thinking_llm))
-        innovative_researcher = self._wrap_with_delay(create_innovative_researcher(self.quick_thinking_llm))
-        conservative_researcher = self._wrap_with_delay(create_conservative_researcher(self.quick_thinking_llm))
-        concept_detailer = self._wrap_with_delay(create_concept_detailer(self.quick_thinking_llm))
-        component_list_researcher = self._wrap_with_delay(create_component_list_researcher(self.quick_thinking_llm))
-        design_basis_analyst = self._wrap_with_delay(create_design_basis_analyst(self.quick_thinking_llm))
-        basic_pfd_designer = self._wrap_with_delay(create_basic_pfd_designer(self.quick_thinking_llm))
-        equipments_and_streams_list_builder = self._wrap_with_delay(create_equipments_and_streams_list_builder(self.structured_llm))
-        stream_data_estimator = self._wrap_with_delay(create_stream_data_estimator(self.structured_llm))
-        equipment_sizing_agent = self._wrap_with_delay(create_equipment_sizing_agent(self.structured_llm))
-        safety_risk_analyst = self._wrap_with_delay(create_safety_risk_analyst(self.quick_thinking_llm))
-        project_manager = self._wrap_with_delay(create_project_manager(self.quick_thinking_llm))
+        process_requirements_analyst = create_process_requiruments_analyst(self.quick_thinking_llm)
+        innovative_researcher = create_innovative_researcher(self.quick_thinking_llm)
+        conservative_researcher = create_conservative_researcher(self.quick_thinking_llm)
+        concept_detailer = create_concept_detailer(self.quick_thinking_llm)
+        component_list_researcher = create_component_list_researcher(self.quick_thinking_llm)
+        design_basis_analyst = create_design_basis_analyst(self.quick_thinking_llm)
+        basic_pfd_designer = create_basic_pfd_designer(self.quick_thinking_llm)
+        equipments_and_streams_list_builder = create_equipments_and_streams_list_builder(self.quick_structured_llm)
+        stream_data_estimator = create_stream_data_estimator(self.deep_structured_llm)
+        equipment_sizing_agent = create_equipment_sizing_agent(self.deep_structured_llm)
+        safety_risk_analyst = create_safety_risk_analyst(self.quick_thinking_llm)
+        project_manager = create_project_manager(self.quick_thinking_llm)
+        
+        # Set up all node function by wrapping with delay timer
+        # process_requirements_analyst = self._wrap_with_delay(create_process_requiruments_analyst(self.quick_thinking_llm))
+        # innovative_researcher = self._wrap_with_delay(create_innovative_researcher(self.quick_thinking_llm))
+        # conservative_researcher = self._wrap_with_delay(create_conservative_researcher(self.quick_thinking_llm))
+        # concept_detailer = self._wrap_with_delay(create_concept_detailer(self.quick_thinking_llm))
+        # component_list_researcher = self._wrap_with_delay(create_component_list_researcher(self.quick_thinking_llm))
+        # design_basis_analyst = self._wrap_with_delay(create_design_basis_analyst(self.quick_thinking_llm))
+        # basic_pfd_designer = self._wrap_with_delay(create_basic_pfd_designer(self.quick_thinking_llm))
+        # equipments_and_streams_list_builder = self._wrap_with_delay(create_equipments_and_streams_list_builder(self.quick_structured_llm))
+        # stream_data_estimator = self._wrap_with_delay(create_stream_data_estimator(self.deep_structured_llm))
+        # equipment_sizing_agent = self._wrap_with_delay(create_equipment_sizing_agent(self.deep_structured_llm))
+        # safety_risk_analyst = self._wrap_with_delay(create_safety_risk_analyst(self.quick_thinking_llm))
+        # project_manager = self._wrap_with_delay(create_project_manager(self.quick_thinking_llm))
         
         # Add implemented nodes (expand as agents are developed)
         graph.add_node("process_requirements_analyst", process_requirements_analyst)
@@ -73,7 +89,7 @@ class GraphSetup:
         graph.add_node("safety_risk_analyst", safety_risk_analyst)
         graph.add_node("project_manager", project_manager)
         
-        # Set entry point
+        # Set all edges, entry and exit point.
         graph.set_entry_point("process_requirements_analyst")
         graph.add_edge("process_requirements_analyst", "innovative_researcher")
         graph.add_edge("innovative_researcher", "conservative_researcher")
@@ -87,9 +103,6 @@ class GraphSetup:
         graph.add_edge("equipment_sizing_agent", "safety_risk_analyst")
         graph.add_edge("safety_risk_analyst", "project_manager")
         graph.add_edge("project_manager", END)
-        
-        # graph.add_edge("design_basis_analyst", END)
-        # graph.add_edge("equipment_sizing_agent", END)
         
         if self.checkpointer is not None:
             return graph.compile(checkpointer=self.checkpointer)

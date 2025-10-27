@@ -20,7 +20,6 @@ def create_component_list_researcher(llm):
         requirements_markdown = state.get("requirements", "")
         selected_concept_name = state.get("selected_concept_name", "")
         concept_details_markdown = state.get("selected_concept_details", "")
-        design_basis_markdown = state.get("design_basis", "")
         
         if not isinstance(concept_details_markdown, str):
             concept_details_markdown = str(concept_details_markdown)
@@ -28,14 +27,11 @@ def create_component_list_researcher(llm):
             requirements_markdown = str(requirements_markdown)
         if not isinstance(selected_concept_name, str):
             selected_concept_name = str(selected_concept_name)
-        if not isinstance(design_basis_markdown, str):
-            design_basis_markdown = str(design_basis_markdown)
 
         base_prompt = component_list_researcher_prompt(
             selected_concept_name,
             concept_details_markdown,
             requirements_markdown,
-            design_basis_markdown,
         )
 
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
@@ -69,7 +65,6 @@ def component_list_researcher_prompt(
     concept_name: str,
     concept_details: str,
     requirements: str,
-    design_basis: str,
 ) -> ChatPromptTemplate:
     system_content = f"""
 <?xml version="1.0" encoding="UTF-8"?>
@@ -83,14 +78,19 @@ def component_list_researcher_prompt(
   <context>
     <inputs>
       <input>
-        <n>DESIGN BASIS</n>
-        <format>Markdown or text</format>
-        <description>Detailed process design basis including capacity, operating conditions, utilities, and process flow overview</description>
-      </input>
-      <input>
         <n>REQUIREMENTS</n>
         <format>Markdown or text</format>
         <description>Project requirements including objectives, design constraints, and critical specifications</description>
+      </input>
+      <input>
+        <n>SELECTED CONCEPT NAME</n>
+        <format>Markdown or text</format>
+        <description>The selected concept of design name</description>
+      </input>
+      <input>
+        <n>CONCEPT DETAILS</n>
+        <format>Markdown or text</format>
+        <description>The selected concept of design details</description>
       </input>
       <input>
         <n>COMPONENTS LIST (CSV)</n>
@@ -207,6 +207,11 @@ def component_list_researcher_prompt(
       <guideline>If a component appears in multiple roles (e.g., both solvent and reactant), list it only once</guideline>
       <guideline>Verify boiling point ordering; if exact data is unavailable, group components by chemical family or provide a reasonable estimate</guideline>
     </content_quality_guidelines>
+    <content_guardrails>
+      <guardrail>Do not output the referencing components list</guardrail>
+      <guardrail>Ensure that the components list is sorted by boiling point (low to high)</guardrail>
+      <guardrail>Assume that cooling water is pure water (H2O)</guardrail>
+    </content_guardrails>
   </output_schema>
 
   <boiling_point_reference>
@@ -314,14 +319,13 @@ def component_list_researcher_prompt(
 
     <expected_markdown_output>## Chemical Components List
 
-| **Name** | **Formula** | **MW** |
-|----------|-------------|--------|
-| Water | H2O | 18.015 |
-| Ethanol | C2H6O | 46.07 |</expected_markdown_output>
+| **Name** | **Formula** | **MW** | **Boiling Point** |
+|----------|-------------|--------|-------------------|
+| Ethanol | C2H6O | 46.07 | 78.4°C |
+| Water | H2O | 18.015 | 100°C |</expected_markdown_output>
 
     <explanation>
-      <point>Two components identified: Water (cooling utility and potential contamination) and Ethanol (main process stream).</point>
-      <point>Sorted by boiling point: Water (100°C) has higher boiling point than Ethanol (78.4°C), but placed after in this example because Ethanol is the primary process component.</point>
+      <point>Two components identified: Water (cooling utility and contamination in ethanol) and Ethanol (main process stream).</point>
       <point>Note: This ordering choice reflects practical separation considerations; typically low boilers are listed first. Adjust order based on actual boiling points.</point>
     </explanation>
   </example>
@@ -329,6 +333,8 @@ def component_list_researcher_prompt(
 </agent>
 """
     human_content = f"""
+Create a components list based on the following data:
+
 # DESIGN INPUTS
 
 **Requirements (Markdown):**
@@ -339,9 +345,6 @@ def component_list_researcher_prompt(
 
 **Concept Details (Markdown):**
 {concept_details}
-
-**Design Basis (Markdown):**
-{design_basis}
 
 **Component List (CSV):**
 Name,Formula,MW (g/mol)

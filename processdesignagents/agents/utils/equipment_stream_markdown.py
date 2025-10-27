@@ -127,7 +127,7 @@ def _build_stream_chunk_table(streams: list[dict]) -> list[str]:
         ("temperature", "**Temperature**"),
         ("pressure", "**Pressure**"),
         ("mass_flow", "**Mass Flow**"),
-        ("mole_flow", "**Mole Flow**"),
+        ("molar_flow", "**Molar Flow**"),
         ("volume_flow", "**Volume Flow**"),
     ]
 

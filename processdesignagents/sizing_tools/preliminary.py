@@ -73,18 +73,22 @@ def prelim_basic_heat_exchanger_sizing(
     """
     # Todo: input valiation
     
+    # For DEBUG: print all input arguments
+    # print(f"DEBUG: basic_heat_exchanger: {basic_heat_exchanger}", flush=True)
+    # print(f"DEBUG: hot_stream_in: {hot_stream_in}", flush=True)
+    # print(f"DEBUG: hot_stream_out: {hot_stream_out}", flush=True)
+    # print(f"DEBUG: cold_stream_in: {cold_stream_in}", flush=True)
+    # print(f"DEBUG: cold_stream_out: {cold_stream_out}", flush=True)
+    
     # Calculate LMTD
     T_hot_in = hot_stream_in.get("properties", {}).get("temperature", {}).get("value", 0.0)
     T_hot_out = hot_stream_out.get("properties", {}).get("temperature", {}).get("value", 0.0)
     T_cold_in = cold_stream_in.get("properties", {}).get("temperature", {}).get("value", 0.0)
     T_cold_out = cold_stream_out.get("properties", {}).get("temperature", {}).get("value", 0.0)
     
-    if T_hot_in - T_cold_out == T_hot_out - T_cold_in:
-        lmtd_C = 10.1
-    else:
-        lmtd_C = calculate_lmtd(T_hot_in, T_hot_out, T_cold_in, T_cold_out, "counter")
+    lmtd_C = calculate_lmtd(T_hot_in, T_hot_out, T_cold_in, T_cold_out, "counter")
     
-    duty_kW = 2500.0 # kW
+    duty_kW = 9999.99 # kW
     U_design = basic_heat_exchanger.get("sizing_parameters", {}).get("U-value", {}).get("value", 850.1)
     
     required_area = duty_kW / (lmtd_C * U_design)
@@ -97,7 +101,8 @@ def prelim_basic_heat_exchanger_sizing(
     }
     
     return_str = json.dumps(return_json)
-    print(f"DEBUG: prelim_basic_heat_exchanger_sizing: {return_str}")
+    
+    print(f"DEBUG: prelim_basic_heat_exchanger_sizing: {return_str}", flush=True)
     
     return return_str
 
@@ -162,15 +167,26 @@ def prelim_pump_sizing(
         str: An update equipment sizing in JSON format.
     """
     
-    # Todo: input valiation
+    # Todo: input validation
+    p_in_value = stream_in.get("properties", {}).get("pressure", {}).get("value", 0.0)
+    p_in_unit = stream_in.get("properties", {}).get("pressure", {}).get("unit", "bar")
+    p_out_value = stream_out.get("properties", {}).get("pressure", {}).get("value", 0.0)
+    p_out_unit = stream_out.get("properties", {}).get("pressure", {}).get("unit", "bar")
+    rho_in_value = stream_in.get("properties", {}).get("density", {}).get("value", 1000.0)
+    rho_in_unit = stream_in.get("properties", {}).get("density", {}).get("unit", "kg/m3")
     
+    # Calculate pump head, assump pressure in bar
+    G = 9.80665 # m/s2
+    pump_head = (p_out_value - p_in_value) * 100_000 / (rho_in_value * G)
     
     return_json = {
-        "flow_kg_hr": 99.0,
-        "power_kW": 100.0,
+        "head": {"value": pump_head, "unit": "m"},
     }
     
     return_str = json.dumps(return_json)
+    
+    print(f"DEBUG: prelim_pump_sizing: {return_str}", flush=True)
+    
     return return_str
 
 def prelim_centrifugal_pump_sizing(flow_kg_hr: str) -> str:

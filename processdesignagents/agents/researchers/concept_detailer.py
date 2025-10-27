@@ -79,7 +79,7 @@ def create_concept_detailer(llm, selection_provider_getter=None):
             f"Chosen concept: {best_title}\n(Feasibility Score: {best_score if best_score is not None else 'N/A'})",
             flush=True,
         )
-        print("* Call LLM to generate detailed concept brief...", flush=True)
+        # print("DEBUG: Call LLM to generate detailed concept brief...", flush=True)
         base_prompt = concept_detailer_prompt(best_evaluation, requirements_markdown)
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)

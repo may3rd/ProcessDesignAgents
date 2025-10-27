@@ -1123,14 +1123,13 @@ def equipment_sizing_prompt(
 **Equipment Template (JSON):**
 {equipment_and_stream_list_json}
 
-**You MUST to response only a valid JSON without any commentary or wrapping in code block.**
 ---
 
 # **NEGATIVES:**
 
-Your response MUST be a single, raw JSON object.
-Do NOT add any conversational text, explanations, or markdown code blocks like ```json before or after the JSON output.
-Your output must start with {{ and end with }}.
+  * Your response **MUST** be a single, raw JSON object.
+  * **Do NOT** add any conversational text, explanations, or markdown code blocks like ```json before or after the JSON output.
+  * Your output must start with {{ and end with }}.
 
 """
 

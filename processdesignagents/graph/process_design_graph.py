@@ -41,9 +41,9 @@ class ProcessDesignGraph:
     
     def __init__(
         self,
-        debug=False,
-        config: Dict[str, Any]=None,
-        delay_time: float = 0.5,
+        debug: bool = False,  # debug mode use with cli
+        config: Dict[str, Any] = None,  # config dictionary
+        delay_time: float = 0.5,  # set up the delay time in second
     ):
         """Initialize the process design agents graph and component.
         Args:
@@ -53,14 +53,31 @@ class ProcessDesignGraph:
         self.debug = debug
         self.config = config or DEFAULT_CONFIG
         
+        # a response_format for equipment and stream list output from llm
         self.response_format = {}
-        self.quick_thinking_llm = None
-        self.deep_thinking_llm = None
-        self.structured_llm = None
         
         # Initialize LLMs
+        self.deep_thinking_llm = None
+        self.quick_thinking_llm = None
+        self.deep_structured_llm = None
+        self.quick_structured_llm = None
+        
+        # Initialize LLMs by LLM provider.
         # if self.config["llm_provider"].lower() == "openai" or self.config["llm_provider"] == "ollama" or self.config["llm_provider"] == "openrouter":
-        if self.config["llm_provider"].lower() == "openrouter":
+        if self.config["llm_provider"].lower() == "openai":
+            base_url = self._get_url_by_name(self.config["llm_provider"].lower())
+            api_key = os.getenv("OPENAI_API_KEY")
+            
+            # Get the JSON schema from the Pydanitc model
+            schema = EquipmentAndStreamList.model_json_schema()
+            
+            # Todo: Create llms with non-structured and structured output
+            # model_kwargs={
+            #     "text_format" = EquipmentAndStreamList 
+            # }
+            
+            pass
+        elif self.config["llm_provider"].lower() == "openrouter":
             base_url = self._get_url_by_name(self.config["llm_provider"].lower())
             api_key = os.getenv("OPENROUTER_API_KEY")
             
@@ -87,11 +104,16 @@ class ProcessDesignGraph:
                 base_url=base_url,
                 api_key=api_key,
                 model=self.config["quick_think_llm"],
-                # model_kwargs={
-                #     "response_format": response_format
-                #     }
             )
-            self.structured_llm = ChatOpenAI(
+            self.deep_structured_llm = ChatOpenAI(
+                base_url=base_url,
+                api_key=api_key,
+                model=self.config["deep_think_llm"],
+                model_kwargs={
+                    "response_format": self.response_format
+                    }
+            )
+            self.quick_structured_llm = ChatOpenAI(
                 base_url=base_url,
                 api_key=api_key,
                 model=self.config["quick_think_llm"],
@@ -101,6 +123,10 @@ class ProcessDesignGraph:
             )
         elif self.config["llm_provider"].lower() == "ollama":
             base_url = self._get_url_by_name(self.config["llm_provider"].lower())
+            
+            # Get the JSON schema from the Pydanitc model
+            schema = EquipmentAndStreamList.model_json_schema()
+            
             self.deep_thinking_llm = ChatOpenAI(
                 base_url=base_url,
                 model=self.config["deep_think_llm"],
@@ -109,24 +135,45 @@ class ProcessDesignGraph:
                 base_url=base_url,
                 model=self.config["quick_think_llm"]
             )
-            self.structured_llm = ChatOpenAI(
+            self.deep_structured_llm = ChatOpenAI(
                 base_url=base_url,
-                model=self.config["quick_think_llm"]
+                model=self.config["deep_think_llm"],
+                model_kwargs={
+                    "format": schema,
+                }
+            )
+            self.quick_structured_llm = ChatOpenAI(
+                base_url=base_url,
+                model=self.config["quick_think_llm"],
+                model_kwargs={
+                    "format": schema,
+                }
             )
         # elif self.config["llm_provider"].lower() == "anthropic":
         #     self.deep_thinking_llm = ChatAnthropic(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
         #     self.quick_thinking_llm = ChatAnthropic(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
         elif self.config["llm_provider"].lower() == "google":
+            
+            # 
+            self.response_format = {
+                "config": {
+                    "response_mime_type": "application/json",
+                    "response_schema": EquipmentAndStreamList,       
+                }
+            }
+            
             self.deep_thinking_llm = ChatGoogleGenerativeAI(model=self.config["deep_think_llm"])
             self.quick_thinking_llm = ChatGoogleGenerativeAI(model=self.config["quick_think_llm"])
-            self.structured_llm = ChatGoogleGenerativeAI(model=self.config["quick_think_llm"])
+            self.deep_structured_llm = ChatGoogleGenerativeAI(model=self.config["deep_think_llm"], model_kwargs=self.response_format)
+            self.quick_structured_llm = ChatGoogleGenerativeAI(model=self.config["quick_think_llm"], model_kwargs=self.response_format)
         else:
             raise ValueError(f"Unsupported LLM provider: {self.config['llm_provider']}")
 
         # Set temperature for LLM
         self.deep_thinking_llm.temperature = self.config["deep_think_temperature"]
         self.quick_thinking_llm.temperature = self.config["quick_think_temperature"]
-        self.structured_llm.temperature = self.config["quick_think_temperature"]
+        self.deep_structured_llm.temperature = self.config["deep_think_temperature"]
+        self.quick_structured_llm.temperature = self.config["quick_think_temperature"]
         
         # Initialize checkpointer
         self.checkpointer = MemorySaver()
@@ -139,7 +186,8 @@ class ProcessDesignGraph:
             llm_provider=self.config["llm_provider"].lower(),
             quick_thinking_llm=self.quick_thinking_llm,
             deep_thinking_llm=self.deep_thinking_llm,
-            structured_llm=self.structured_llm,
+            quick_structured_llm=self.quick_structured_llm,
+            deep_structured_llm=self.deep_structured_llm,
             tool_nodes=self.tool_nodes,
             checkpointer=self.checkpointer,
             delay_time=delay_time,
@@ -173,8 +221,14 @@ class ProcessDesignGraph:
             manual_concept_selection: When True, prompt the user to choose a concept
                 instead of automatically selecting the highest feasibility score.
         """
+        
+        # Set the prompt statement from user
         self.problem_statement = problem_statement
+        
+        # Set the concept selection provider
         previous_provider = self.graph_setup.concept_selection_provider
+        
+        # If manual selection is enable, then create selecting function.
         if manual_concept_selection:
             def _prompt_user(concept_options):
                 print("\nSelect a concept for detailed development:", flush=True)
@@ -220,8 +274,19 @@ class ProcessDesignGraph:
                         trace.append(chunk)
                 final_state = trace[-1]
             else:
+                # Production mode
+                print(f"\n=========================== Start Line ===========================", flush=True)
+                
+                # Printout the LLM provider and the model of quick and deep thinking llm
+                print(f"LLM Provider: {self.config['llm_provider']}", flush=True)
+                print(f"Quick Thinking LLM: {self.config['quick_think_llm']}", flush=True)
+                print(f"Deep Thinking LLM: {self.config['deep_think_llm']}", flush=True)
+                
+                print(f"=================================================================\n", flush=True)
+                
                 # Run the graph
                 final_state = self.graph.invoke(init_agent_state, **args)
+                
                 print(f"\n=========================== Finish Line ===========================", flush=True)
         finally:
             self.graph_setup.concept_selection_provider = previous_provider
@@ -229,7 +294,7 @@ class ProcessDesignGraph:
         # Store current state for reflection
         self.curr_state = final_state
         
-        # Log state
+        # Log state to default location
         self._log_state(final_state)
 
         if save_markdown:
@@ -310,9 +375,6 @@ class ProcessDesignGraph:
         else:
             equipment_and_streams_markdown = ""
 
-        safety_markdown = ""
-        if final_state.get("safety_risk_analyst_report"):
-            safety_markdown = final_state["safety_risk_analyst_report"]
         sections = [
             ("Problem Statement", final_state.get("problem_statement", "")),
             ("Process Requirements", final_state.get("requirements", "")),
@@ -320,7 +382,7 @@ class ProcessDesignGraph:
             ("Design Basis", final_state.get("design_basis", "")),
             ("Basic Process Flow Diagram", final_state.get("basic_pfd", "")),
             ("Equipment and Streams List", equipment_and_streams_markdown),
-            ("Safety & Risk Assessment", safety_markdown or final_state.get("safety_risk_analyst_report", "")),
+            ("Safety & Risk Assessment", final_state.get("safety_risk_analyst_report", "")),
             ("Project Manager Report", final_state.get("project_manager_report", "")),
         ]
         return sections
