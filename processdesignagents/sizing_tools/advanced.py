@@ -53,7 +53,7 @@ def calculate_lmtd(T_h_in, T_h_out, T_c_in, T_c_out, flow_type):
         return (delta_T1 - delta_T2) / math.log(delta_T1 / delta_T2)
 
 #
-def prelim_basic_heat_exchanger_sizing(
+def advanced_basic_heat_exchanger_sizing(
     basic_heat_exchanger: Annotated[Dict, {}],
     hot_stream_in: Annotated[Dict, {}],
     hot_stream_out: Annotated[Dict, {}],
@@ -106,7 +106,7 @@ def prelim_basic_heat_exchanger_sizing(
     
     return return_str
 
-def prelim_shell_and_tube_heat_exchanger_sizing(
+def advanced_shell_and_tube_heat_exchanger_sizing(
     basic_heat_exchanger_sizing: Annotated[Dict, {}],
     hot_stream: Annotated[Dict, {}],
     cold_stream: Annotated[Dict, {}]
@@ -120,7 +120,7 @@ def prelim_shell_and_tube_heat_exchanger_sizing(
     return_str = json.dumps(return_json)
     return return_str
 
-def prelim_pressurized_vessel_sizing(
+def advanced_pressurized_vessel_sizing(
     vessel_data: Annotated[Dict, {}],
     stream_in: Annotated[Dict, {}]
 ) -> str:
@@ -139,7 +139,7 @@ def prelim_pressurized_vessel_sizing(
     return_str = json.dumps(return_json)
     return return_str
 
-def prelim_vertical_pressurized_vessel_sizing(volume: str) -> str:
+def advanced_vertical_pressurized_vessel_sizing(volume: str) -> str:
     return_json = {
         "volume": volume,
     }
@@ -147,7 +147,7 @@ def prelim_vertical_pressurized_vessel_sizing(volume: str) -> str:
     return_str = json.dumps(return_json)
     return return_str
 
-def prelim_horizontal_pressurized_vessel_sizing(volume: str) -> str:
+def advanced_horizontal_pressurized_vessel_sizing(volume: str) -> str:
     return_json = {
         "volume": volume,
     }
@@ -155,7 +155,7 @@ def prelim_horizontal_pressurized_vessel_sizing(volume: str) -> str:
     return_str = json.dumps(return_json)
     return return_str
 
-def prelim_tank_sizing(volume: str) -> str:
+def advanced_tank_sizing(volume: str) -> str:
     return_json = {
         "volume": volume,
     }
@@ -163,7 +163,7 @@ def prelim_tank_sizing(volume: str) -> str:
     return_str = json.dumps(return_json)
     return return_str
 
-def prelim_pump_sizing(
+def advanced_pump_sizing(
     pump_data: Annotated[Dict, {}],
     stream_in: Annotated[Dict, {}],
     stream_out: Annotated[Dict, {}]
@@ -200,7 +200,7 @@ def prelim_pump_sizing(
     
     return return_str
 
-def prelim_centrifugal_pump_sizing(flow_kg_hr: str) -> str:
+def advanced_centrifugal_pump_sizing(flow_kg_hr: str) -> str:
     return_json = {
         "flow_kg_hr": flow_kg_hr,
     }
@@ -208,7 +208,7 @@ def prelim_centrifugal_pump_sizing(flow_kg_hr: str) -> str:
     return_str = json.dumps(return_json)
     return return_str
 
-def prelim_compressor_sizing(compressor_data: Annotated[Dict, {}]) -> str:
+def advanced_compressor_sizing(compressor_data: Annotated[Dict, {}]) -> str:
     return_json = {
         "compressor_data": compressor_data,
     }

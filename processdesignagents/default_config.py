@@ -58,7 +58,7 @@ DEFAULT_CONFIG = {
     },
     # Tool-level configuration (takes precedence over category-level)
     "tool_sizing": {
-        # Example: "basic_heat_exchanger_sizing": "default",
-        # Example: "basic_pressurized_vessel_sizing": "default",
+        "basic_heat_exchanger_sizing": "default",
+        "basic_pressurized_vessel_sizing": "default",
     },
 }

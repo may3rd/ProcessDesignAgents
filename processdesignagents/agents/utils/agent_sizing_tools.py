@@ -12,8 +12,10 @@ from processdesignagents.sizing_tools.tools.heat_exchanger_sizing_tools import (
 
 from processdesignagents.sizing_tools.tools.pump_sizing_tools import size_pump_basic
 
+from processdesignagents.sizing_tools.tools.vessel_sizing_tools import size_pressurized_vessel_basic
 __all__ = [
     "size_heat_exchanger_basic",
     "size_pump_basic",
-    "size_shell_and_tube_heat_exchanger"
+    "size_shell_and_tube_heat_exchanger",
+    "size_pressurized_vessel_basic",
 ]
