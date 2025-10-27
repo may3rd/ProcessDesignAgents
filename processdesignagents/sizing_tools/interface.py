@@ -7,20 +7,7 @@ from .preliminary import (
     prelim_horizontal_pressurized_vessel_sizing,
     prelim_tank_sizing,
     prelim_pump_sizing,
-    prelim_centrifugal_pump_sizing,
-    prelim_compressor_sizing
-)
-
-from .advanced import (
-    advanced_basic_heat_exchanger_sizing, 
-    advanced_shell_and_tube_heat_exchanger_sizing, 
-    advanced_pressurized_vessel_sizing,
-    advanced_vertical_pressurized_vessel_sizing,
-    advanced_horizontal_pressurized_vessel_sizing,
-    advanced_tank_sizing,
-    advanced_pump_sizing,
-    advanced_centrifugal_pump_sizing,
-    advanced_compressor_sizing
+    prelim_centrifugal_pump_sizing
 )
 
 
@@ -34,7 +21,6 @@ TOOLS_BY_CATEGORIES = {
         "tools": [
             "basic_heat_exchanger_sizing",
             "shell_and_tube_heat_exchanger_sizing",
-            "plate_heat_exchanger_sizing"
         ]
     },
     "pressurized_vessel": {
@@ -52,12 +38,6 @@ TOOLS_BY_CATEGORIES = {
             "pump_sizing",
             "centrifugal_pump_sizing",
         ]
-    },
-    "compressor": {
-        "description": "Size a compressor.",
-        "tools": [
-            "compressor_sizing",
-        ]
     }
 }
 
@@ -65,53 +45,35 @@ TOOLS_BY_CATEGORIES = {
 SIZING_METHODS = {
     # basic_heat_exchanger_sizing
     "basic_heat_exchanger_sizing": {
-        "preliminary": prelim_basic_heat_exchanger_sizing,
-        "advanced": advanced_basic_heat_exchanger_sizing
+        "preliminary": prelim_basic_heat_exchanger_sizing
     },
     # shell_and_tube_heat_exchanger_sizing
     "shell_and_tube_heat_exchanger_sizing": {
-        "preliminary": prelim_shell_and_tube_heat_exchanger_sizing,
-        "advanced": advanced_shell_and_tube_heat_exchanger_sizing
-    },
-    # plate_heat_exchanger_sizing
-    "plate_heat_exchanger_sizing": {
-        "preliminary": None,
-        "advanced": None
+        "preliminary": prelim_shell_and_tube_heat_exchanger_sizing
     },
     # pressurized_vessel_sizing
     "pressurized_vessel_sizing": {
-        "preliminary": prelim_pressurized_vessel_sizing,
-        "advanced": advanced_pressurized_vessel_sizing
+        "preliminary": prelim_pressurized_vessel_sizing
     },
     # vertical_pressurized_vessel_sizing
     "vertical_pressurized_vessel_sizing": {
-        "preliminary": prelim_vertical_pressurized_vessel_sizing,
-        "advanced": advanced_vertical_pressurized_vessel_sizing
+        "preliminary": prelim_vertical_pressurized_vessel_sizing
     },
     # horizontal_pressurized_vessel_sizing
     "horizontal_pressurized_vessel_sizing": {
-        "preliminary": prelim_horizontal_pressurized_vessel_sizing,
-        "advanced": advanced_horizontal_pressurized_vessel_sizing
+        "preliminary": prelim_horizontal_pressurized_vessel_sizing
     },
     # tank_sizing
     "tank_sizing": {
-        "preliminary": prelim_tank_sizing,
-        "advanced": advanced_tank_sizing
+        "preliminary": prelim_tank_sizing
     },
     # pump_sizing
     "pump_sizing": {
-        "preliminary": prelim_pump_sizing,
-        "advanced": advanced_pump_sizing
+        "preliminary": prelim_pump_sizing
     },
     # centrifugal_pump_sizing
     "centrifugal_pump_sizing": {
-        "preliminary": prelim_centrifugal_pump_sizing,
-        "advanced": advanced_centrifugal_pump_sizing
-    },
-    # compressor_sizing
-    "compressor_sizing": {
-        "preliminary": prelim_compressor_sizing,
-        "advanced": advanced_compressor_sizing
+        "preliminary": prelim_centrifugal_pump_sizing
     }
 }
 

@@ -1,5 +1,6 @@
 import json
 from json_repair import repair_json
+from typing import Dict, Any
 
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -18,6 +19,40 @@ from processdesignagents.agents.utils.json_tools import get_json_str_from_llm, e
 
 load_dotenv()
 
+
+# Helper functions
+def create_equipment_category_list(equipment_stream_list_str: str) -> Dict[str, Any]:
+    try:
+        equipment_category_list = {}
+        equipment_category_set = set()  # define as set
+        equipment_stream_list_dict = json.loads(equipment_stream_list_str)
+        
+        if "equipments" in equipment_stream_list_dict:
+            # Get the equipment list from master dict
+            equipment_list = equipment_stream_list_dict["equipments"]
+            
+            # Loop throught equipment list
+            for eq in equipment_list:
+                equipment_category_set.add(eq.get("category", ""))
+                
+            equipment_category_names = list(equipment_category_set)
+            
+            equipment_category_list["category_names"] = equipment_category_names
+            equipment_category_list["category_ids"] = [
+                {
+                    "name": name,
+                    "id": [eq.get("id", "") for eq in equipment_list if eq.get("category", "") == name]
+                }
+                for name in equipment_category_names
+            ]
+        else:
+            print("Equipments not found")
+            return None
+    except Exception as e:
+        print(f"Error creating category list: {e}")
+        return None
+    
+    return equipment_category_list
 
 def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
     def equipment_sizing_agent(state: DesignState) -> DesignState:

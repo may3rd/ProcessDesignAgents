@@ -1,4 +1,5 @@
 import json
+from json_repair import repair_json
 import os
 from typing import Annotated, Dict, Any, List, Optional, Union, Tuple
 
@@ -27,8 +28,10 @@ from processdesignagents.agents.utils.agent_sizing_tools import (
 from processdesignagents.agents.utils.agent_states import DesignState, create_design_state
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
+from processdesignagents.agents.designer.equipment_sizing_agent import create_equipment_category_list
 
 from processdesignagents.default_config import DEFAULT_CONFIG
+
 
 config = DEFAULT_CONFIG.copy()
 config["llm_provider"] = "openrouter"
@@ -52,15 +55,16 @@ def main():
             temp_data = json.load(f)
         
         # temp_data: Dict[str, Any]= json.load("eval_results/ProcessDesignAgents_logs/full_states_log.json")
-        requirement_md = temp_data.get("requirements", "")
-        design_basis_md = temp_data.get("design_basis", "")
-        basic_pfd_md = temp_data.get("basic_pfd", "")
-        equipment_stream_template = temp_data.get("equipment_and_stream_template", "")
-        equipment_stream_list_str = temp_data.get("equipment_and_stream_list", "")
+        # requirement_md = temp_data.get("requirements", "")
+        # design_basis_md = temp_data.get("design_basis", "")
+        # basic_pfd_md = temp_data.get("basic_pfd", "")
+        equipment_stream_template = temp_data.get("equipment_and_stream_template", "{}")
+        equipment_stream_list_str = temp_data.get("equipment_and_stream_list", "{}")
         
         es_template = json.loads(equipment_stream_template)
         es_list = json.loads(equipment_stream_list_str)
         
+        # Simulate the equipment and stram list at this stage
         es_foo = {
             "equipments": es_template["equipments"],
             "streams": es_list["streams"],
@@ -68,72 +72,57 @@ def main():
         
         equipment_stream_list_str = json.dumps(es_foo)
         
-        # Adapt agent_state
-        state = create_design_state(
-            requirements=requirement_md,
-            design_basis=design_basis_md,
-            basic_pfd=basic_pfd_md,
-            equipment_and_stream_list=equipment_stream_list_str,
-        )
+        # Create equipment category list from equipment_and_stream_list_template
+        equipment_category_list = create_equipment_category_list(equipment_stream_list_str)
         
-        # Todo: implement below logit to agents/designers/equipment_sizing_agent.py
-        equipment_category_set = set()  # define as set
-        equipment_stream_list_dict = json.loads(equipment_stream_list_str)
-        
-        if "equipments" in equipment_stream_list_dict:
-            # Get the equipment list from master dict
-            equipment_list = equipment_stream_list_dict["equipments"]
-            
-            # Loop throught equipment list
-            for eq in equipment_list:
-                equipment_category_set.add(eq.get("category", ""))
-                
-            equipment_category_names = list(equipment_category_set)
-            
-            print(equipment_category_names)
-            
-            equipment_category = [
-                {
-                    "name": name,
-                    "ids": [eq.get("id", "") for eq in equipment_list if eq.get("category", "") == name]
-                }
-                for name in equipment_category_names
-            ]
-            
-            for cat in equipment_category:
-                print(cat)
+        # Print the equipment category list in the temeplate
+        if "category_names" in equipment_category_list:
+            print(equipment_category_list["category_names"])
+            for ids in equipment_category_list["category_ids"]:
+                print(f"{ids['name']} -> {', '.join(ids['id'])}")
         else:
-            raise ValueError("Equipments not found")
+            print("No category names found in the list.")
         
-        # Tools
+        # ---
+        # Actual workflow start from here
+        # ---
+        
+        # Create tools list to be called by agent
         tools_list = [
             size_heat_exchanger_basic,
             size_pump_basic,
             size_pressurized_vessel_basic,
         ]
         
+        # Create agent prompt
         _, system_content, human_content = equipment_sizing_prompt_with_tools(
             equipment_and_stream_list=equipment_stream_list_str,
         )
         
+        # Create agent with tools list
         agent = create_agent(
             model=quick_thinking_llm,
             system_prompt=system_content,
             tools=tools_list,
         )
         
+        # Run agent
         results = agent.invoke({"messages" : [{"role": "user", "content": human_content}]})
         
+        # Extract AI message
         ai_message = results['messages'][-1]
-        print(ai_message.content)
         
-        combined_md, equipment_md, streams_md = equipments_and_streams_dict_to_markdown(json.loads(ai_message.content))
+        # Extract the AI result, expected to be JSON str
+        cleaned_content = repair_json(ai_message.content)
+        
+        # Loads JSON str and convert to markdown table for display
+        combined_md, equipment_md, streams_md = equipments_and_streams_dict_to_markdown(json.loads(cleaned_content))
         print(equipment_md)
         
 
 def equipment_sizing_prompt_with_tools(
     equipment_and_stream_list: str,
-) -> ChatPromptTemplate:
+) -> Tuple[ChatPromptTemplate, str, str]:
     """Create prompt with pre-computed tool results"""
     
     system_content = f"""
@@ -149,7 +138,27 @@ def equipment_sizing_prompt_with_tools(
 
   <context>
     <tool_environment>Python-based equipment sizing tools with automated calculations</tool_environment>
-    <available_tools>`size_heat_exchanger_basic`, `size_pump_basic`, `size_pressurized_vessel_basic`,
+    <available_tools>
+      <tool name="size_heat_exchanger_basic">
+        <description>Calculates heat exchanger area, LMTD, and U-value</description>
+        <inputs>duty_kw, t_hot_in, t_hot_out, t_cold_in, t_cold_out, u_estimate</inputs>
+        <outputs>area_m2, lmtd_c, u_design_w_m2k, configuration</outputs>
+      </tool>
+      <tool name="size_pump_basic">
+        <description>Calculates pump flow, head, and motor power requirements</description>
+        <inputs>mass_flow_kg_h, inlet_pressure_barg, outlet_pressure_barg, fluid_density_kg_m3, pump_efficiency</inputs>
+        <outputs>volumetric_flow_m3_h, total_head_m, hydraulic_power_kw, motor_power_kw, pump_type</outputs>
+      </tool>
+      <tool name="size_vessel_basic">
+        <description>Calculates vessel volume, diameter, length, and wall thickness</description>
+        <inputs>volume_m3, design_pressure_barg, design_temperature_c, material, l_d_ratio</inputs>
+        <outputs>diameter_mm, length_mm, shell_thickness_mm, head_thickness_mm, weight_kg</outputs>
+      </tool>
+      <tool name="size_compressor_basic">
+        <description>Calculates compressor stages, discharge temperature, and driver power</description>
+        <inputs>inlet_flow_m3_min, inlet_pressure_kpa, discharge_pressure_kpa, gas_type, efficiency_polytropic</inputs>
+        <outputs>number_of_stages, discharge_temperature_c, power_kw, compressor_type</outputs>
+      </tool>
     </available_tools>
     <inputs_to_agent>
       <input>
@@ -755,7 +764,7 @@ def equipment_sizing_prompt_with_tools(
     <json_formatting_rules>
       <rule>Use ONLY double quotes (no single quotes)</rule>
       <rule>All numeric values must be float type (e.g., 271.0, not "271" or 271)</rule>
-      <rule>All units must be strings (e.g., {"value": 271.0, "unit": "kW"})</rule>
+      <rule>All units must be strings (e.g., {{"value": 271.0, "unit": "kW"}})</rule>
       <rule>No trailing commas in any array or object</rule>
       <rule>All arrays and objects must be properly closed</rule>
       <rule>No comments or explanatory text inside JSON</rule>
@@ -968,8 +977,8 @@ def equipment_sizing_prompt_with_tools(
     <critical_rules>
       <rule name="All Numeric Values Have Units">
         <description>Every numeric sizing parameter must include unit specification</description>
-        <correct>{"value": 150.8, "unit": "m²"}</correct>
-        <incorrect>{"value": 150.8}</incorrect>
+        <correct>{{"value": 150.8, "unit": "m²"}}</correct>
+        <incorrect>{{"value": 150.8}}</incorrect>
       </rule>
 
       <rule name="No Null or Placeholder Values in Output">
@@ -1000,7 +1009,7 @@ def equipment_sizing_prompt_with_tools(
 
     <quality_assurance_final_checklist>
       <item number="1">☐ All sizing_parameters populated with numeric values (no null, no "000", no "TBD" except where unavoidable)</item>
-      <item number="2">☐ All numeric values have units specified in {"value": float, "unit": "string"} format</item>
+      <item number="2">☐ All numeric values have units specified in {{"value": float, "unit": "string"}} format</item>
       <item number="3">☐ design_criteria field updated with calculated duty/load (e.g., "&lt;271.0 kW&gt;")</item>
       <item number="4">☐ All equipment notes field populated with tool usage and assumptions</item>
       <item number="5">☐ Design margins documented: 10% duties, 20% power, 10% pressures</item>
