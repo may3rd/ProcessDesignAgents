@@ -153,7 +153,7 @@ def google_prompt_templates(
     <sections>
       <section id="1">
         <n>Project Overview and Problem Statement</n>
-        <markdown_heading># 1. Project Overview and Problem Statement</markdown_heading>
+        <markdown_heading>### 1. Project Overview and Problem Statement</markdown_heading>
         <content_requirements>
           <req>State the primary project objective</req>
           <req>Identify the feedstock composition and characteristics</req>
@@ -166,7 +166,7 @@ def google_prompt_templates(
 
       <section id="2">
         <n>Key Design Assumptions and Exclusions</n>
-        <markdown_heading>## 2. Key Design Assumptions and Exclusions</markdown_heading>
+        <markdown_heading>### 2. Key Design Assumptions and Exclusions</markdown_heading>
         <content_requirements>
           <req>Operating Factor (stream factor) and annual operating hours</req>
           <req>Design margins (e.g., 10% nameplate to design capacity)</req>
@@ -181,7 +181,7 @@ def google_prompt_templates(
 
       <section id="3">
         <n>Design Capacity and Operating Conditions</n>
-        <markdown_heading>## 3. Design Capacity and Operating Conditions</markdown_heading>
+        <markdown_heading>### 3. Design Capacity and Operating Conditions</markdown_heading>
         <content_requirements>
           <req>Nameplate capacity (from user requirement)</req>
           <req>Design capacity (with applied margins)</req>
@@ -197,7 +197,7 @@ def google_prompt_templates(
 
       <section id="4">
         <n>Chemical Components</n>
-        <markdown_heading>## 4. Chemical Components</markdown_heading>
+        <markdown_heading>### 4. Chemical Components</markdown_heading>
         <content_requirements>
           <req>List all chemical components involved in the process</req>
           <req>Include feedstock components, products, catalysts, and byproducts</req>
@@ -209,7 +209,7 @@ def google_prompt_templates(
 
       <section id="5">
         <n>Feed and Product Specifications</n>
-        <markdown_heading>## 5. Feed and Product Specifications</markdown_heading>
+        <markdown_heading>### 5. Feed and Product Specifications</markdown_heading>
         <subsection id="5a">
           <n>Feed Specification</n>
           <markdown_heading>### Feed Specification</markdown_heading>
@@ -224,7 +224,7 @@ def google_prompt_templates(
 
         <subsection id="5b">
           <n>Product Specification</n>
-          <markdown_heading>### Product Specification</markdown_heading>
+          <markdown_heading>#### Product Specification</markdown_heading>
           <content_requirements>
             <req>Name and grade of product</req>
             <req>Target standard or specification (e.g., EN 14214, ASTM D6866)</req>
@@ -237,7 +237,7 @@ def google_prompt_templates(
 
       <section id="6">
         <n>Preliminary Utility Summary</n>
-        <markdown_heading>## 6. Preliminary Utility Summary</markdown_heading>
+        <markdown_heading>### 6. Preliminary Utility Summary</markdown_heading>
         <content_requirements>
           <req>Potable water requirements and constraints</req>
           <req>Process water and treatment specifications</req>
@@ -253,7 +253,7 @@ def google_prompt_templates(
 
       <section id="7">
         <n>Environmental and Regulatory Criteria</n>
-        <markdown_heading>## 7. Environmental and Regulatory Criteria</markdown_heading>
+        <markdown_heading>### 7. Environmental and Regulatory Criteria</markdown_heading>
         <content_requirements>
           <req>Air emissions and VOC handling (e.g., vent gas treatment, thermal oxidizers, scrubbers)</req>
           <req>Wastewater discharge and treatment requirements</req>
@@ -267,7 +267,7 @@ def google_prompt_templates(
 
       <section id="8">
         <n>Process Selection Rationale (High-Level)</n>
-        <markdown_heading>## 8. Process Selection Rationale (High-Level)</markdown_heading>
+        <markdown_heading>### 8. Process Selection Rationale (High-Level)</markdown_heading>
         <content_requirements>
           <req>Justify the choice of process technology (e.g., why continuous over batch, why two-step vs. single-step)</req>
           <req>Explain how the selected process addresses feedstock challenges or product requirements</req>
@@ -279,7 +279,7 @@ def google_prompt_templates(
 
       <section id="9">
         <n>Preliminary Material of Construction (MoC) Basis</n>
-        <markdown_heading>## 9. Preliminary Material of Construction (MoC) Basis</markdown_heading>
+        <markdown_heading>### 9. Preliminary Material of Construction (MoC) Basis</markdown_heading>
         <content_requirements>
           <req>Materials for general service (e.g., carbon steel, stainless steel)</req>
           <req>Materials for corrosive or reactive service (acids, catalysts, solvents)</req>
@@ -294,9 +294,9 @@ def google_prompt_templates(
 
     <formatting_rules>
       <rule>Use Markdown syntax exclusively</rule>
-      <rule>Use # for the document title (Preliminary Process Basis of Design (BoD))</rule>
-      <rule>Use ## for main section headers (Sections 1–9)</rule>
-      <rule>Use ### for subsection headers within sections (e.g., Feed Specification, Product Specification)</rule>
+      <rule>Use ## for the document title (Preliminary Process Basis of Design (BoD))</rule>
+      <rule>Use ### for main section headers (Sections 1–9)</rule>
+      <rule>Use #### for subsection headers within sections (e.g., Feed Specification, Product Specification)</rule>
       <rule>Use - for bullet lists</rule>
       <rule>Use Markdown tables for tabular data (design capacity, chemical components, etc.)</rule>
       <rule>Do NOT use code blocks, backticks, or XML-like formatting</rule>
@@ -391,7 +391,6 @@ The high FFA content of the palm oil feed makes a single-step transesterificatio
 * **Alkali Service:** Stainless Steel (304L) acceptable for alkali-catalyzed sections; verify with vendor for caustic soda compatibility.
 * **Gaskets/Seals:** Viton or PTFE for all process streams containing methanol or biodiesel.</expected_markdown_output>
   </example>
-
 </agent>
 """
     

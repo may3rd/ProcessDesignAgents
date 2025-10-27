@@ -353,6 +353,7 @@ class ProcessDesignGraph:
             "stream_list_results": final_state.get("stream_list_results", ""),
             "equipment_list_template": final_state.get("equipment_list_template", ""),
             "equipment_list_results": final_state.get("equipment_list_results", ""),
+            "equipment_and_stream_template": final_state.get("equipment_and_stream_template", ""),
             "equipment_and_stream_list": final_state.get("equipment_and_stream_list", ""),
             "safety_risk_analyst_report": final_state.get("safety_risk_analyst_report", ""),
             "project_manager_report": final_state.get("project_manager_report", ""),

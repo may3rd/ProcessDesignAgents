@@ -34,19 +34,25 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         is_done = False
+        response = None
+        response_dict = {}
+        equipment_list_results = {}
+        equipment_md = ""
         while not is_done:
             try:
                 response, response_content = get_json_str_from_llm(llm, prompt, state)
-                sanitized_response, response_dict = extract_first_json_document(repair_json(response_content))
-                combined_md, equipment_md, streams_md = equipments_and_streams_dict_to_markdown(response_dict)
+                _, response_dict = extract_first_json_document(repair_json(response_content))
+                _, equipment_md, _ = equipments_and_streams_dict_to_markdown(response_dict)
                 if isinstance(response_dict, dict):
                     is_done = True
             except Exception as e:
                 pass
         if equipment_md:
             print(equipment_md, flush=True)
+            equipment_list_results = {"equipments": response_dict["equipments"]}
         return {
-            "equipment_and_stream_list": sanitized_response,
+            "equipment_list_results": json.dumps(equipment_list_results),
+            "equipment_and_stream_list": json.dumps(response_dict),
             "messages": [response],
         }
 

@@ -36,21 +36,29 @@ def create_equipments_and_streams_list_builder(llm, llm_provider: str = "openrou
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         is_done = False
+        response = None
+        response_dict = {}
+        equipment_list_template = {}
+        stream_list_template = {}
         while not is_done:
             try:
                 if llm_provider == "openrouter":
                     pass
                 response, response_content = get_json_str_from_llm(llm, prompt, state)
-                sanitized_response, response_dict = extract_first_json_document(repair_json(response_content))
+                _, response_dict = extract_first_json_document(repair_json(response_content))
                 if isinstance(response_dict, dict):
                     is_done = True
             except Exception as e:
                 raise ValueError(f"DEBUG: Value : {e}")
-        combined_md, equipment_md, streams_md = equipments_and_streams_dict_to_markdown(response_dict)
+        combined_md, _, _ = equipments_and_streams_dict_to_markdown(response_dict)
         if combined_md:
             print(combined_md, flush=True)
+            equipment_list_template = {"equipments": response_dict["equipments"]}
+            stream_list_template = {"streams": response_dict["streams"]}
         return {
-            "equipment_and_stream_list": json.dumps(response_dict),
+            "equipment_list_template": json.dumps(equipment_list_template),
+            "stream_list_template": json.dumps(stream_list_template),
+            "equipment_and_stream_template": json.dumps(response_dict),
             "messages": [response],
         }
     return equipments_and_streams_list_builder

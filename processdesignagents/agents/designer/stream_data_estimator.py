@@ -22,10 +22,17 @@ def create_stream_data_estimator(llm, llm_provider: str = "openrouter"):
     def stream_data_estimator(state: DesignState) -> DesignState:
         """Stream Data Estimator: Generates JSON stream data with reconciled estimates."""
         print("\n# Stream Data Estimator", flush=True)
-        basic_pfd_markdown = state.get("basic_pfd")
-        design_basis_markdown = state.get("design_basis")
-        equipments_and_streams_list = state.get("equipment_and_stream_list")
-        # print(f"DEBUG: Basis: {len(design_basis_markdown)}, PFD: {len(basic_pfd_markdown)}, Streams: {len(equipments_and_streams_list)}", flush=True)
+        
+        # Loaded prior LLM results
+        basic_pfd_markdown = state.get("basic_pfd", "")
+        design_basis_markdown = state.get("design_basis", "")
+        equipments_and_streams_list = state.get("equipment_and_stream_template", "")
+        
+        if not basic_pfd_markdown or not design_basis_markdown or not equipments_and_streams_list:
+            print("FAILED: Previous data is missing...", flush=True)
+            exit(-1)
+        
+        # Create base prompt from input data
         base_prompt = stream_data_estimator_prompt(
             basic_pfd_markdown,
             design_basis_markdown,
@@ -40,24 +47,26 @@ def create_stream_data_estimator(llm, llm_provider: str = "openrouter"):
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         is_done = False
         response = None
-        sanitized_response = ""
         response_dict = {}
+        stream_list_results = {}
         streams_md = ""
         while not is_done:
             try:
                 response, response_content = get_json_str_from_llm(llm, prompt, state)
-                sanitized_response, response_dict = extract_first_json_document(repair_json(response_content))
+                _, response_dict = extract_first_json_document(repair_json(response_content))
                 if not isinstance(response_dict, dict):
                     print("Stream Data Estimator received non-dict payload, retrying...", flush=True)
                     print(response_content, flush=True)
                     continue
-                combined_md, equipment_md, streams_md = equipments_and_streams_dict_to_markdown(response_dict)
+                _, _, streams_md = equipments_and_streams_dict_to_markdown(response_dict)
                 is_done = True
             except Exception as e:
                 print(f"Stream Data Estimator attempt failed: {e}", flush=True)
         if streams_md:
             print(streams_md, flush=True)
+            stream_list_results = {"streams": response_dict["streams"]}
         return {
+            "stream_list_results": json.dumps(stream_list_results),
             "equipment_and_stream_list": json.dumps(response_dict),
             "messages": [response],
         }

@@ -55,7 +55,18 @@ def main():
         requirement_md = temp_data.get("requirements", "")
         design_basis_md = temp_data.get("design_basis", "")
         basic_pfd_md = temp_data.get("basic_pfd", "")
+        equipment_stream_template = temp_data.get("equipment_and_stream_template", "")
         equipment_stream_list_str = temp_data.get("equipment_and_stream_list", "")
+        
+        es_template = json.loads(equipment_stream_template)
+        es_list = json.loads(equipment_stream_list_str)
+        
+        es_foo = {
+            "equipments": es_template["equipments"],
+            "streams": es_list["streams"],
+            }
+        
+        equipment_stream_list_str = json.dumps(es_foo)
         
         # Adapt agent_state
         state = create_design_state(
@@ -138,15 +149,7 @@ def equipment_sizing_prompt_with_tools(
 
   <context>
     <tool_environment>Python-based equipment sizing tools with automated calculations</tool_environment>
-    <available_tools>
-      <tool name="size_heat_exchanger_basic">
-      </tool>
-      <tool name="size_pump_basic">
-      </tool>
-      <tool name="size_vessel_basic">
-      </tool>
-      <tool name="size_compressor_basic">
-      </tool>
+    <available_tools>`size_heat_exchanger_basic`, `size_pump_basic`, `size_pressurized_vessel_basic`,
     </available_tools>
     <inputs_to_agent>
       <input>

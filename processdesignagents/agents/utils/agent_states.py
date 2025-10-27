@@ -18,6 +18,7 @@ class DesignState(TypedDict):
     selected_concept_name: Annotated[str, ""]
     component_list: Annotated[str, ""]
     basic_pfd: Annotated[str, ""]
+    equipment_and_stream_template: Annotated[str, ""]
     equipment_and_stream_list: Annotated[str, ""]
     equipment_list_template: Annotated[str, ""]
     equipment_list_results: Annotated[str, ""]
@@ -41,6 +42,7 @@ def create_design_state(
     selected_concept_name: str = "",
     component_list: str = "",
     basic_pfd: str = "",
+    equipment_and_stream_template: str = "",
     equipment_and_stream_list: str = "",
     equipment_list_template: str = "",
     equipment_list_results: str = "",
@@ -64,6 +66,7 @@ def create_design_state(
         "selected_concept_name": selected_concept_name,
         "component_list": component_list,
         "basic_pfd": basic_pfd,
+        "equipment_and_stream_template": equipment_and_stream_template,
         "equipment_and_stream_list": equipment_and_stream_list,
         "equipment_list_template": equipment_list_template,
         "equipment_list_results": equipment_list_results,
