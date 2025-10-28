@@ -47,6 +47,23 @@ config["deep_think_llm"] = "openai/gpt-5-nano"
 
 config["quick_think_llm"] = "x-ai/grok-4-fast"
 
+
+# Before creating agent, validate inputs
+def validate_stream_inputs(design_basis, basic_pfd_description, stream_template):
+    """Validate input data before processing"""
+    if not design_basis or len(design_basis.strip()) < 20:
+        raise ValueError("design_basis is empty or too short")
+    if not basic_pfd_description or len(basic_pfd_description.strip()) < 20:
+        raise ValueError("basic_pfd_description is empty or too short")
+    try:
+        template_obj = json.loads(stream_template)
+        if "streams" not in template_obj:
+            raise ValueError("stream_template missing 'streams' key")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"stream_template is invalid JSON: {e}")
+    print("✓ All inputs validated successfully", flush=True)
+
+
 def main():
     if config["llm_provider"].lower() == "openrouter":
         base_url = "https://openrouter.ai/api/v1"
@@ -70,6 +87,8 @@ def main():
         
         es_template = json.loads(equipment_stream_template)
         stream_template = {"streams": es_template["streams"] if "streams" in es_template else []}
+        
+        validate_stream_inputs(design_basis_md, basic_pfd_md, json.dumps(stream_template))
         
         # ---
         # Actual workflow start from here
@@ -112,52 +131,16 @@ def main():
         # by invoking the agent, checking for tool calls, executing them,
         # and feeding the results back until the agent provides a final answer.
         
-        # Start the conversation with the initial user prompt
-        conversation_history: List[BaseMessage] = [{"role": "user", "content": human_content}]
+        result = agent.invoke({"messages" : [{"role": "user", "content": human_content}]})
         
-        # Limit iterations to prevent infinite loops
-        max_iterations = 15 
-        for i in range(max_iterations):
-            print(f"\n--- Iteration {i + 1}/{max_iterations} ---", flush=True)
-            
-            # Invoke the agent with the current conversation history
-            result = agent.invoke({"messages": conversation_history})
-            
-            # The agent's response is the last message in the output
-            ai_message: AIMessage = result['messages'][-1]
-            
-            # Add the AI's response to our history
-            conversation_history.append(ai_message)
-            
-            # Check if the agent made any tool calls
-            if not ai_message.tool_calls:
-                print("\nAgent finished. Final answer received.", flush=True)
-                # If no tool calls, the agent has provided its final answer.
-                # Extract the JSON content from the final message.
-                final_json_str = repair_json(ai_message.content)
-                print("\n--- Final Stream Table (JSON) ---", flush=True)
-                print(final_json_str, flush=True)
-                
-                # Convert to Markdown for display
-                final_stream_list = json.loads(final_json_str)
-                _, _, streams_md = equipments_and_streams_dict_to_markdown(final_stream_list)
-                print("\n--- Final Stream Table (Markdown) ---", flush=True)
-                print(streams_md, flush=True)
-                break # Exit the loop
-
-            # If there are tool calls, execute them
-            print(f"Agent requested {len(ai_message.tool_calls)} tool call(s)...", flush=True)
-            for tool_call in ai_message.tool_calls:
-                tool_name = tool_call["name"]
-                tool_args = tool_call["args"]
-                print(f"  - Calling tool: {tool_name} with args: {tool_args}", flush=True)
-                
-                # Find and run the corresponding tool
-                if tool_name in tool_map:
-                    tool_result = tool_map[tool_name].invoke(tool_args)
-                    # Add the tool's result to the conversation history for the agent's next turn
-                    conversation_history.append(ToolMessage(content=str(tool_result), tool_call_id=tool_call["id"]))
+        print(f"DEBUG: --- Agent finished work. ---")
         
+        message = result["messages"][-1]
+        if isinstance(message, AIMessage):
+            print(message, flush=True)
+        
+        print("---")
+        print(f"Raw result: {result}")
 
 def stream_calculation_prompt_with_tools(
     design_basis: str,
@@ -188,7 +171,7 @@ def stream_calculation_prompt_with_tools(
     <role>Process Simulation Engineer</role>
     <specialization>Heat and Material Balance Generation</specialization>
     <function>Develop a complete and consistent stream table based on process description and design basis using calculation tools.</function>
-    <deliverable>Validated stream table in JSON format adhering strictly to the provided template.</deliverable>
+    <deliverable>A complete, validated stream table in JSON format adhering strictly to the provided template.</deliverable>
     <project_phase>Conceptual Design / Basic Engineering - H&MB Development Phase</project_phase>
   </metadata>
 
@@ -427,6 +410,21 @@ def stream_calculation_prompt_with_tools(
         - **Output ONLY the final, validated JSON object. Do not include any explanation, preamble, markdown formatting, or code fences (```).**
       </details>
     </instruction>
+    
+    <instruction id="6">
+      <title>Validate Stream Table Completeness Before Returning Final Answer</title>
+      <details>
+        - Count the total number of streams that should exist based on the PFD description
+        - Verify each stream has ALL required properties filled:
+          * id, name, description, from, to, phase
+          * BOTH "mass_flow" AND "molar_flow" in properties
+          * BOTH molar and mass fractions in compositions
+          * temperature, pressure, density, volume_flow
+        - Perform final consistency checks (mass balance, energy balance)
+        - ONLY output the final JSON when you have confirmed ALL streams are complete
+        - If any stream is incomplete or missing, continue iterating and calculating
+      </details>
+    </instruction>
   </instructions>
 
   <output_schema>
@@ -453,8 +451,8 @@ def stream_calculation_prompt_with_tools(
             "compositions": {{
               "Ethanol": {{"value": 0.9, "unit": "molar fraction"}},
               "Water": {{"value": 0.1, "unit": "molar fraction"}},
-              "m_Ethanol": {{"value": 0.957, "unit": "mass fraction"}},
-              "m_Water": {{"value": 0.043, "unit": "mass fraction"}}
+              "Ethanol": {{"value": 0.957, "unit": "mass fraction"}},
+              "Water": {{"value": 0.043, "unit": "mass fraction"}}
             }},
             "notes": "Feed stream from design basis. Molar flow calculated. Density from CoolProp. Mass fractions calculated."
           }},
@@ -480,7 +478,7 @@ def stream_calculation_prompt_with_tools(
 """
 
     human_content = f"""
-Generate the complete stream table in JSON format based on the following information. Use the available tools for calculations and property lookups. Adhere strictly to the provided JSON template and instructions, especially regarding documentation in the 'notes' field and outputting ONLY the final JSON object.
+Generate the **complete stream table** in JSON format based on the following information. Use the available tools for calculations and property lookups. Adhere strictly to the provided JSON template and instructions, especially regarding documentation in the 'notes' field and outputting ONLY the final JSON object.
 
 **1. Design Basis:**
 ```text
