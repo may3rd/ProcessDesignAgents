@@ -4,11 +4,11 @@ ProcessDesignAgents is a multi-agent workflow for conceptual chemical-process de
 
 ## Key Features
 
-- **Graph Orchestrated Agents** – A `langgraph` state machine coordinates requirement analysis, concept detailing, stream definition, simulation, equipment sizing, safety review, and project management.
-- **Structured Artefacts** – Intermediate outputs (requirements, component lists, stream data, equipment details, H&MB summaries) are captured as Markdown and JSON for quick review and downstream automation.
-- **Tool-Assisted Sizing** – Built‑in sizing tools currently cover preliminary heat-exchanger and pump calculations and can be extended with additional tooling.
-- **Markdown & Word Exports** – Aggregated reports can be saved to Markdown or DOCX using a Pandoc-powered export with a customizable template.
-- **CLI Visualisation** – The CLI (`cli/main.py`) streams agent status, tool calls, and report sections as they are produced.
+-   **Graph Orchestrated Agents** – A `langgraph` state machine coordinates requirement analysis, concept detailing, stream definition, simulation, equipment sizing, safety review, and project management.
+-   **Structured Artefacts** – Intermediate outputs (requirements, component lists, stream data, equipment details, H&MB summaries) are captured as Markdown and JSON for quick review and downstream automation.
+-   **Tool-Assisted Sizing** – Built‑in sizing tools currently cover preliminary heat-exchanger and pump calculations and can be extended with additional tooling.
+-   **Markdown & Word Exports** – Aggregated reports can be saved to Markdown or DOCX using a Pandoc-powered export with a customizable template.
+-   **CLI Visualisation** – The CLI (`cli/main.py`) streams agent status, tool calls, and report sections as they are produced.
 
 ## Project Layout
 
@@ -36,8 +36,8 @@ Additional documentation is available under `docs/`. Contributor-specific practi
 
 ### Prerequisites
 
-- Python 3.10+
-- Recommended: virtual environment (e.g. `python -m venv venv`)
+-   Python 3.10+
+-   Recommended: virtual environment (e.g. `python -m venv venv`)
 
 ### Installation
 
@@ -51,18 +51,10 @@ Set any required API keys for your LLM provider (e.g. `OPENROUTER_API_KEY`) in y
 
 ## Running the Workflow
 
-### Simple Entry Point
-
-```bash
-python main.py
-```
-
-Edit the `problem_statement` in `main.py` to explore different design briefs. You can also override runtime behaviour by tweaking the `config` dictionary before constructing the graph (e.g., swap model names, adjust temperatures, or point to a different `save_dir`). Pass `manual_concept_selection=True` to require operator approval before a concept is locked in.
-
 ### CLI Visualization
 
 ```bash
-python -m cli.main -p "design the energy recovery from flue gas..."
+python -m cli.main
 ```
 
 The CLI streams agent progress, tool invocations, and compiled reports using Rich panels.
@@ -71,9 +63,9 @@ The CLI streams agent progress, tool invocations, and compiled reports using Ric
 
 `ProcessDesignGraph.propagate(...)` accepts `save_markdown` and `save_word_doc` arguments. The DOCX path uses Pandoc (via `pypandoc`) together with `python-docx` and a reference template located at `reports/template.docx`. Update that template to change fonts or company styling. Ensure that:
 
-- Pandoc is installed and available on your `PATH`.
-- `pypandoc` and `python-docx` are installed in your environment.
-- `config["save_dir"]` points to the directory that contains the template.
+-   Pandoc is installed and available on your `PATH`.
+-   `pypandoc` and `python-docx` are installed in your environment.
+-   `config["save_dir"]` points to the directory that contains the template.
 
 Both Markdown and Word outputs are created automatically when the associated arguments are provided.
 
@@ -104,9 +96,9 @@ The sizing tools live under `processdesignagents/agents/utils/` and are register
 
 ## Development
 
-- **Tests**: Add unit tests under `tests/` (not yet provided) and run with `pytest`.
-- **Formatting**: Follow `black`/`isort` style conventions if you add CI.
-- **Docs**: Update `docs/` when the graph or agent prompts change.
+-   **Tests**: Add unit tests under `tests/` (not yet provided) and run with `pytest`.
+-   **Formatting**: Follow `black`/`isort` style conventions if you add CI.
+-   **Docs**: Update `docs/` when the graph or agent prompts change.
 
 ## Citation
 

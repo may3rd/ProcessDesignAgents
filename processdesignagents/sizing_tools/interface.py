@@ -2,29 +2,23 @@ from __future__ import annotations
 
 #Import each methods
 from .preliminary import (
-    prelim_basic_heat_exchanger_sizing, 
-    prelim_shell_and_tube_heat_exchanger_sizing, 
-    prelim_pressurized_vessel_sizing,
-    prelim_vertical_pressurized_vessel_sizing,
-    prelim_horizontal_pressurized_vessel_sizing,
-    prelim_tank_sizing,
+    prelim_basic_heat_exchanger_sizing,
+    prelim_air_cooler_sizing,
     prelim_pump_sizing,
-    prelim_centrifugal_pump_sizing,
-    prelim_compressor_sizing
+    prelim_compressor_sizing,
+    prelim_distillation_column_sizing,
+    prelim_absorption_column_sizing,
+    prelim_separator_vessel_sizing,
+    prelim_pressure_safety_valve_sizing,
+    prelim_blowdown_valve_sizing,
+    prelim_vent_valve_sizing,
+    prelim_storage_tank_sizing,
+    prelim_surge_drum_sizing,
+    prelim_reactor_vessel_sizing,
+    prelim_knockout_drum_sizing,
+    prelim_filter_vessel_sizing,
+    prelim_dryer_vessel_sizing,
 )
-
-from .advanced import (
-    advanced_basic_heat_exchanger_sizing, 
-    advanced_shell_and_tube_heat_exchanger_sizing, 
-    advanced_pressurized_vessel_sizing,
-    advanced_vertical_pressurized_vessel_sizing,
-    advanced_horizontal_pressurized_vessel_sizing,
-    advanced_tank_sizing,
-    advanced_pump_sizing,
-    advanced_centrifugal_pump_sizing,
-    advanced_compressor_sizing
-)
-
 
 #Import configuration
 from .config import get_config
@@ -35,24 +29,25 @@ SIZING_TOOLS_BY_CATEGORIES = {
         "description": "Size a heat exchanger.",
         "tools": [
             "basic_heat_exchanger_sizing",
-            "shell_and_tube_heat_exchanger_sizing",
-            "plate_heat_exchanger_sizing"
+            "air_cooler_sizing"
         ]
     },
-    "pressurized_vessel": {
-        "description": "Size a pressurized vessel.",
+    "vessel": {
+        "description": "Size a vessel.",
         "tools": [
-            "pressurized_vessel_sizing",
-            "vertical_pressurized_vessel_sizing",
-            "horizontal_pressurized_vessel_sizing",
-            "tank_sizing"
+            "separator_vessel_sizing",
+            "storage_tank_sizing",
+            "surge_drum_sizing",
+            "reactor_vessel_sizing",
+            "knockout_drum_sizing",
+            "filter_vessel_sizing",
+            "dryer_vessel_sizing"
         ]
     },
     "pump": {
         "description": "Size a pump.",
         "tools": [
             "pump_sizing",
-            "centrifugal_pump_sizing",
         ]
     },
     "compressor": {
@@ -60,60 +55,78 @@ SIZING_TOOLS_BY_CATEGORIES = {
         "tools": [
             "compressor_sizing",
         ]
+    },
+    "distillation_column": {
+        "description": "Size a distillation column.",
+        "tools": [
+            "distillation_column_sizing",
+        ]
+    },
+    "absorption_column": {
+        "description": "Size an absorption column.",
+        "tools": [
+            "absorption_column_sizing",
+        ]
+    },
+    "valve": {
+        "description": "Size a valve.",
+        "tools": [
+            "pressure_safety_valve_sizing",
+            "blowdown_valve_sizing",
+            "vent_valve_sizing",
+        ]
     }
 }
 
 # Mapping of methods to their sizing methods implementation
 SIZING_TOOL_METHODS = {
-    # basic_heat_exchanger_sizing
     "basic_heat_exchanger_sizing": {
-        "preliminary": prelim_basic_heat_exchanger_sizing,
-        "advanced": advanced_basic_heat_exchanger_sizing
+        "preliminary": prelim_basic_heat_exchanger_sizing
     },
-    # shell_and_tube_heat_exchanger_sizing
-    "shell_and_tube_heat_exchanger_sizing": {
-        "preliminary": prelim_shell_and_tube_heat_exchanger_sizing,
-        "advanced": advanced_shell_and_tube_heat_exchanger_sizing
+    "air_cooler_sizing": {
+        "preliminary": prelim_air_cooler_sizing
     },
-    # plate_heat_exchanger_sizing
-    "plate_heat_exchanger_sizing": {
-        "preliminary": None,
-        "advanced": None
-    },
-    # pressurized_vessel_sizing
-    "pressurized_vessel_sizing": {
-        "preliminary": prelim_pressurized_vessel_sizing,
-        "advanced": advanced_pressurized_vessel_sizing
-    },
-    # vertical_pressurized_vessel_sizing
-    "vertical_pressurized_vessel_sizing": {
-        "preliminary": prelim_vertical_pressurized_vessel_sizing,
-        "advanced": advanced_vertical_pressurized_vessel_sizing
-    },
-    # horizontal_pressurized_vessel_sizing
-    "horizontal_pressurized_vessel_sizing": {
-        "preliminary": prelim_horizontal_pressurized_vessel_sizing,
-        "advanced": advanced_horizontal_pressurized_vessel_sizing
-    },
-    # tank_sizing
-    "tank_sizing": {
-        "preliminary": prelim_tank_sizing,
-        "advanced": advanced_tank_sizing
-    },
-    # pump_sizing
     "pump_sizing": {
-        "preliminary": prelim_pump_sizing,
-        "advanced": advanced_pump_sizing
+        "preliminary": prelim_pump_sizing
     },
-    # centrifugal_pump_sizing
-    "centrifugal_pump_sizing": {
-        "preliminary": prelim_centrifugal_pump_sizing,
-        "advanced": advanced_centrifugal_pump_sizing
-    },
-    # compressor_sizing
     "compressor_sizing": {
-        "preliminary": prelim_compressor_sizing,
-        "advanced": advanced_compressor_sizing
+        "preliminary": prelim_compressor_sizing
+    },
+    "distillation_column_sizing": {
+        "preliminary": prelim_distillation_column_sizing
+    },
+    "absorption_column_sizing": {
+        "preliminary": prelim_absorption_column_sizing
+    },
+    "separator_vessel_sizing": {
+        "preliminary": prelim_separator_vessel_sizing
+    },
+    "storage_tank_sizing": {
+        "preliminary": prelim_storage_tank_sizing
+    },
+    "surge_drum_sizing": {
+        "preliminary": prelim_surge_drum_sizing
+    },
+    "reactor_vessel_sizing": {
+        "preliminary": prelim_reactor_vessel_sizing
+    },
+    "knockout_drum_sizing": {
+        "preliminary": prelim_knockout_drum_sizing
+    },
+    "filter_vessel_sizing": {
+        "preliminary": prelim_filter_vessel_sizing
+    },
+    "dryer_vessel_sizing": {
+        "preliminary": prelim_dryer_vessel_sizing
+    },
+    "pressure_safety_valve_sizing": {
+        "preliminary": prelim_pressure_safety_valve_sizing
+    },
+    "blowdown_valve_sizing": {
+        "preliminary": prelim_blowdown_valve_sizing
+    },
+    "vent_valve_sizing": {
+        "preliminary": prelim_vent_valve_sizing
     }
 }
 
@@ -132,12 +145,12 @@ def get_vendor(category: str, method: str = None) -> str:
     
     # Check tool-level configuration first (if method provided)
     if method:
-        tool_sizing = config.get("tool_sizing", {})
-        if method in tool_sizing:
-            return tool_sizing[method]
+        sizing_tool_methods = config.get("sizing_tool_methods", {})
+        if method in sizing_tool_methods:
+            return sizing_tool_methods[method]
 
     # Fall back to category-level configuration
-    return config.get("data_sizing", {}).get(category, "default")
+    return config.get("category_level_methods", {}).get(category, "default")
 
 
 def equipment_sizing(method: str, *args, **kwargs) -> str:

@@ -21,10 +21,22 @@ from langchain.agents.middleware import SummarizationMiddleware, HumanInTheLoopM
 
 # Import equipment sizing tools
 from processdesignagents.agents.utils.agent_sizing_tools import (
+    size_air_cooler_basic,
+    size_absorption_column_basic,
+    size_storage_tank_basic,
+    size_surge_drum_basic,
+    size_blowdown_valve_basic,
+    size_compressor_basic,
     size_heat_exchanger_basic,
     size_pump_basic,
-    size_pressurized_vessel_basic,
-    size_shell_and_tube_heat_exchanger
+    size_reactor_vessel_basic,
+    size_separator_vessel_basic,
+    size_vent_valve_basic,
+    size_distillation_column_basic,
+    size_dryer_vessel_basic,
+    size_filter_vessel_basic,
+    size_knockout_drum_basic,
+    size_pressure_safety_valve_basic,
 )
 
 from processdesignagents.agents.utils.agent_states import DesignState, create_design_state
@@ -40,7 +52,9 @@ config["llm_provider"] = "openrouter"
 config["quick_think_llm"] = "openai/gpt-5-nano"
 config["deep_think_llm"] = "openai/gpt-5-nano"
 
-config["quick_think_llm"] = "google/gemini-2.5-flash-lite-preview-09-2025"
+# config["quick_think_llm"] = "google/gemini-2.5-flash-lite-preview-09-2025"
+
+config["quick_think_llm"] = "x-ai/grok-4-fast"
 
 def main():
     if config["llm_provider"].lower() == "openrouter":
@@ -75,7 +89,7 @@ def main():
         equipment_stream_list_str = json.dumps(es_foo)
         
         _, equipment_md, _ = equipments_and_streams_dict_to_markdown(es_foo)
-        print(equipment_md)
+        # print(equipment_md)
         
         # Create equipment category list from equipment_and_stream_list_template
         equipment_category_list = create_equipment_category_list(equipment_stream_list_str)
@@ -94,9 +108,22 @@ def main():
         
         # Create tools list to be called by agent
         tools_list = [
+            size_air_cooler_basic,
+            size_absorption_column_basic,
+            size_storage_tank_basic,
+            size_surge_drum_basic,
+            size_blowdown_valve_basic,
+            size_compressor_basic,
             size_heat_exchanger_basic,
             size_pump_basic,
-            size_pressurized_vessel_basic,
+            size_reactor_vessel_basic,
+            size_separator_vessel_basic,
+            size_vent_valve_basic,
+            size_distillation_column_basic,
+            size_dryer_vessel_basic,
+            size_filter_vessel_basic,
+            size_knockout_drum_basic,
+            size_pressure_safety_valve_basic,
         ]
         
         # Create agent prompt
@@ -120,17 +147,22 @@ def main():
         # Extract the AI result, expected to be JSON str
         cleaned_content = repair_json(ai_message.content)
         
-        print(cleaned_content)
+        # print(f"cleaned_content: {cleaned_content}")
+        
+        equipment_list = json.loads(cleaned_content)
         
         # Loads JSON str and convert to markdown table for display
-        combined_md, equipment_md, streams_md = equipments_and_streams_dict_to_markdown(json.loads(cleaned_content))
+        combined_md, equipment_md, streams_md = equipments_and_streams_dict_to_markdown(equipment_list)
+        
         print(equipment_md)
         
 
 def equipment_sizing_prompt_with_tools(
     equipment_and_stream_list: str,
 ) -> Tuple[ChatPromptTemplate, str, str]:
-    """Create prompt with pre-computed tool results"""
+    """
+    Create prompt with pre-computed tool results
+    """
     
     system_content = f"""
 <?xml version="1.0" encoding="UTF-8"?>
@@ -144,28 +176,355 @@ def equipment_sizing_prompt_with_tools(
   </metadata>
 
   <context>
-    <tool_environment>Python-based equipment sizing tools with automated calculations</tool_environment>
+    <tool_environment>Python-based equipment sizing tools with automated calculations</tool_environment><?xml version="1.0" encoding="UTF-8"?>
     <available_tools>
-      <tool name="size_heat_exchanger_basic">
-        <description>Calculates heat exchanger area, LMTD, and U-value</description>
-        <inputs>duty_kw, t_hot_in, t_hot_out, t_cold_in, t_cold_out, u_estimate</inputs>
-        <outputs>area_m2, lmtd_c, u_design_w_m2k, configuration</outputs>
-      </tool>
-      <tool name="size_pump_basic">
-        <description>Calculates pump flow, head, and motor power requirements</description>
-        <inputs>mass_flow_kg_h, inlet_pressure_barg, outlet_pressure_barg, fluid_density_kg_m3, pump_efficiency</inputs>
-        <outputs>volumetric_flow_m3_h, total_head_m, hydraulic_power_kw, motor_power_kw, pump_type</outputs>
-      </tool>
-      <tool name="size_vessel_basic">
-        <description>Calculates vessel volume, diameter, length, and wall thickness</description>
-        <inputs>volume_m3, design_pressure_barg, design_temperature_c, material, l_d_ratio</inputs>
-        <outputs>diameter_mm, length_mm, shell_thickness_mm, head_thickness_mm, weight_kg</outputs>
-      </tool>
-      <tool name="size_compressor_basic">
-        <description>Calculates compressor stages, discharge temperature, and driver power</description>
-        <inputs>inlet_flow_m3_min, inlet_pressure_kpa, discharge_pressure_kpa, gas_type, efficiency_polytropic</inputs>
-        <outputs>number_of_stages, discharge_temperature_c, power_kw, compressor_type</outputs>
-      </tool>
+    <!-- Heat Transfer Equipment -->
+    <tool name="size_heat_exchanger_basic">
+        <description>Calculates shell-and-tube heat exchanger area, LMTD, and overall heat transfer coefficient</description>
+        <equipment_type>Heat Exchanger - Shell and Tube</equipment_type>
+        <inputs>
+        <input name="duty_kw">Heat duty in kilowatts</input>
+        <input name="t_hot_in">Hot side inlet temperature in °C</input>
+        <input name="t_hot_out">Hot side outlet temperature in °C</input>
+        <input name="t_cold_in">Cold side inlet temperature in °C</input>
+        <input name="t_cold_out">Cold side outlet temperature in °C</input>
+        <input name="u_estimate">Estimated overall heat transfer coefficient in W/m²-K</input>
+        <input name="configuration">Heat exchanger configuration (1-2, 2-4, etc.)</input>
+        </inputs>
+        <outputs>
+        <output name="area_m2">Required heat transfer area in m²</output>
+        <output name="lmtd_c">Log-mean temperature difference in °C</output>
+        <output name="u_design_w_m2k">Design overall heat transfer coefficient in W/m²-K</output>
+        <output name="configuration">Selected configuration with correction factor</output>
+        <output name="pressure_drop_shell">Estimated shell-side pressure drop in kPa</output>
+        <output name="pressure_drop_tube">Estimated tube-side pressure drop in kPa</output>
+        </outputs>
+    </tool>
+
+    <tool name="size_air_cooler_basic">
+        <description>Calculates air-cooled heat exchanger (finned tubes) area and fan power for process cooling</description>
+        <equipment_type>Heat Exchanger - Air Cooled</equipment_type>
+        <inputs>
+        <input name="duty_kw">Heat duty in kilowatts</input>
+        <input name="process_fluid_in">Process fluid inlet temperature in °C</input>
+        <input name="process_fluid_out">Process fluid outlet temperature in °C</input>
+        <input name="ambient_temperature_c">Ambient air temperature in °C</input>
+        <input name="design_approach">Minimum approach temperature in °C</input>
+        <input name="fluid_type">Process fluid type (hydrocarbon, water, glycol, etc.)</input>
+        </inputs>
+        <outputs>
+        <output name="face_area_m2">Face area of cooler in m²</output>
+        <output name="tube_length_m">Tube length in meters</output>
+        <output name="number_of_tubes">Number of finned tubes</output>
+        <output name="fin_density">Fin density in fins per inch</output>
+        <output name="fan_power_kw">Electric fan motor power in kW</output>
+        <output name="cooling_capacity_kw">Verified cooling capacity in kW</output>
+        </outputs>
+    </tool>
+
+    <!-- Fluid Handling Equipment -->
+    <tool name="size_pump_basic">
+        <description>Calculates centrifugal or positive displacement pump sizing, head, and motor power</description>
+        <equipment_type>Pump - Centrifugal or Positive Displacement</equipment_type>
+        <inputs>
+        <input name="mass_flow_kg_h">Mass flow rate in kg/h</input>
+        <input name="inlet_pressure_barg">Suction pressure in barg</input>
+        <input name="outlet_pressure_barg">Discharge pressure in barg</input>
+        <input name="fluid_density_kg_m3">Fluid density at operating temperature in kg/m³</input>
+        <input name="pump_efficiency">Pump isentropic or volumetric efficiency (0.0-1.0)</input>
+        <input name="motor_efficiency">Motor efficiency (typically 0.85-0.95)</input>
+        </inputs>
+        <outputs>
+        <output name="volumetric_flow_m3_h">Volumetric flow at inlet in m³/h</output>
+        <output name="total_head_m">Total dynamic head in meters</output>
+        <output name="discharge_pressure_barg">Discharge pressure in barg</output>
+        <output name="hydraulic_power_kw">Hydraulic power (shaft power) in kW</output>
+        <output name="motor_power_kw">Electric motor rated power in kW</output>
+        <output name="npsh_required_m">Net positive suction head required in meters</output>
+        <output name="pump_type">Pump classification (centrifugal, gear, screw, etc.)</output>
+        </outputs>
+    </tool>
+
+    <tool name="size_compressor_basic">
+        <description>Calculates compressor stages, discharge temperature, and driver power for gas compression</description>
+        <equipment_type>Compressor - Centrifugal or Reciprocating</equipment_type>
+        <inputs>
+        <input name="inlet_flow_m3_min">Volumetric flow at inlet conditions in m³/min</input>
+        <input name="inlet_pressure_kpa">Inlet pressure absolute in kPa</input>
+        <input name="discharge_pressure_kpa">Discharge pressure absolute in kPa</input>
+        <input name="gas_type">Gas type (air, nitrogen, ethylene, propane, natural gas, etc.)</input>
+        <input name="efficiency_polytropic">Polytropic efficiency (0.0-1.0, typically 0.75-0.85)</input>
+        <input name="intercooling">Boolean: whether intercooling between stages is available</input>
+        </inputs>
+        <outputs>
+        <output name="number_of_stages">Number of compression stages required</output>
+        <output name="discharge_temperature_c">Final discharge temperature in °C</output>
+        <output name="compression_ratio">Overall compression ratio (P_out / P_in)</output>
+        <output name="power_kw">Polytropic power requirement in kW</output>
+        <output name="motor_power_kw">Electric motor rated power with service factor in kW</output>
+        <output name="compressor_type">Compressor type recommendation (centrifugal, reciprocating, screw)</output>
+        <output name="stage_compression_ratios">Individual stage compression ratios</output>
+        <output name="intercooler_duty_kw">Heat removal per intercooler in kW (if applicable)</output>
+        </outputs>
+    </tool>
+
+    <!-- Separation Equipment -->
+    <tool name="size_distillation_column_basic">
+        <description>Calculates distillation column diameter, number of trays, and reboiler/condenser duties</description>
+        <equipment_type>Column - Distillation</equipment_type>
+        <inputs>
+        <input name="feed_flow_kmol_h">Feed flow rate in kmol/h</input>
+        <input name="feed_temperature_c">Feed inlet temperature in °C</input>
+        <input name="overhead_composition">Light component mole fraction in overhead product</overhead_composition>
+        <input name="bottoms_composition">Light component mole fraction in bottoms product</bottoms_composition>
+        <input name="feed_composition">Light component mole fraction in feed</feed_composition>
+        <input name="relative_volatility">Relative volatility of light/heavy key components</relative_volatility>
+        <input name="tray_efficiency_percent">Tray efficiency (Murphree) in percent</tray_efficiency_percent>
+        <input name="design_pressure_barg">Column design pressure in barg</design_pressure_barg>
+        </inputs>
+        <outputs>
+        <output name="theoretical_stages">Minimum number of theoretical stages (Fenske)</output>
+        <output name="minimum_reflux_ratio">Minimum reflux ratio (Underwood)</output>
+        <output name="operating_reflux_ratio">Recommended operating reflux ratio</operating_reflux_ratio>
+        <output name="actual_trays">Actual number of trays accounting for efficiency</output>
+        <output name="column_diameter_mm">Internal column diameter in mm</column_diameter_mm>
+        <output name="column_height_m">Column height from first to last tray in meters</column_height_m>
+        <output name="reboiler_duty_kw">Reboiler heat duty in kW</output>
+        <output name="condenser_duty_kw">Condenser heat duty (cooling) in kW</output>
+        <output name="tray_type">Recommended tray type (sieve, valve, bubble cap)</output>
+        </outputs>
+    </tool>
+
+    <tool name="size_absorption_column_basic">
+        <description>Calculates absorption column diameter, height, and solvent circulation rate</description>
+        <equipment_type>Column - Absorption</equipment_type>
+        <inputs>
+        <input name="gas_flow_kmol_h">Gas inlet flow rate in kmol/h</input>
+        <input name="inlet_concentration">Component concentration in inlet gas (mole fraction)</inlet_concentration>
+        <input name="outlet_concentration">Component concentration in outlet gas (mole fraction)</outlet_concentration>
+        <input name="solvent_type">Solvent medium (water, MEA, DEA, MDEA, etc.)</solvent_type>
+        <input name="henry_constant">Henry's law constant or equilibrium data</henry_constant>
+        <input name="design_pressure_barg">Column design pressure in barg</design_pressure_barg>
+        </inputs>
+        <outputs>
+        <output name="number_of_stages">Number of theoretical stages required</output>
+        <output name="column_diameter_mm">Internal column diameter in mm</column_diameter_mm>
+        <output name="column_height_m">Total packed or tray height in meters</column_height_m>
+        <output name="solvent_circulation_kg_h">Solvent circulation rate in kg/h</output>
+        <output name="packing_type">Recommended packing type and size</output>
+        <output name="pressure_drop_total_kpa">Total pressure drop across column in kPa</output>
+        </outputs>
+    </tool>
+
+    <tool name="size_separator_vessel_basic">
+        <description>Calculates two-phase or three-phase separator vessel volume, diameter, and internals sizing</description>
+        <equipment_type>Vessel - Separator (Gas-Liquid or Oil-Water-Gas)</equipment_type>
+        <inputs>
+        <input name="total_flow_bbl_day">Total flow rate in barrels per day (or m³/h)</input>
+        <input name="gas_flow_mmscfd">Gas flow in millions of standard cubic feet per day (or m³/h)</gas_flow_mmscfd>
+        <input name="oil_percentage">Oil content percentage by volume</oil_percentage>
+        <input name="water_percentage">Water content percentage by volume</water_percentage>
+        <input name="separator_type">Separator type (horizontal, vertical, cylindrical, spherical)</separator_type>
+        <input name="residence_time_min">Desired residence time in minutes (typically 3-5 min)</residence_time_min>
+        <input name="design_pressure_barg">Design pressure in barg</design_pressure_barg>
+        <input name="design_temperature_c">Design temperature in °C</design_temperature_c>
+        </inputs>
+        <outputs>
+        <output name="vessel_volume_m3">Required vessel volume in m³</output>
+        <output name="diameter_mm">Vessel diameter in mm</output>
+        <output name="length_mm">Vessel length (or height for vertical) in mm</output>
+        <output name="l_d_ratio">Length-to-diameter ratio</output>
+        <output name="gas_outlet_nozzle_dia_mm">Gas outlet nozzle diameter in mm</output>
+        <output name="liquid_outlet_nozzle_dia_mm">Liquid outlet nozzle diameter in mm</output>
+        <output name="internals_type">Internal configuration (baffles, demistors, weirs)</internals_type>
+        </outputs>
+    </tool>
+
+    <!-- Pressure Relief Equipment -->
+    <tool name="size_pressure_safety_valve_basic">
+        <description>Calculates pressure safety valve (PSV) outlet nozzle size and flow capacity</description>
+        <equipment_type>Valve - Pressure Safety Relief</equipment_type>
+        <inputs>
+        <input name="protected_equipment_id">Equipment ID being protected (e.g., E-101, R-101)</input>
+        <input name="required_relief_flow_kg_h">Required relief capacity in kg/h</input>
+        <input name="relief_pressure_barg">Relief valve set pressure in barg</relief_pressure_barg>
+        <input name="back_pressure_barg">Downstream backpressure in barg</back_pressure_barg>
+        <input name="fluid_phase">Fluid phase being relieved (liquid, vapor, two-phase)</fluid_phase>
+        <input name="fluid_density_kg_m3">Fluid density at relief conditions in kg/m³</fluid_density_kg_m3>
+        </inputs>
+        <outputs>
+        <output name="outlet_nozzle_diameter_mm">Outlet nozzle diameter in mm</outlet_nozzle_diameter_mm>
+        <output name="valve_capacity_kg_h">Verified valve capacity in kg/h</output>
+        <output name="set_pressure_barg">PSV set pressure in barg</set_pressure_barg>
+        <output name="cracking_pressure_barg">Valve cracking pressure in barg</cracking_pressure_barg>
+        <output name="valve_size_class">Valve size classification (Size 1, 2, 3, etc.)</valve_size_class>
+        <output name="discharge_requirement">Discharge line sizing recommendation</output>
+        </outputs>
+    </tool>
+
+    <tool name="size_blowdown_valve_basic">
+        <description>Calculates blowdown valve sizing for equipment depressurization and emergency venting</description>
+        <equipment_type>Valve - Blowdown (Manual or Solenoid)</equipment_type>
+        <inputs>
+        <input name="protected_equipment_id">Equipment ID being protected</protected_equipment_id>
+        <input name="equipment_volume_m3">Equipment internal volume in m³</input>
+        <input name="blowdown_time_seconds">Desired depressurization time in seconds (typically 15-30 min)</input>
+        <input name="initial_pressure_barg">Initial system pressure in barg</initial_pressure_barg>
+        <input name="final_pressure_barg">Final pressure after blowdown in barg (typically 0.5-1.0 barg)</final_pressure_barg>
+        <input name="fluid_type">Fluid type (hydrocarbon, water, steam, air, etc.)</fluid_type>
+        <input name="fluid_density_kg_m3">Fluid density in kg/m³</fluid_density_kg_m3>
+        </inputs>
+        <outputs>
+        <output name="required_valve_flow_capacity_kg_h">Required valve flow capacity in kg/h</output>
+        <output name="valve_inlet_diameter_mm">Inlet connection diameter in mm</output>
+        <output name="valve_outlet_diameter_mm">Outlet connection diameter in mm</output>
+        <output name="blowdown_line_diameter_mm">Blowdown discharge line diameter in mm</output>
+        <output name="valve_actuation_type">Recommended actuation (manual ball, solenoid, pilot-operated)</output>
+        <output name="discharge_time_minutes">Actual depressurization time achievable in minutes</output>
+        </outputs>
+    </tool>
+
+    <tool name="size_vent_valve_basic">
+        <description>Calculates atmospheric vent valve sizing for vapor release and pressure control</description>
+        <equipment_type>Valve - Atmospheric Vent</equipment_type>
+        <inputs>
+        <input name="vapor_flow_kmol_h">Vapor release rate in kmol/h</input>
+        <input name="vapor_molecular_weight">Average molecular weight in g/mol</vapor_molecular_weight>
+        <input name="vapor_temperature_c">Vapor temperature in °C</vapor_temperature_c>
+        <input name="vapor_density_kg_m3">Vapor density at operating conditions in kg/m³</vapor_density_kg_m3>
+        <input name="equipment_pressure_barg">Equipment internal pressure in barg</equipment_pressure_barg>
+        <input name="vent_line_length_m">Length of vent line to discharge point in meters</vent_line_length_m>
+        </inputs>
+        <outputs>
+        <output name="vent_valve_diameter_mm">Vent valve outlet diameter in mm</output>
+        <output name="vent_line_diameter_mm">Vapor line diameter in mm</output>
+        <output name="volumetric_flow_m3_h">Volumetric flow through vent in m³/h</output>
+        <output name="pressure_drop_kpa">Pressure drop in vent line in kPa</output>
+        <output name="valve_type">Recommended vent valve type (cap, duckbill, flame arrestor)</output>
+        </outputs>
+    </tool>
+
+    <!-- Storage and Containment Equipment -->
+    <tool name="size_storage_tank_basic">
+        <description>Calculates atmospheric or low-pressure storage tank volume, dimensions, and internals</description>
+        <equipment_type>Vessel - Storage Tank</equipment_type>
+        <inputs>
+        <input name="design_capacity_m3">Design storage capacity in m³</input>
+        <input name="fluid_type">Fluid type stored (crude oil, naphtha, water, etc.)</fluid_type>
+        <input name="storage_duration_hours">Typical storage duration in hours</storage_duration_hours>
+        <input name="design_pressure_barg">Design pressure in barg (typically 0.05-0.2 for atmospheric)</design_pressure_barg>
+        <input name="design_temperature_c">Design temperature in °C</design_temperature_c>
+        <input name="tank_type">Tank type (vertical cylindrical, horizontal, spherical)</tank_type>
+        </inputs>
+        <outputs>
+        <output name="tank_diameter_mm">Tank diameter in mm</output>
+        <output name="tank_height_mm">Tank height in mm</output>
+        <output name="shell_thickness_mm">Shell plate thickness in mm</output>
+        <output name="roof_type">Roof type recommendation (cone, dome, floating roof)</roof_type>
+        <output name="volume_actual_m3">Actual usable volume in m³</output>
+        <output name="nozzle_connections">Recommended nozzle types and sizes</output>
+        </outputs>
+    </tool>
+
+    <tool name="size_surge_drum_basic">
+        <description>Calculates surge/buffer drum volume and dimensions for process flow stabilization</description>
+        <equipment_type>Vessel - Surge Drum (Low Pressure Buffer)</equipment_type>
+        <inputs>
+        <input name="inlet_flow_kg_h">Maximum inlet flow rate in kg/h</input>
+        <input name="outlet_flow_kg_h">Maximum outlet flow rate in kg/h</input>
+        <input name="fluid_density_kg_m3">Fluid density in kg/m³</fluid_density_kg_m3>
+        <input name="surge_time_minutes">Surge time (buffer capacity) in minutes (typically 5-15 min)</surge_time_minutes>
+        <input name="operating_pressure_barg">Operating pressure in barg</operating_pressure_barg>
+        <input name="l_d_ratio">Length-to-diameter ratio</l_d_ratio>
+        </inputs>
+        <outputs>
+        <output name="drum_volume_m3">Required drum volume in m³</output>
+        <output name="drum_diameter_mm">Drum diameter in mm</output>
+        <output name="drum_length_mm">Drum length in mm</output>
+        <output name="liquid_level_control">Level control instrumentation recommendation</output>
+        </outputs>
+    </tool>
+
+    <!-- Process Equipment -->
+    <tool name="size_reactor_vessel_basic">
+        <description>Calculates reactor volume based on residence time and reaction requirements</description>
+        <equipment_type>Vessel - Reactor</equipment_type>
+        <inputs>
+        <input name="feed_flow_kg_h">Feed flow rate in kg/h</input>
+        <input name="residence_time_minutes">Required residence time in minutes</residence_time_minutes>
+        <input name="mixture_density_kg_m3">Reaction mixture density in kg/m³</mixture_density_kg_m3>
+        <input name="reaction_exothermic">Boolean: whether reaction is exothermic</reaction_exothermic>
+        <input name="heat_removal_kw">Heat removal capacity required in kW (if exothermic)</input>
+        <input name="design_pressure_barg">Design pressure in barg</design_pressure_barg>
+        <input name="design_temperature_c">Design temperature in °C</design_temperature_c>
+        </inputs>
+        <outputs>
+        <output name="reactor_volume_m3">Required reactor volume in m³</output>
+        <output name="reactor_diameter_mm">Reactor diameter in mm</output>
+        <output name="reactor_height_mm">Reactor height in mm</output>
+        <output name="agitator_power_kw">Agitator motor power in kW</output>
+        <output name="cooling_surface_area_m2">Cooling jacket surface area in m² (if needed)</output>
+        <output name="baffle_configuration">Baffle and impeller configuration recommendation</output>
+        </outputs>
+    </tool>
+
+    <!-- Specialized Equipment -->
+    <tool name="size_knockout_drum_basic">
+        <description>Calculates knockout drum for liquid removal from vapor streams</description>
+        <equipment_type>Vessel - Knockout Drum (Gas-Liquid Separation)</equipment_type>
+        <inputs>
+        <input name="vapor_flow_kmol_h">Vapor flow rate in kmol/h</input>
+        <input name="liquid_content_percent">Expected liquid content by mass percentage</liquid_content_percent>
+        <input name="design_pressure_barg">Design pressure in barg</design_pressure_barg>
+        <input name="design_temperature_c">Design temperature in °C</design_temperature_c>
+        <input name="residence_time_seconds">Desired liquid residence time in seconds (typically 2-5 min)</residence_time_seconds>
+        </inputs>
+        <outputs>
+        <output name="drum_volume_m3">Required drum volume in m³</output>
+        <output name="drum_diameter_mm">Drum diameter in mm</output>
+        <output name="drum_length_mm">Drum length in mm</output>
+        <output name="liquid_outlet_nozzle_mm">Liquid drain nozzle size in mm</output>
+        <output name="mist_eliminator_type">Internal mist eliminator recommendation</output>
+        </outputs>
+    </tool>
+
+    <tool name="size_filter_vessel_basic">
+        <description>Calculates filter vessel sizing for solid-liquid or solid-gas separation</description>
+        <equipment_type>Vessel - Filter</equipment_type>
+        <inputs>
+        <input name="fluid_flow_m3_h">Fluid flow rate in m³/h</input>
+        <input name="filtration_type">Type of filtration (bag filter, cartridge, sand, membrane)</filtration_type>
+        <input name="design_pressure_barg">Design pressure in barg</design_pressure_barg>
+        <input name="design_temperature_c">Design temperature in °C</design_temperature_c>
+        <input name="filter_media_permeability">Filter media permeability or typical face velocity m/s</input>
+        </inputs>
+        <outputs>
+        <output name="filter_area_m2">Required filter media area in m²</output>
+        <output name="vessel_volume_m3">Vessel volume for filter housing in m³</output>
+        <output name="vessel_diameter_mm">Vessel diameter in mm</output>
+        <output name="number_of_elements">Number of filter cartridges or bags</output>
+        <output name="replacement_schedule_hours">Filter cartridge/bag replacement interval in operating hours</output>
+        </outputs>
+    </tool>
+
+    <tool name="size_dryer_vessel_basic">
+        <description>Calculates gas dryer vessel for moisture removal</description>
+        <equipment_type>Vessel - Dryer (Desiccant or Membrane)</equipment_type>
+        <inputs>
+        <input name="gas_flow_kmol_h">Dry gas flow in kmol/h</input>
+        <input name="inlet_moisture_ppm">Inlet moisture content in ppm (vol)</inlet_moisture_ppm>
+        <input name="outlet_moisture_ppm">Desired outlet moisture in ppm (vol)</outlet_moisture_ppm>
+        <input name="design_pressure_barg">Design pressure in barg</design_pressure_barg>
+        <input name="regeneration_type">Regeneration method (heated air, vacuum, pressure swing)</regeneration_type>
+        </inputs>
+        <outputs>
+        <output name="dryer_vessel_volume_m3">Dryer vessel volume in m³</output>
+        <output name="desiccant_volume_m3">Desiccant bed volume in m³</output>
+        <output name="vessel_diameter_mm">Vessel diameter in mm</output>
+        <output name="cycle_time_hours">Operating cycle time before regeneration in hours</output>
+        <output name="regeneration_duty_kw">Heat duty for regeneration in kW (if thermal regeneration)</output>
+        </outputs>
+    </tool>
     </available_tools>
     <inputs_to_agent>
       <input>

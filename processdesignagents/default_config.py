@@ -49,7 +49,7 @@ DEFAULT_CONFIG = {
     "property_data_source": "pubchem",
     "simulator": "dwsim",
     # Category-level configuration (default for all tools in category)
-    "data_sizing": {
+    "category_level_methods": {
         "heat_exchanger": "preliminary",
         "pressurized_vessel": "preliminary",
         "pump": "preliminary",
