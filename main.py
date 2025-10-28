@@ -1,4 +1,5 @@
-import asyncio
+from __future__ import annotations
+
 from processdesignagents.graph.process_design_graph import ProcessDesignGraph
 from processdesignagents.default_config import DEFAULT_CONFIG
 

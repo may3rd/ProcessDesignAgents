@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Annotated, List, TypedDict, Optional, Sequence
 
 try:  # Python <3.11 fallback

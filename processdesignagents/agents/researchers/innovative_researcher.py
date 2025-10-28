@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from json_repair import repair_json
 from langchain_core.messages import AIMessage

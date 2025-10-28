@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 def load_config():
@@ -57,8 +59,8 @@ DEFAULT_CONFIG = {
         "horizontal_pressurized_vessel": "preliminary",
     },
     # Tool-level configuration (takes precedence over category-level)
-    "tool_sizing": {
-        "basic_heat_exchanger_sizing": "default",
-        "basic_pressurized_vessel_sizing": "default",
+    "sizing_tool_methods": {
+        "basic_heat_exchanger_sizing": "preliminary",
+        "basic_pressurized_vessel_sizing": "preliminary",
     },
 }

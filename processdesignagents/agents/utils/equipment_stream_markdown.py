@@ -10,12 +10,21 @@ def equipments_and_streams_dict_to_markdown(payload: dict) -> tuple[str, str, st
 
     Returns a tuple of (combined_markdown, equipment_table_markdown, stream_table_markdown).
     """
+    # Check if payload has equipments and streams keys.
+    if "equipments" not in payload or "streams" not in payload:
+        print("DEBUG: Wrong payload format")
+        print(payload)
+        return "", "", ""
+    
+    # Get the list of equipments and streams
     equipments = _ensure_list(payload.get("equipments"))
     streams = _ensure_list(payload.get("streams"))
 
+    # Convert to Markdown
     equipment_md = _format_equipments_table(equipments)
     streams_md = _format_streams_table(streams)
 
+    # Combine sections to complete markdown
     combined_sections: list[str] = []
     if equipment_md:
         combined_sections.append("## Equipment Summary\n")

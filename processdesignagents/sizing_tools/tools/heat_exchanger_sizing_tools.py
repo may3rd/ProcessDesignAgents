@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from langchain_core.tools import tool
 from typing import Annotated, Dict
 from processdesignagents.sizing_tools.interface import equipment_sizing

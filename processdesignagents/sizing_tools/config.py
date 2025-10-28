@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import processdesignagents.default_config as default_config
 from typing import Dict, Optional
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 #Import each methods
 from .preliminary import (
     prelim_basic_heat_exchanger_sizing, 
@@ -7,7 +9,20 @@ from .preliminary import (
     prelim_horizontal_pressurized_vessel_sizing,
     prelim_tank_sizing,
     prelim_pump_sizing,
-    prelim_centrifugal_pump_sizing
+    prelim_centrifugal_pump_sizing,
+    prelim_compressor_sizing
+)
+
+from .advanced import (
+    advanced_basic_heat_exchanger_sizing, 
+    advanced_shell_and_tube_heat_exchanger_sizing, 
+    advanced_pressurized_vessel_sizing,
+    advanced_vertical_pressurized_vessel_sizing,
+    advanced_horizontal_pressurized_vessel_sizing,
+    advanced_tank_sizing,
+    advanced_pump_sizing,
+    advanced_centrifugal_pump_sizing,
+    advanced_compressor_sizing
 )
 
 
@@ -15,12 +30,13 @@ from .preliminary import (
 from .config import get_config
 
 # Tools organized by equipment category
-TOOLS_BY_CATEGORIES = {
+SIZING_TOOLS_BY_CATEGORIES = {
     "heat_exchanger": {
-        "description": "Size a shell-and-tube heat exchanger.",
+        "description": "Size a heat exchanger.",
         "tools": [
             "basic_heat_exchanger_sizing",
             "shell_and_tube_heat_exchanger_sizing",
+            "plate_heat_exchanger_sizing"
         ]
     },
     "pressurized_vessel": {
@@ -38,48 +54,72 @@ TOOLS_BY_CATEGORIES = {
             "pump_sizing",
             "centrifugal_pump_sizing",
         ]
+    },
+    "compressor": {
+        "description": "Size a compressor.",
+        "tools": [
+            "compressor_sizing",
+        ]
     }
 }
 
 # Mapping of methods to their sizing methods implementation
-SIZING_METHODS = {
+SIZING_TOOL_METHODS = {
     # basic_heat_exchanger_sizing
     "basic_heat_exchanger_sizing": {
-        "preliminary": prelim_basic_heat_exchanger_sizing
+        "preliminary": prelim_basic_heat_exchanger_sizing,
+        "advanced": advanced_basic_heat_exchanger_sizing
     },
     # shell_and_tube_heat_exchanger_sizing
     "shell_and_tube_heat_exchanger_sizing": {
-        "preliminary": prelim_shell_and_tube_heat_exchanger_sizing
+        "preliminary": prelim_shell_and_tube_heat_exchanger_sizing,
+        "advanced": advanced_shell_and_tube_heat_exchanger_sizing
+    },
+    # plate_heat_exchanger_sizing
+    "plate_heat_exchanger_sizing": {
+        "preliminary": None,
+        "advanced": None
     },
     # pressurized_vessel_sizing
     "pressurized_vessel_sizing": {
-        "preliminary": prelim_pressurized_vessel_sizing
+        "preliminary": prelim_pressurized_vessel_sizing,
+        "advanced": advanced_pressurized_vessel_sizing
     },
     # vertical_pressurized_vessel_sizing
     "vertical_pressurized_vessel_sizing": {
-        "preliminary": prelim_vertical_pressurized_vessel_sizing
+        "preliminary": prelim_vertical_pressurized_vessel_sizing,
+        "advanced": advanced_vertical_pressurized_vessel_sizing
     },
     # horizontal_pressurized_vessel_sizing
     "horizontal_pressurized_vessel_sizing": {
-        "preliminary": prelim_horizontal_pressurized_vessel_sizing
+        "preliminary": prelim_horizontal_pressurized_vessel_sizing,
+        "advanced": advanced_horizontal_pressurized_vessel_sizing
     },
     # tank_sizing
     "tank_sizing": {
-        "preliminary": prelim_tank_sizing
+        "preliminary": prelim_tank_sizing,
+        "advanced": advanced_tank_sizing
     },
     # pump_sizing
     "pump_sizing": {
-        "preliminary": prelim_pump_sizing
+        "preliminary": prelim_pump_sizing,
+        "advanced": advanced_pump_sizing
     },
     # centrifugal_pump_sizing
     "centrifugal_pump_sizing": {
-        "preliminary": prelim_centrifugal_pump_sizing
+        "preliminary": prelim_centrifugal_pump_sizing,
+        "advanced": advanced_centrifugal_pump_sizing
+    },
+    # compressor_sizing
+    "compressor_sizing": {
+        "preliminary": prelim_compressor_sizing,
+        "advanced": advanced_compressor_sizing
     }
 }
 
 def get_category_for_method(method: str) -> str:
     """Get the category that contains the specified method."""
-    for category, info in TOOLS_BY_CATEGORIES.items():
+    for category, info in SIZING_TOOLS_BY_CATEGORIES.items():
         if method in info["tools"]:
             return category
     raise ValueError(f"Method '{method}' not found in any category")
@@ -102,17 +142,19 @@ def get_vendor(category: str, method: str = None) -> str:
 
 def equipment_sizing(method: str, *args, **kwargs) -> str:
     """Route method calls to appropriate sizing implementation with fallback support."""
-    if method not in SIZING_METHODS:
+    if method not in SIZING_TOOL_METHODS:
         raise ValueError(f"Method '{method}' not suppored.")
-
+    else:
+        print(f"DEBUG: Calling method '{method}' with args: {args}, kwargs: {kwargs}", flush=True)
+        
     category = get_category_for_method(method)
     method_config = get_vendor(category, method)
 
     primary_methods = [value.strip() for value in method_config.split(",") if value.strip()]
     if not primary_methods:
-        primary_methods = list(SIZING_METHODS[method].keys())
+        primary_methods = list(SIZING_TOOL_METHODS[method].keys())
 
-    available_methods = list(SIZING_METHODS[method].keys())
+    available_methods = list(SIZING_TOOL_METHODS[method].keys())
     fallback_vendors = primary_methods + [
         candidate for candidate in available_methods if candidate not in primary_methods
     ]
@@ -125,7 +167,7 @@ def equipment_sizing(method: str, *args, **kwargs) -> str:
     method_attempt_count = 0
 
     for vendor_method in fallback_vendors:
-        vendor_impl = SIZING_METHODS[method].get(vendor_method)
+        vendor_impl = SIZING_TOOL_METHODS[method].get(vendor_method)
         if vendor_impl is None:
             if vendor_method in primary_methods:
                 print(f"INFO: Method '{vendor_method}' not supported for '{method}', trying fallback.")

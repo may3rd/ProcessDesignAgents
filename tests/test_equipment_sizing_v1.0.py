@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from json_repair import repair_json
 import os
@@ -72,6 +74,9 @@ def main():
         
         equipment_stream_list_str = json.dumps(es_foo)
         
+        _, equipment_md, _ = equipments_and_streams_dict_to_markdown(es_foo)
+        print(equipment_md)
+        
         # Create equipment category list from equipment_and_stream_list_template
         equipment_category_list = create_equipment_category_list(equipment_stream_list_str)
         
@@ -114,6 +119,8 @@ def main():
         
         # Extract the AI result, expected to be JSON str
         cleaned_content = repair_json(ai_message.content)
+        
+        print(cleaned_content)
         
         # Loads JSON str and convert to markdown table for display
         combined_md, equipment_md, streams_md = equipments_and_streams_dict_to_markdown(json.loads(cleaned_content))

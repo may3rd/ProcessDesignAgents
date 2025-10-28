@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from langchain_core.messages import AIMessage
 from langchain_core.prompts import (

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict
 import time
 from functools import wraps
