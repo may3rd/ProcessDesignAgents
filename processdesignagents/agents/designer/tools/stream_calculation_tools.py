@@ -33,6 +33,10 @@ COOLPROP_NAME_MAP = {
     # Add more mappings as needed
 }
 
+
+def _debug_tool_call(tool_name: str) -> None:
+    print(f"DEBUG: Stream Calculation Tool '{tool_name}' invoked", flush=True)
+
 def _get_coolprop_name(user_name: str) -> str:
     """Gets the CoolProp internal name for a given user-friendly name."""
     return COOLPROP_NAME_MAP.get(user_name.lower(), user_name) # Return original if not mapped
@@ -203,6 +207,7 @@ def calculate_molar_flow_from_mass(
     Returns:
         JSON string: {"molar_flow_kmol_h": float, "average_mw_kg_kmol": float} or {"error": str}.
     """
+    _debug_tool_call("calculate_molar_flow_from_mass")
     try:
         # Input validation
         if mass_flow_kg_h < 0:
@@ -244,6 +249,7 @@ def calculate_mass_flow_from_molar(
     Returns:
         JSON string: {"mass_flow_kg_h": float, "average_mw_kg_kmol": float} or {"error": str}.
     """
+    _debug_tool_call("calculate_mass_flow_from_molar")
     try:
          # Input validation
         if molar_flow_kmol_h < 0:
@@ -285,6 +291,7 @@ def convert_compositions(
     Returns:
         JSON string: Dictionary containing BOTH original and converted fractions or {"error": str}.
     """
+    _debug_tool_call("convert_compositions")
     try:
         if not compositions:
             return json.dumps({"error": "Input compositions dictionary is empty."})
@@ -347,6 +354,7 @@ def calculate_volume_flow(
     Returns:
         JSON string: {"volume_flow_m3_h": float} or {"error": str}.
     """
+    _debug_tool_call("calculate_volume_flow")
     if mass_flow_kg_h < 0:
         return json.dumps({"error": "Mass flow rate cannot be negative."})
     if density_kg_m3 <= 0:
@@ -374,6 +382,7 @@ def perform_mass_balance_split(
     Returns:
         JSON string: {"outlet_flows": {"stream_id_1": mass_flow_1, ...}} or {"error": str}.
     """
+    _debug_tool_call("perform_mass_balance_split")
     if inlet_mass_flow_kg_h < 0:
          return json.dumps({"error": "Inlet mass flow cannot be negative."})
     if len(split_fractions) != len(outlet_stream_ids):
@@ -417,6 +426,7 @@ def perform_mass_balance_mix(
     Returns:
         JSON string: {"outlet_mass_flow_kg_h": float} or {"error": str}.
     """
+    _debug_tool_call("perform_mass_balance_mix")
     if not inlet_mass_flows_kg_h:
         return json.dumps({"error": "Inlet mass flows dictionary cannot be empty."})
     if any(flow < 0 for flow in inlet_mass_flows_kg_h.values()):
@@ -442,6 +452,7 @@ def perform_energy_balance_mix(
     Returns:
         JSON string: {"outlet_temperature_c": float} or {"error": str}.
     """
+    _debug_tool_call("perform_energy_balance_mix")
     if not inlet_flows_temps:
          return json.dumps({"error": "Inlet flows/temps dictionary cannot be empty."})
     try:
@@ -512,6 +523,7 @@ def calculate_heat_exchanger_outlet_temp(
     Returns:
         JSON string: {"outlet_temperature_c": float} or {"error": str}.
     """
+    _debug_tool_call("calculate_heat_exchanger_outlet_temp")
     try:
         if mass_flow_kg_h <= 0:
             # Handle zero flow case: Temp out = Temp in
@@ -558,6 +570,7 @@ def calculate_heat_exchanger_duty(
     Returns:
         JSON string: {"duty_kw": float} (Positive for heating, negative for cooling) or {"error": str}.
     """
+    _debug_tool_call("calculate_heat_exchanger_duty")
     if mass_flow_kg_h < 0:
          return json.dumps({"error": "Mass flow cannot be negative."})
     if specific_heat_kj_kg_k <= 0:
@@ -576,10 +589,10 @@ def calculate_heat_exchanger_duty(
 @tool
 def get_physical_properties(
     components: List[str],
-    mole_fractions: List[float],
-    temperature_c: float,
-    pressure_barg: float,
-    properties_needed: List[str] # e.g., ["density", "cp", "viscosity", "phase", "molecular_weight"]
+   mole_fractions: List[float],
+   temperature_c: float,
+   pressure_barg: float,
+   properties_needed: List[str] # e.g., ["density", "cp", "viscosity", "phase", "molecular_weight"]
 ) -> str:
     """
     Looks up physical properties for a mixture using CoolProp.
@@ -596,15 +609,10 @@ def get_physical_properties(
     Returns:
         JSON string: {"properties": {"density": {"value": X, "unit": "kg/m3"}, ...}, "notes": "..."} or {"error": str}.
     """
+    _debug_tool_call("get_physical_properties")
     # --- Input Validation ---
     if not components or not mole_fractions or len(components) != len(mole_fractions):
         return json.dumps({"error": "Components and mole_fractions lists must be non-empty and have the same length."})
-
-    print(f"Components: {components}", flush=True)
-    print(f"Mole fractions: {mole_fractions}", flush=True)
-    print(f"Temperature: {temperature_c}°C", flush=True)
-    print(f"Pressure: {pressure_barg}barg", flush=True)
-    print(f"Properties needed: {properties_needed}", flush=True)
     
     # Normalize mole fractions if they don't sum exactly to 1.0
     total_frac = sum(mole_fractions)
@@ -795,6 +803,7 @@ def build_stream_object(
     Args: All arguments correspond to the keys in the final stream object template.
     Returns: JSON string of the single stream object, ready to be added to the main list, or JSON string with an 'error' key.
     """
+    _debug_tool_call("build_stream_object")
     errors = []
     # Basic validation of required string fields
     required_strings = {"stream_id": stream_id, "name": name, "from_unit": from_unit, "to_unit": to_unit, "phase": phase}

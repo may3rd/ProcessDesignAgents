@@ -16,6 +16,7 @@ from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
 from processdesignagents.agents.utils.json_tools import get_json_str_from_llm, extract_first_json_document
+from processdesignagents.agents.utils.stream_utils import prefix_mass_fraction_component_names
 
 
 load_dotenv()
@@ -49,6 +50,7 @@ def create_equipments_and_streams_list_builder(llm, llm_provider: str = "openrou
                 response, response_content = get_json_str_from_llm(llm, prompt, state)
                 _, response_dict = extract_first_json_document(repair_json(response_content))
                 if isinstance(response_dict, dict):
+                    response_dict = prefix_mass_fraction_component_names(response_dict)
                     is_done = True
             except Exception as e:
                 raise ValueError(f"DEBUG: Value : {e}")

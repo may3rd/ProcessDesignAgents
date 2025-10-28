@@ -15,7 +15,8 @@ from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
 from processdesignagents.agents.utils.json_tools import get_json_str_from_llm, extract_first_json_document
-
+from processdesignagents.agents.utils.stream_utils import prefix_mass_fraction_component_names
+from .tools import run_stream_calculation_agent
 
 load_dotenv()
 
@@ -60,6 +61,7 @@ def create_stream_data_estimator(llm, llm_provider: str = "openrouter"):
                     print("Stream Data Estimator received non-dict payload, retrying...", flush=True)
                     print(response_content, flush=True)
                     continue
+                response_dict = prefix_mass_fraction_component_names(response_dict)
                 _, _, streams_md = equipments_and_streams_dict_to_markdown(response_dict)
                 is_done = True
             except Exception as e:

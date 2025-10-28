@@ -178,75 +178,90 @@ def _build_stream_chunk_table(streams: list[dict]) -> list[str]:
         add_row(f"**{prop_key.replace('_', ' ').title()}**", values)
 
     # Composition sections
-    mass_component_names, mole_component_names, all_component_names = _collect_component_names(streams)
-    components_present = bool(all_component_names)
+    mass_component_keys, mole_component_keys = _collect_component_keys(streams)
 
-    if components_present:
-        row_component_names = all_component_names
+    if mass_component_keys:
         add_row("**Mass Fraction**", ["--"] * len(streams))
-        for component in row_component_names:
+        for component_key in mass_component_keys:
+            display_name = _strip_mass_prefix(component_key)
             values = [
                 _format_fraction(
-                    (stream.get("compositions") or {}).get(component),
+                    _get_component_entry(stream, component_key),
                     target="mass",
                 )
                 for stream in streams
             ]
-            add_row(f"  {component}  ", values)
+            add_row(f"  {display_name}  ", values)
 
-    if components_present:
-        row_component_names = all_component_names
+    if mole_component_keys:
         add_row("**Mole Fraction**", ["--"] * len(streams))
-        for component in row_component_names:
+        for component_key in mole_component_keys:
             values = [
                 _format_fraction(
-                    (stream.get("compositions") or {}).get(component),
+                    _get_component_entry(stream, component_key),
                     target="mole",
                 )
                 for stream in streams
             ]
-            add_row(f"  {component}  ", values)
+            add_row(f"  {component_key}  ", values)
 
     add_row("**Notes**", [stream.get("notes", "") for stream in streams])
 
     return rows
 
 
-def _collect_component_names(streams: list[dict]) -> tuple[list[str], list[str], list[str]]:
+def _collect_component_keys(streams: list[dict]) -> tuple[list[str], list[str]]:
     mass_components: list[str] = []
     mole_components: list[str] = []
-    all_components: list[str] = []
 
     for stream in streams:
-        components = stream.get("components")
-        if components is None:
-            components = stream.get("compositions")
-        if not isinstance(components, dict):
-            continue
-        for name, entry in components.items():
-            if name is None:
+        for field in ("compositions", "components"):
+            components = stream.get(field)
+            if not isinstance(components, dict):
                 continue
-            if name not in all_components:
-                all_components.append(name)
-            lower_unit = ""
-            if isinstance(entry, dict):
-                unit = entry.get("unit")
-                if isinstance(unit, str):
-                    lower_unit = unit.lower()
-            if "mass" in lower_unit or "wt" in lower_unit:
-                if name not in mass_components:
-                    mass_components.append(name)
-            elif "mol" in lower_unit or "mole" in lower_unit or "vol" in lower_unit:
-                if name not in mole_components:
-                    mole_components.append(name)
-            else:
-                # If unit is ambiguous, include in both sections once
-                if name not in mass_components:
-                    mass_components.append(name)
+            for name, entry in components.items():
+                if not isinstance(name, str) or name == "":
+                    continue
+                if name.startswith("m_"):
+                    if name not in mass_components:
+                        mass_components.append(name)
+                    continue
+
+                if isinstance(entry, dict):
+                    unit = entry.get("unit")
+                    if isinstance(unit, str):
+                        unit_lower = unit.lower()
+                        if "mass" in unit_lower or "wt" in unit_lower:
+                            prefixed = f"m_{name}"
+                            if prefixed not in mass_components:
+                                mass_components.append(prefixed)
+                            continue
                 if name not in mole_components:
                     mole_components.append(name)
 
-    return mass_components, mole_components, all_components
+    return mass_components, mole_components
+
+
+def _get_component_entry(stream: dict, component_key: str):
+    if not isinstance(stream, dict):
+        return None
+    for field in ("compositions", "components"):
+        components = stream.get(field)
+        if isinstance(components, dict):
+            if component_key in components:
+                return components[component_key]
+            # Allow looking up base name if the data has not been prefixed
+            if component_key.startswith("m_"):
+                base_key = component_key[2:]
+                if base_key in components:
+                    return components[base_key]
+    return None
+
+
+def _strip_mass_prefix(name: str) -> str:
+    if isinstance(name, str) and name.startswith("m_"):
+        return name[2:]
+    return name
 
 
 def _format_fraction(entry, target: str) -> str:
