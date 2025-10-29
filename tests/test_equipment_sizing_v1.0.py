@@ -43,7 +43,7 @@ from processdesignagents.agents.utils.agent_states import DesignState, create_de
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
 from processdesignagents.agents.designer.equipment_sizing_agent import create_equipment_category_list
-from processdesignagents.agents.designer.tools import equipment_sizing_prompt_with_tools
+from processdesignagents.agents.designer.tools import equipment_sizing_prompt_with_tools, run_agent_with_tools
 
 from processdesignagents.default_config import DEFAULT_CONFIG
 
@@ -131,6 +131,17 @@ def main():
         _, system_content, human_content = equipment_sizing_prompt_with_tools(
             equipment_and_stream_list=equipment_stream_list_str,
         )
+        
+        # Test new run_agent_with_tools
+        cleaned_content = run_agent_with_tools(
+            llm_model=quick_thinking_llm,
+            system_prompt=system_content,
+            human_prompt=human_content,
+            tools_list=tools_list,
+            )
+        
+        print(cleaned_content)
+        exit(0)
         
         # Create agent with tools list
         agent = create_agent(

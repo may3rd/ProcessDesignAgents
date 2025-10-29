@@ -46,12 +46,12 @@ from langchain_core.prompts import (
 )
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
-def run_stream_calculation_agent(
+def run_agent_with_tools(
     llm_model: ChatOpenAI,
-    system_content: str,
-    human_content: str,
+    system_prompt: str,
+    human_prompt: str,
     tools_list: List[Any],
-    tool_map: Dict[str, Any],
+    # tool_map: Dict[str, Any],
 ) -> str:
     """
     Runs the stream calculation agent, handling tool calls and returning the final JSON output.
@@ -61,7 +61,6 @@ def run_stream_calculation_agent(
         system_content: The system prompt for the agent.
         human_content: The human prompt for the agent.
         tools_list: A list of tools available to the agent.
-        tool_map: A dictionary mapping tool names to tool functions.
 
     Returns:
         A JSON string representing the final stream data list.
@@ -69,22 +68,27 @@ def run_stream_calculation_agent(
     Raises:
         Exception: If the agent fails to produce a valid JSON output within the maximum iterations.
     """
+    
+    # Create tools list to be called by agent
+    # The tool map will be used to look up and invoke the correct tool by name.
+    tool_map = {tool.name: tool for tool in tools_list}
+    
     agent = create_agent(
         model=llm_model,
-        system_prompt=system_content,
+        system_prompt=system_prompt,
         tools=tools_list,
     )
 
-    messages: List[BaseMessage] = [HumanMessage(content=human_content)]
+    messages: List[BaseMessage] = [HumanMessage(content=human_prompt)]
 
     MAX_ITERATIONS = 15  # Set a reasonable limit to prevent infinite loops
     for i in range(MAX_ITERATIONS):
         print(f"--- Agent Iteration {i+1} ---", flush=True)
 
-        result = agent.invoke({"messages": messages})
+        response = agent.invoke({"messages": messages})
 
         # The last message in the result is the agent's latest response
-        agent_response = result["messages"][-1]
+        agent_response = response["messages"][-1]
         messages.append(agent_response) # Add agent's response to conversation history
 
         if isinstance(agent_response, AIMessage) and agent_response.tool_calls:
@@ -165,12 +169,12 @@ def run_stream_calculation_agent(
                 final_answer_content = agent_response.content
                 try:
                     # Attempt to repair and parse the JSON
-                    repaired_json_str = repair_json(final_answer_content)
+                    # repaired_json_str = repair_json(final_answer_content)
                     # final_json = json.loads(repaired_json_str)
                     # print("\n--- Final Stream Data List JSON ---", flush=True)
                     # print(json.dumps(final_json, indent=2), flush=True)
                     # print("\n--- End of Final Stream Data List JSON ---", flush=True)
-                    return repaired_json_str # Return the JSON string
+                    return final_answer_content # Return the content
                 except json.JSONDecodeError as e:
                     print(f"Error decoding final answer as JSON: {e}", flush=True)
                     print(f"Raw final answer content: {final_answer_content}", flush=True)

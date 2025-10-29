@@ -31,7 +31,7 @@ from processdesignagents.agents.designer.tools import (
     calculate_heat_exchanger_duty,
     get_physical_properties, # Now uses CoolProp
     build_stream_object,
-    run_stream_calculation_agent,
+    run_agent_with_tools,
     stream_calculation_prompt_with_tools
     )
 
@@ -110,10 +110,6 @@ def main():
         build_stream_object,
     ]
     
-    # Create tools list to be called by agent
-    # The tool map will be used to look up and invoke the correct tool by name.
-    tool_map = {tool.name: tool for tool in tools_list}
-    
     # Create agent prompt
     _, system_content, human_content = stream_calculation_prompt_with_tools(
         design_basis=design_basis_md,
@@ -121,16 +117,15 @@ def main():
         stream_list_template=json.dumps(stream_template),
     )
     
-    output_str = run_stream_calculation_agent(
+    output_str = run_agent_with_tools(
         llm_model=quick_thinking_llm,
-        system_content=system_content,
-        human_content=human_content,
+        system_prompt=system_content,
+        human_prompt=human_content,
         tools_list=tools_list,
-        tool_map=tool_map,
         )
     
     try:
-        final_json = json.loads(output_str)
+        final_json = json.loads(repair_json(output_str))
         es_foo = {
             "equipments": es_template["equipments"],
             "streams": final_json["streams"],

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Tuple
 from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -10,7 +11,7 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-
+from processdesignagents.agents.designer.tools import get_physical_properties, run_agent_with_tools
 load_dotenv()
 
 
@@ -30,12 +31,24 @@ def create_component_list_researcher(llm):
         if not isinstance(selected_concept_name, str):
             selected_concept_name = str(selected_concept_name)
 
-        base_prompt = component_list_researcher_prompt(
+        base_prompt, system_content, human_content = component_list_researcher_prompt(
             selected_concept_name,
             concept_details_markdown,
             requirements_markdown,
         )
+        
+        tools_list = [ get_physical_properties ]
 
+        cleaned_output = run_agent_with_tools(
+            llm_model=llm,
+            system_prompt=system_content,
+            human_prompt=human_content,
+            tools_list=tools_list
+            )
+        
+        print(cleaned_output, flush=True)
+        exit(0)
+        
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         chain = prompt | llm
@@ -67,7 +80,7 @@ def component_list_researcher_prompt(
     concept_name: str,
     concept_details: str,
     requirements: str,
-) -> ChatPromptTemplate:
+) -> Tuple[ChatPromptTemplate, str, str]:
     system_content = f"""
 <?xml version="1.0" encoding="UTF-8"?>
 <agent>
@@ -95,9 +108,9 @@ def component_list_researcher_prompt(
         <description>The selected concept of design details</description>
       </input>
       <input>
-        <n>COMPONENTS LIST (CSV)</n>
-        <format>CSV (optional reference)</format>
-        <description>Optional reference file containing known chemical components with formulas and molecular weights</description>
+        <n>PHYSICAL PROPERTIES TOOL</n>
+        <format>Function tool call: get_physical_properties</format>
+        <description>Use the get_physical_properties tool to retrieve molecular weight and thermophysical data for individual components or mixtures.</description>
       </input>
     </inputs>
     <purpose>Translate design documentation into a curated component list that serves as the backbone for downstream engineering</purpose>
@@ -129,26 +142,31 @@ def component_list_researcher_prompt(
     </instruction>
 
     <instruction id="3">
-      <title>Reference External Data</title>
-      <details>Use the provided COMPONENTS LIST (CSV) as a reference source. Cross-check component names, chemical formulas, and molecular weights against this reference to ensure accuracy and consistency.</details>
+      <title>Use the Physical Properties Tool</title>
+      <details>Call the `get_physical_properties` tool for each shortlisted component (pure component: mole fraction 1.0) at standard reference conditions (25°C, 1 atm gauge = 0 barg) to confirm molecular weight and physical phase. Capture the returned molecular weight (kg/kmol) and convert to g/mol for reporting. Include any notable property notes provided by the tool in your reasoning.</details>
     </instruction>
 
     <instruction id="4">
+      <title>Compile Normal Boiling Point Data</title>
+      <details>For each shortlisted component, document the normal boiling point (°C at 1 atm). Use trusted sources such as process design data, DIPPR, NIST, or vendor datasheets. If authoritative data is unavailable, provide a justified engineering estimate and note it in your internal reasoning.</details>
+    </instruction>
+
+    <instruction id="5">
       <title>Sort by Boiling Point</title>
       <details>Arrange the component list in ascending order of boiling point (low boiling to high boiling). This ordering is useful for separation process planning and equipment design downstream. If boiling point data is not readily available, provide a reasonable estimate based on chemical structure or industry standard references.</details>
     </instruction>
 
-    <instruction id="5">
+    <instruction id="6">
       <title>Minimize Component Count</title>
       <details>Keep the list as minimal as possible. Focus on components that are materially significant to the process. For general chemical processes, the main component list should include no more than 10 distinct species. Exclude trace impurities or minor byproducts unless they are critical for safety, environmental, or quality reasons.</details>
     </instruction>
 
-    <instruction id="6">
+    <instruction id="7">
       <title>Ensure Accuracy</title>
-      <details>Verify all chemical formulas and molecular weights. Use standard chemical nomenclature and correct IUPAC names where applicable. Ensure molecular weight values are calculated or sourced from reliable chemical databases (e.g., PubChem, ChemSpider, or standard chemical engineering references).</details>
+      <details>Verify all chemical formulas, molecular weights, and boiling points. Prefer the molecular weight returned by `get_physical_properties`; if the tool reports an error, note it and fall back to trusted chemical engineering references. Cite credible data sources for boiling points when possible and flag any estimates in your reasoning. Use standard chemical nomenclature and correct IUPAC names where applicable.</details>
     </instruction>
 
-    <instruction id="7">
+    <instruction id="8">
       <title>Format Adherence</title>
       <details>Your final output must be a PURE Markdown document. Do not wrap content in code blocks or add any explanatory text outside the table. The table must be complete, correctly formatted, and ready for immediate downstream use. Include a brief header identifying the component list.</details>
     </instruction>
@@ -177,12 +195,16 @@ def component_list_researcher_prompt(
             <type>numeric</type>
             <description>Molecular weight (in g/mol, e.g., 46.07)</description>
           </column>
+          <column name="Normal Boiling Point (°C)">
+            <type>numeric</type>
+            <description>Normal boiling point at 1 atm in °C. If estimated, indicate "(approx.)" in the table cell.</description>
+          </column>
         </required_columns>
         <table_format>
-| **Name** | **Formula** | **MW** |
-|----------|-------------|--------|
-| [Component 1] | [Formula] | [MW] |
-| [Component 2] | [Formula] | [MW] |
+| **Name** | **Formula** | **MW** | **Normal Boiling Point (°C)** |
+|----------|-------------|--------|-------------------------------|
+| [Component 1] | [Formula] | [MW] | [NBP] |
+| [Component 2] | [Formula] | [MW] | [NBP] |
         </table_format>
         <sorting_order>Ascending by boiling point (low to high)</sorting_order>
         <minimum_components>2</minimum_components>
@@ -193,11 +215,12 @@ def component_list_researcher_prompt(
     <formatting_rules>
       <rule>Use Markdown table syntax with pipe delimiters (|)</rule>
       <rule>Use ## for the section header</rule>
-      <rule>Bold column headers using **Name**, **Formula**, **MW**</rule>
+      <rule>Bold column headers using **Name**, **Formula**, **MW**, **Normal Boiling Point (°C)**</rule>
       <rule>Do NOT use code blocks or backticks</rule>
       <rule>Do NOT add introductory or explanatory text outside the header and table</rule>
       <rule>Do NOT include footer comments or notes</rule>
       <rule>Ensure all rows are complete and all columns are populated</rule>
+      <rule>Report boiling points as numeric values in °C; include "(approx.)" in the table cell if the value is estimated.</rule>
       <rule>Output ONLY the Markdown table content—no wrapping or additional commentary</rule>
     </formatting_rules>
 
@@ -321,10 +344,10 @@ def component_list_researcher_prompt(
 
     <expected_markdown_output>## Chemical Components List
 
-| **Name** | **Formula** | **MW** | **Boiling Point** |
-|----------|-------------|--------|-------------------|
-| Ethanol | C2H6O | 46.07 | 78.4°C |
-| Water | H2O | 18.015 | 100°C |</expected_markdown_output>
+| **Name** | **Formula** | **MW** | **Normal Boiling Point (°C)** |
+|----------|-------------|--------|-------------------------------|
+| Ethanol | C2H6O | 46.07 | 78.4 |
+| Water | H2O | 18.015 | 100.0 |</expected_markdown_output>
 
     <explanation>
       <point>Two components identified: Water (cooling utility and contamination in ethanol) and Ethanol (main process stream).</point>
@@ -348,132 +371,19 @@ Create a components list based on the following data:
 **Concept Details (Markdown):**
 {concept_details}
 
-**Component List (CSV):**
-Name,Formula,MW (g/mol)
-1-Butene,C4H8,56.107
-Acetone,C3H6O,58.08
-Air,Mixture,28.96
-Ammonia,NH3,17.031
-Argon,Ar,39.948
-Benzene,C6H6,78.11
-CarbonDioxide,CO2,44.01
-CarbonMonoxide,CO,28.01
-CarbonylSulfide,COS,60.07
-CycloHexane,C6H12,84.16
-CycloPropane,C3H6,42.08
-Cyclopentane,C5H10,70.13
-D4,C8H24O4Si4,296.62
-D5,C10H30O5Si5,370.77
-D6,C12H36O6Si6,444.92
-Deuterium,D2,4.028
-Dichloroethane,C2H4Cl2,98.96
-DiethylEther,C4H10O,74.12
-DimethylCarbonate,C3H6O3,90.08
-DimethylEther,C2H6O,46.07
-Ethane,C2H6,30.07
-Ethanol,C2H5OH,46.07
-EthylBenzene,C8H10,106.17
-Ethylene,C2H4,28.05
-EthyleneOxide,C2H4O,44.05
-Fluorine,F2,37.996
-HFE143m,C2H3F3O,100.04
-HeavyWater,D2O,20.028
-Helium,He,4.0026
-Hydrogen,H2,2.016
-HydrogenChloride,HCl,36.46
-HydrogenSulfide,H2S,34.08
-IsoButane,C4H10,58.12
-IsoButene,C4H8,56.107
-Isohexane,C6H14,86.18
-Isopentane,C5H12,72.15
-Krypton,Kr,83.798
-MD2M,C12H36O4Si5,384.84
-MD3M,C13H39O5Si6,458.99
-MD4M,C14H42O5Si6,458.99
-MDM,C8H24O2Si3,236.53
-MM,C6H18OSi2,162.38
-Methane,CH4,16.04
-Methanol,CH3OH,32.04
-MethylLinoleate,C19H34O2,294.47
-MethylLinolenate,C19H32O2,292.46
-MethylOleate,C19H36O2,296.49
-MethylPalmitate,C17H34O2,270.45
-MethylStearate,C19H38O2,298.51
-Neon,Ne,20.18
-Neopentane,C5H12,72.15
-Nitrogen,N2,28.014
-NitrousOxide,N2O,44.013
-Novec649,C6F12O,316.05
-OrthoDeuterium,D2,4.028
-OrthoHydrogen,H2,2.016
-Oxygen,O2,31.998
-ParaDeuterium,D2,4.028
-ParaHydrogen,H2,2.016
-Propylene,C3H6,42.08
-Propyne,C3H4,40.06
-R11,CCl3F,137.37
-R113,C2Cl3F3,187.38
-R114,C2Cl2F4,170.92
-R115,C2ClF5,154.47
-R116,C2F6,138.01
-R12,CCl2F2,120.91
-R123,C2HCl2F3,152.93
-R1233zd(E),C3H2ClF3,130.5
-R1234yf,C3H2F4,114.04
-R1234ze(E),C3H2F4,114.04
-R1234ze(Z),C3H2F4,114.04
-R124,C2HClF4,136.48
-R1243zf,C3H3F3,96.05
-R125,C2HF5,120.02
-R13,CClF3,104.46
-R1336mzz(E),C4H2F6,164.05
-R134a,C2H2F4,102.03
-R13I1,CF3I,195.91
-R14,CF4,88.005
-R141b,C2H3Cl2F,116.95
-R142b,C2H3ClF2,100.5
-R143a,C2H3F3,84.04
-R152A,C2H4F2,66.05
-R161,C2H5F,48.06
-R21,CHCl2F,102.92
-R218,C3F8,188.02
-R22,CHClF2,86.47
-R227EA,C3HF7,170.03
-R23,CHF3,70.014
-R236EA,C3H2F6,152.04
-R236FA,C3H2F6,152.04
-R245ca,C3H3F5,134.05
-R245fa,C3H3F5,134.05
-R32,CH2F2,52.02
-R365MFC,C4H5F5,148.07
-R40,CH3Cl,50.49
-R404A,Mixture,97.6
-R407C,Mixture,86.2
-R41,CH3F,34.03
-R410A,Mixture,72.59
-R507A,Mixture,98.86
-RC318,C4F8,200.03
-SES36,C2F6O,154.01
-SulfurDioxide,SO2,64.06
-SulfurHexafluoride,SF6,146.05
-Toluene,C7H8,92.14
-Water,H2O,18.015
-Xenon,Xe,131.29
-cis-2-Butene,C4H8,56.107
-m-Xylene,C8H10,106.17
-n-Butane,C4H10,58.12
-n-Decane,C10H22,142.28
-n-Dodecane,C12H26,170.33
-n-Heptane,C7H16,100.2
-n-Hexane,C6H14,86.18
-n-Nonane,C9H20,128.25
-n-Octane,C8H18,114.23
-n-Pentane,C5H12,72.15
-n-Propane,C3H8,44.09
-n-Undecane,C11H24,156.31
-o-Xylene,C8H10,106.17
-p-Xylene,C8H10,106.17
-trans-2-Butene,C4H8,56.107
+**Physical Properties Tool Instructions:**
+Use the `get_physical_properties` tool whenever you need molecular weight or phase confirmation for a candidate component. Call it with:
+- `components`: ["ComponentName"]
+- `mole_fractions`: [1.0] for a pure component
+- `temperature_c`: 25.0 (adjust if project documentation specifies otherwise)
+- `pressure_barg`: 0.0
+- `properties_needed`: ["molecular_weight", "phase"]
+
+The tool returns molecular weight in kg/kmol (numerically equivalent to g/mol). Reflect the value in the Markdown table and capture any relevant notes in your reasoning. If the tool reports an error for a component, record the issue and cite the reference you use for a fallback estimate.
+
+When compiling the table, include four columns in this order: Name, Formula, MW, Normal Boiling Point (°C). Report normal boiling points at 1 atm; if you must estimate, add "(approx.)" after the numeric value.
+
+Return only the Markdown header and table as defined in your instructions.
 """
 
     messages = [
@@ -487,4 +397,4 @@ trans-2-Butene,C4H8,56.107
         ),
     ]
 
-    return ChatPromptTemplate.from_messages(messages)
+    return ChatPromptTemplate.from_messages(messages), system_content, human_content
