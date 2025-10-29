@@ -90,7 +90,7 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
         es_list = json.loads(equipment_and_stream_list)
         
         # Simulate the equipment and stram list at this stage
-        es_foo = {
+        equipment_stream_final_dict = {
             "equipments": es_template["equipments"],
             "streams": es_list["streams"],
             }
@@ -115,7 +115,7 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
             size_pressure_safety_valve_basic,
         ]
         
-        equipment_stream_list_str = json.dumps(es_foo)
+        equipment_stream_list_str = json.dumps(equipment_stream_final_dict)
         
         # Create equipment category list from equipment_and_stream_list_template
         equipment_category_list = create_equipment_category_list(equipment_stream_list_str)
@@ -142,19 +142,19 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
             )
         
         try:
-            json_equipments = json.loads(repair_json(output_str))
-            es_foo = {
-                "equipments": json_equipments["equipments"],
+            equipment_list_dict = json.loads(repair_json(output_str))
+            equipment_stream_final_dict = {
+                "equipments": equipment_list_dict["equipments"],
                 "streams": es_list["streams"],
                 }
-            _, equipments_md, _ = equipments_and_streams_dict_to_markdown(es_foo)
+            _, equipments_md, _ = equipments_and_streams_dict_to_markdown(equipment_stream_final_dict)
             print(equipments_md)
             
             ai_message = AIMessage(content=output_str)
             
             return {
-                "equipment_list_results": json.dumps(json_equipments),
-                "equipment_and_stream_list": json.dumps(es_foo),
+                "equipment_list_results": json.dumps(equipment_list_dict),
+                "equipment_and_stream_list": json.dumps(equipment_stream_final_dict),
                 "messages": [ai_message],
             }
         except Exception as e:

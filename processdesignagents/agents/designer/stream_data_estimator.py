@@ -90,19 +90,19 @@ def create_stream_data_estimator(llm, llm_provider: str = "openrouter"):
             )
         
         try:
-            json_streams = json.loads(repair_json(output_str))
-            es_foo = {
+            streams_list_dict = json.loads(repair_json(output_str))
+            equipment_stream_list_dict = {
                 "equipments": es_template["equipments"],
-                "streams": json_streams["streams"],
+                "streams": streams_list_dict["streams"],
                 }
-            _, _, streams_md = equipments_and_streams_dict_to_markdown(es_foo)
+            _, _, streams_md = equipments_and_streams_dict_to_markdown(equipment_stream_list_dict)
             print(streams_md)
             
             ai_message = AIMessage(content=output_str)
             
             return {
-                "stream_list_results": json.dumps(json_streams),
-                "equipment_and_stream_list": json.dumps(es_foo),
+                "stream_list_results": json.dumps(streams_list_dict),
+                "equipment_and_stream_list": json.dumps(equipment_stream_list_dict),
                 "messages": [ai_message],
             }
         except Exception as e:
