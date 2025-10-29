@@ -10,27 +10,114 @@ from langchain_core.tools import tool # Import LangChain tool decorator
 # Helper Functions with CoolProp Integration
 # ============================================================================
 
-# Map common names to CoolProp fluid names
+# Map common/alias names to CoolProp canonical fluid names (case-insensitive keys)
 COOLPROP_NAME_MAP = {
+    # Water
     "water": "Water",
     "h2o": "Water",
-    "ethanol": "Ethanol",
+    "steam": "Water",
+    "r718": "Water",  # per CoolProp alias
+
+    # Air
+    "air": "Air",
+    "r729": "Air",
+
+    # Nitrogen
     "nitrogen": "Nitrogen",
     "n2": "Nitrogen",
-    "air": "Air",
+    "r728": "Nitrogen",
+
+    # Oxygen
+    "oxygen": "Oxygen",
+    "o2": "Oxygen",
+    "r732": "Oxygen",
+
+    # Argon
+    "argon": "Argon",
+    "ar": "Argon",
+    "r740": "Argon",
+
+    # Carbon dioxide
+    "carbon_dioxide": "CarbonDioxide",
+    "carbon dioxide": "CarbonDioxide",
+    "co2": "CarbonDioxide",
+    "r744": "CarbonDioxide",
+
+    # Carbon monoxide
+    "carbon_monoxide": "CarbonMonoxide",
+    "carbon monoxide": "CarbonMonoxide",
+    "co": "CarbonMonoxide",
+
+    # Hydrogen (normal)
     "hydrogen": "Hydrogen",
     "h2": "Hydrogen",
+    "r702": "Hydrogen",
+
+    # Helium (common in labs/cryogenics)
+    "helium": "Helium",
+    "he": "Helium",
+
+    # Methane / Natural gas stand-in
+    "methane": "Methane",
+    "ch4": "Methane",
+    "natural_gas": "Methane",    # engineering approximation
+
+    # Ethane / Ethylene / Propane / Propylene
+    "ethane": "Ethane",
+    "c2h6": "Ethane",
     "ethylene": "Ethylene",
+    "c2h4": "Ethylene",
     "propane": "Propane",
-    "natural_gas": "Methane", # Approximation: Use Methane for Natural Gas properties
-    "crude_oil": "n-Dodecane", # Very rough approximation for properties
-    "naphtha": "n-Heptane", # Rough approximation
-    "steam": "Water",
-    "mea": "MEA", # Monoethanolamine - May require REFPROP backend or specific alias setup
-    "dea": "DEA", # Diethanolamine - May require REFPROP backend or specific alias setup
-    "mdea": "MDEA", # Methyldiethanolamine - May require REFPROP backend or specific alias setup
-    "glycol": "MEG", # Ethylene Glycol
-    # Add more mappings as needed
+    "c3h8": "Propane",
+    "propylene": "Propylene",
+    "propene": "Propylene",
+    "c3h6": "Propylene",
+
+    # Alcohols
+    "ethanol": "Ethanol",
+    "c2h5oh": "Ethanol",
+    "alcohol": "Ethanol",  # common shorthand -> pick ethanol
+    "methanol": "Methanol",
+    "ch3oh": "Methanol",
+
+    # Aromatics / others frequently used
+    "toluene": "Toluene",
+    "benzene": "Benzene",
+
+    # Ammonia (refrig. R717)
+    "ammonia": "Ammonia",
+    "nh3": "Ammonia",
+    "r717": "Ammonia",
+
+    # Hydrogen sulfide & chloride (common process gases)
+    "hydrogen_sulfide": "HydrogenSulfide",
+    "hydrogen sulfide": "HydrogenSulfide",
+    "h2s": "HydrogenSulfide",
+    "hydrogen_chloride": "HydrogenChloride",
+    "hydrogen chloride": "HydrogenChloride",
+    "hcl": "HydrogenChloride",
+
+    # Nitrous oxide
+    "nitrous_oxide": "NitrousOxide",
+    "nitrous oxide": "NitrousOxide",
+    "n2o": "NitrousOxide",
+
+    # Engineering approximations for complex liquids (no pure-fluid model in CoolProp)
+    "crude_oil": "n-Dodecane",   # rough stand-in for heavy hydrocarbon liquid
+    "naphtha": "n-Heptane",      # rough stand-in for light naphtha cut
+
+    # Glycols (CoolProp incompressibles require the INCOMP:: prefix)
+    # Pure ethylene glycol as incompressible:
+    "ethylene_glycol": "INCOMP::MEG",
+    "meg": "INCOMP::MEG",
+    "monoethylene_glycol": "INCOMP::MEG",
+
+    # If you want common refrigerants too (examples):
+    "r134a": "R134a",
+    "r32": "R32",
+    "r410a": "R410A",
+    "r404a": "R404A",
+    "r507a": "R507A",
 }
 
 

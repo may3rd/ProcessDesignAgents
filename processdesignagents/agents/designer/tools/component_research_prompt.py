@@ -76,7 +76,7 @@ def component_list_researcher_prompt_with_tools(
 
     <instruction id="3">
       <title>Use the Physical Properties Tool</title>
-      <details>Call the `get_physical_properties` tool for each shortlisted component (pure component: mole fraction 1.0) at standard reference conditions (25°C, 1 atm gauge = 0 barg) to confirm molecular weight and physical phase. Capture the returned molecular weight (kg/kmol) and convert to g/mol for reporting. Include any notable property notes provided by the tool in your reasoning. Note that the name of component should be all captialized without space, i.e. CARBONDIOXIDE, CARBONMONOXIDE, ISOBUTANE, etc.</details>
+      <details>Call the `get_physical_properties` tool for each shortlisted component (pure component: mole fraction 1.0) at standard reference conditions (25°C, 1 atm gauge = 0 barg) to confirm molecular weight and physical phase. Capture the returned molecular weight (kg/kmol) and convert to g/mol for reporting. Include any notable property notes provided by the tool in your reasoning.</details>
     </instruction>
 
     <instruction id="4">
@@ -279,8 +279,8 @@ def component_list_researcher_prompt_with_tools(
 
 | **Name** | **Formula** | **Aliase** | **MW (g/mol)** | **NBP (°C)** |
 |----------|-------------|------------|----------------|--------------|
-| Ethanol | C2H6O | ETHANOL | 46.07 | 78.4 |
-| Water | H2O | WATER | 18.015 | 100.0 |</expected_markdown_output>
+| Ethanol | C2H6O | Ethanol | 46.07 | 78.4 |
+| Water | H2O | Water | 18.015 | 100.0 |</expected_markdown_output>
 
     <explanation>
       <point>Two components identified: Water (cooling utility and contamination in ethanol) and Ethanol (main process stream).</point>

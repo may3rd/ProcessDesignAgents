@@ -91,7 +91,7 @@ def stream_calculation_prompt_with_tools(
         </outputs>
       </tool>
       <tool name="get_physical_properties">
-        <description>Looks up physical properties (density, cp, viscosity, phase, molecular_weight) for a mixture using CoolProp. Note that the name of component should be all captialized without space, i.e. CARBONDIOXIDE, CARBONMONOXIDE, ISOBUTANE, etc.</description>
+        <description>Looks up physical properties (density, cp, viscosity, phase, molecular_weight) for a mixture using CoolProp.</description>
         <inputs>
           <input name="components" type="list[str]">List of component names (e.g., ["Ethanol", "Water"]).</input>
           <input name="mole_fractions" type="list[float]">List of mole fractions (must sum to 1.0).</input>
