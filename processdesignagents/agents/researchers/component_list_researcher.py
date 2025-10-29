@@ -7,6 +7,7 @@ from langchain_core.prompts import (
     MessagesPlaceholder,
     SystemMessagePromptTemplate,
 )
+from langchain_core.messages import AIMessage
 from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
@@ -45,9 +46,15 @@ def create_component_list_researcher(llm):
             human_prompt=human_content,
             tools_list=tools_list
             )
+
+        ai_message = AIMessage(content=cleaned_output)
         
         print(cleaned_output, flush=True)
-        exit(0)
+        
+        return {
+            "component_list": cleaned_output,
+            "messages": [ai_message],
+          }
         
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
@@ -191,18 +198,18 @@ def component_list_researcher_prompt(
             <type>string</type>
             <description>Chemical formula (e.g., C2H6O, H2O, CH3OH)</description>
           </column>
-          <column name="MW">
+          <column name="MW (g/mol)">
             <type>numeric</type>
             <description>Molecular weight (in g/mol, e.g., 46.07)</description>
           </column>
-          <column name="Normal Boiling Point (°C)">
+          <column name="NBP (°C)">
             <type>numeric</type>
             <description>Normal boiling point at 1 atm in °C. If estimated, indicate "(approx.)" in the table cell.</description>
           </column>
         </required_columns>
         <table_format>
-| **Name** | **Formula** | **MW** | **Normal Boiling Point (°C)** |
-|----------|-------------|--------|-------------------------------|
+| **Name** | **Formula** | **MW (g/mol)** | **NBP (°C)** |
+|----------|-------------|----------------|--------------|
 | [Component 1] | [Formula] | [MW] | [NBP] |
 | [Component 2] | [Formula] | [MW] | [NBP] |
         </table_format>
@@ -344,8 +351,8 @@ def component_list_researcher_prompt(
 
     <expected_markdown_output>## Chemical Components List
 
-| **Name** | **Formula** | **MW** | **Normal Boiling Point (°C)** |
-|----------|-------------|--------|-------------------------------|
+| **Name** | **Formula** | **MW (g/mol)** | **NBP (°C)** |
+|----------|-------------|----------------|--------------|
 | Ethanol | C2H6O | 46.07 | 78.4 |
 | Water | H2O | 18.015 | 100.0 |</expected_markdown_output>
 
@@ -372,7 +379,7 @@ Create a components list based on the following data:
 {concept_details}
 
 **Physical Properties Tool Instructions:**
-Use the `get_physical_properties` tool whenever you need molecular weight or phase confirmation for a candidate component. Call it with:
+Use the `get_physical_properties` tool whenever you need molecular weight or any physical property for a candidate component. Call it with:
 - `components`: ["ComponentName"]
 - `mole_fractions`: [1.0] for a pure component
 - `temperature_c`: 25.0 (adjust if project documentation specifies otherwise)

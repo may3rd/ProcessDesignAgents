@@ -589,10 +589,10 @@ def calculate_heat_exchanger_duty(
 @tool
 def get_physical_properties(
     components: List[str],
-   mole_fractions: List[float],
-   temperature_c: float,
-   pressure_barg: float,
-   properties_needed: List[str] # e.g., ["density", "cp", "viscosity", "phase", "molecular_weight"]
+    mole_fractions: List[float],
+    temperature_c: float,
+    pressure_barg: float,
+    properties_needed: List[str] # e.g., ["density", "cp", "viscosity", "phase", "molecular_weight"]
 ) -> str:
     """
     Looks up physical properties for a mixture using CoolProp.

@@ -16,7 +16,23 @@ from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
 from processdesignagents.agents.utils.json_tools import get_json_str_from_llm, extract_first_json_document
 from processdesignagents.agents.utils.stream_utils import prefix_mass_fraction_component_names
-from .tools import run_agent_with_tools
+from processdesignagents.agents.designer.tools import (
+    calculate_molar_flow_from_mass,
+    calculate_mass_flow_from_molar,
+    convert_compositions,
+    calculate_volume_flow,
+    perform_mass_balance_split,
+    perform_mass_balance_mix,
+    perform_energy_balance_mix,
+    calculate_heat_exchanger_outlet_temp,
+    calculate_heat_exchanger_duty,
+    get_physical_properties, # Now uses CoolProp
+    build_stream_object,
+    run_agent_with_tools,
+    stream_calculation_prompt_with_tools
+    )
+
+from langchain_core.messages import AIMessage
 
 load_dotenv()
 
@@ -41,6 +57,57 @@ def create_stream_data_estimator(llm, llm_provider: str = "openrouter"):
             design_basis_markdown,
             equipments_and_streams_list,
         )
+        
+        tools_list = [
+            calculate_molar_flow_from_mass,
+            calculate_mass_flow_from_molar,
+            convert_compositions,
+            calculate_volume_flow,
+            perform_mass_balance_split,
+            perform_mass_balance_mix,
+            perform_energy_balance_mix,
+            calculate_heat_exchanger_outlet_temp,
+            calculate_heat_exchanger_duty,
+            get_physical_properties, # Now uses CoolProp
+            build_stream_object,
+        ]
+        
+        # Create streamp template to input to messages creation function
+        es_template = json.loads(equipments_and_streams_list)
+        stream_template = {"streams": es_template["streams"] if "streams" in es_template else []}
+        
+        _, system_message, human_message = stream_calculation_prompt_with_tools(
+            design_basis=design_basis_markdown,
+            basic_pfd_description=basic_pfd_markdown,
+            stream_list_template=stream_template,
+            )
+        
+        output_str = run_agent_with_tools(
+            llm_model=llm,
+            system_prompt=system_message,
+            human_prompt=human_message,
+            tools_list=tools_list
+            )
+        
+        try:
+            json_streams = json.loads(repair_json(output_str))
+            es_foo = {
+                "equipments": es_template["equipments"],
+                "streams": json_streams["streams"],
+                }
+            _, _, streams_md = equipments_and_streams_dict_to_markdown(es_foo)
+            print(streams_md)
+            
+            ai_message = AIMessage(content=output_str)
+            
+            return {
+                "stream_list_results": json.dumps(json_streams),
+                "equipment_and_stream_list": json.dumps(es_foo),
+                "messages": [ai_message],
+            }
+        except Exception as e:
+            raise ValueError(f"Error: {e}")
+        
         system_message, human_message = base_prompt.messages
         prompt_messages = [
             system_message,
