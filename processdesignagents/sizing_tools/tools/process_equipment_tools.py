@@ -12,11 +12,11 @@ def size_reactor_vessel_basic(
     mixture_density_kg_m3: float,
     reaction_exothermic: bool = False,
     heat_removal_kw: float = 0.0,
-    design_pressure_barg: float = 5.0,
+    design_pressure_pa: float = 601325.0,
     design_temperature_c: float = 60.0,
 ) -> str:
     """
-    Preliminary reactor vessel sizing based on holdup, agitation, and heat removal needs.
+    Preliminary reactor vessel sizing based on holdup, agitation, and heat removal needs. Pressure is in absolute Pascals.
     """
     return equipment_sizing(
         "reactor_vessel_sizing",
@@ -25,6 +25,6 @@ def size_reactor_vessel_basic(
         mixture_density_kg_m3,
         reaction_exothermic,
         heat_removal_kw,
-        design_pressure_barg,
+        design_pressure_pa,
         design_temperature_c,
     )

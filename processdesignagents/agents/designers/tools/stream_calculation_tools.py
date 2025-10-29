@@ -678,7 +678,7 @@ def get_physical_properties(
     components: List[str],
     mole_fractions: List[float],
     temperature_c: float,
-    pressure_barg: float,
+    pressure_pa: float, # Absolute pressure in Pascals
     properties_needed: List[str] # e.g., ["density", "cp", "viscosity", "phase", "molecular_weight"]
 ) -> str:
     """
@@ -688,7 +688,7 @@ def get_physical_properties(
         components: List of component names (use common names like "water", "ethanol"). CoolProp aliases are handled internally.
         mole_fractions: List of corresponding mole fractions. Must sum to 1.0.
         temperature_c: Temperature in °C.
-        pressure_barg: Pressure in barg.
+        pressure_pa: Absolute pressure in Pascals (Pa).
         properties_needed: List of property names to retrieve. Valid names:
                            "density", "cp" (specific heat kJ/kg-K), "viscosity" (cP),
                            "phase", "molecular_weight" (kg/kmol).
@@ -754,10 +754,11 @@ def get_physical_properties(
 
         # Convert state variables T, P
         T_k = temperature_c + 273.15
-        P_bar_abs = pressure_barg + 1.01325
-        if P_bar_abs <= 0:
-             return json.dumps({"error": f"Absolute pressure ({P_bar_abs:.3f} bar) must be positive."})
-        P_pa = P_bar_abs * 100_000 # Bar abs -> Pa
+        if pressure_pa <= 0:
+             return json.dumps({"error": f"Absolute pressure ({pressure_pa:.3f} Pa) must be positive."})
+        
+        P_pa = pressure_pa
+        # pressure_pa is already in Pascals, so use it directly
 
         # Initialize AbstractState for properties where it's more reliable (Density, Cp, Visc, Phase)
         try:
@@ -765,7 +766,7 @@ def get_physical_properties(
             if len(cp_components) > 1:
                 AS.set_mole_fractions(mole_fractions)
             AS.update(CP.PT_INPUTS, P_pa, T_k)
-            state_available = True
+            state_available = True # Use pressure_pa directly here
         except Exception as e_abs:
             print(f"Warning: Could not initialize CoolProp AbstractState: {e_abs}. Falling back to PropsSI for all.", flush=True)
             state_available = False
@@ -841,7 +842,7 @@ def get_physical_properties(
             if value is not None and value != "Error":
                  # Check for NaN or Inf which CoolProp might return near critical point etc.
                 if isinstance(value, (float, int)) and not math.isfinite(value):
-                     calculation_errors.append(f"CoolProp returned invalid number (NaN/Inf) for '{prop_name}' at T={temperature_c}C, P={pressure_barg}barg.")
+                     calculation_errors.append(f"CoolProp returned invalid number (NaN/Inf) for '{prop_name}' at T={temperature_c}C, P={pressure_pa}Pa.")
                 else:
                      results[prop_name] = {"value": value, "unit": unit}
             # Only add error if it wasn't handled internally (like MW) and value is None or "Error"
@@ -851,10 +852,9 @@ def get_physical_properties(
         except Exception as e:
             # Catch errors during individual property calls
             error_detail = f"{type(e).__name__} - {e}"
-            calculation_errors.append(f"CoolProp error getting '{prop_name}': {error_detail}")
-            # Ensure props_si_mix_string is defined before using in f-string
-            mix_str_for_error = props_si_mix_string if props_si_mix_string else "mixture"
-            print(f"DEBUG: CoolProp failed for {prop_name} at T={temperature_c}C, P={pressure_barg}barg, Mix='{mix_str_for_error}', Frac={mole_fractions}. Error: {error_detail}", flush=True)
+            calculation_errors.append(f"CoolProp error getting '{prop_name}': {error_detail}") # Use pressure_pa for logging
+            mix_str_for_error = props_si_mix_string if props_si_mix_string else "mixture" # Ensure props_si_mix_string is defined before using in f-string
+            print(f"DEBUG: CoolProp failed for {prop_name} at T={temperature_c}C, P={pressure_pa}Pa, Mix='{mix_str_for_error}', Frac={mole_fractions}. Error: {error_detail}", flush=True)
 
 
     # --- Final Output ---

@@ -16,21 +16,19 @@ from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
 from processdesignagents.agents.utils.json_tools import get_json_str_from_llm, extract_first_json_document
-from processdesignagents.agents.utils.stream_utils import prefix_mass_fraction_component_names
-
 
 load_dotenv()
 
 
-def create_equipments_and_streams_list_builder(llm, llm_provider: str = "openrouter"):
-    def equipments_and_streams_list_builder(state: DesignState) -> DesignState:
-        """Equipments and Streams List Builder: Produces a JSON stream inventory template for process streams."""
-        print("\n# Create Equipments and Streams List Template", flush=True)
+def create_equipment_stream_catalog_agent(llm, llm_provider: str = "openrouter"):
+    def equipment_stream_catalog_agent(state: DesignState) -> DesignState:
+        """Equipment & Stream Catalog Agent: Produces a JSON stream inventory template for process streams."""
+        print("\n# Create Equipment & Stream Catalog Template", flush=True)
         basic_pfd_markdown = state.get("basic_pfd", "")
         design_basis_markdown = state.get("design_basis", "")
         requirements_markdown = state.get("requirements", "")
         concept_details_markdown = state.get("selected_concept_details", "")
-        base_prompt = equipments_and_streams_list_prompt(
+        base_prompt = equipment_stream_catalog_prompt(
             basic_pfd_markdown,
             design_basis_markdown,
             requirements_markdown,
@@ -50,7 +48,6 @@ def create_equipments_and_streams_list_builder(llm, llm_provider: str = "openrou
                 response, response_content = get_json_str_from_llm(llm, prompt, state)
                 _, response_dict = extract_first_json_document(repair_json(response_content))
                 if isinstance(response_dict, dict):
-                    response_dict = prefix_mass_fraction_component_names(response_dict)
                     is_done = True
             except Exception as e:
                 raise ValueError(f"DEBUG: Value : {e}")
@@ -65,10 +62,11 @@ def create_equipments_and_streams_list_builder(llm, llm_provider: str = "openrou
             "equipment_and_stream_template": json.dumps(response_dict),
             "messages": [response],
         }
-    return equipments_and_streams_list_builder
+
+    return equipment_stream_catalog_agent
 
 
-def equipments_and_streams_list_prompt(
+def equipment_stream_catalog_prompt(
     basic_pfd_markdown: str,
     design_basis_markdown: str,
     requirements_markdown: str,

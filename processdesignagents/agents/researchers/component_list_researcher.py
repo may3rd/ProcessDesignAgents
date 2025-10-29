@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.designer.tools import get_physical_properties, run_agent_with_tools, component_list_researcher_prompt_with_tools
+from processdesignagents.agents.designers.tools import get_physical_properties, run_agent_with_tools, component_list_researcher_prompt_with_tools
 
 load_dotenv()
 

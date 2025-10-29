@@ -18,8 +18,7 @@ from dotenv import load_dotenv
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
-from processdesignagents.agents.utils.json_tools import get_json_str_from_llm, extract_first_json_document
-from processdesignagents.agents.designer.tools import equipment_sizing_prompt_with_tools, run_agent_with_tools
+from processdesignagents.agents.designers.tools import equipment_sizing_prompt_with_tools, run_agent_with_tools
 # Import equipment sizing tools
 from processdesignagents.agents.utils.agent_sizing_tools import (
     size_air_cooler_basic,
@@ -159,36 +158,6 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
             }
         except Exception as e:
             raise ValueError(f"Error: {e}")
-        
-        base_prompt = equipment_sizing_prompt(
-            design_basis_markdown,
-            basic_pfd_markdown,
-            equipment_and_stream_list,
-        )
-        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
-        prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        is_done = False
-        response = None
-        response_dict = {}
-        equipment_list_results = {}
-        equipment_md = ""
-        while not is_done:
-            try:
-                response, response_content = get_json_str_from_llm(llm, prompt, state)
-                _, response_dict = extract_first_json_document(repair_json(response_content))
-                _, equipment_md, _ = equipments_and_streams_dict_to_markdown(response_dict)
-                if isinstance(response_dict, dict):
-                    is_done = True
-            except Exception as e:
-                pass
-        if equipment_md:
-            print(equipment_md, flush=True)
-            equipment_list_results = {"equipments": response_dict["equipments"]}
-        return {
-            "equipment_list_results": json.dumps(equipment_list_results),
-            "equipment_and_stream_list": json.dumps(response_dict),
-            "messages": [response],
-        }
 
     return equipment_sizing_agent
 

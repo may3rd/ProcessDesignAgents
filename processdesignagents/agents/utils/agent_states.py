@@ -75,13 +75,9 @@ def create_design_state(
         "stream_list_template": stream_list_template,
         "stream_list_results": stream_list_results,
         "approval": approval,
+        "design_basis": design_basis,
+        "safety_risk_analyst_report": safety_risk_analyst_report,
+        "project_manager_report": project_manager_report,
     }
-
-    if design_basis is not None:
-        state["design_basis"] = design_basis
-    if safety_risk_analyst_report is not None:
-        state["safety_risk_analyst_report"] = safety_risk_analyst_report
-    if project_manager_report is not None:
-        state["project_manager_report"] = project_manager_report
 
     return state

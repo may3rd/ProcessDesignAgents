@@ -14,9 +14,7 @@ from dotenv import load_dotenv
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
-from processdesignagents.agents.utils.json_tools import get_json_str_from_llm, extract_first_json_document
-from processdesignagents.agents.utils.stream_utils import prefix_mass_fraction_component_names
-from processdesignagents.agents.designer.tools import (
+from processdesignagents.agents.designers.tools import (
     calculate_molar_flow_from_mass,
     calculate_mass_flow_from_molar,
     convert_compositions,
@@ -37,10 +35,10 @@ from langchain_core.messages import AIMessage
 load_dotenv()
 
 
-def create_stream_data_estimator(llm, llm_provider: str = "openrouter"):
-    def stream_data_estimator(state: DesignState) -> DesignState:
-        """Stream Data Estimator: Generates JSON stream data with reconciled estimates."""
-        print("\n# Stream Data Estimator", flush=True)
+def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter"):
+    def stream_property_estimation_agent(state: DesignState) -> DesignState:
+        """Stream Property Estimation Agent: Generates JSON stream data with reconciled estimates."""
+        print("\n# Stream Property Estimation", flush=True)
         
         # Loaded prior LLM results
         basic_pfd_markdown = state.get("basic_pfd", "")
@@ -52,7 +50,7 @@ def create_stream_data_estimator(llm, llm_provider: str = "openrouter"):
             exit(-1)
         
         # Create base prompt from input data
-        base_prompt = stream_data_estimator_prompt(
+        base_prompt = stream_property_estimation_prompt(
             basic_pfd_markdown,
             design_basis_markdown,
             equipments_and_streams_list,
@@ -107,45 +105,11 @@ def create_stream_data_estimator(llm, llm_provider: str = "openrouter"):
             }
         except Exception as e:
             raise ValueError(f"Error: {e}")
-        
-        system_message, human_message = base_prompt.messages
-        prompt_messages = [
-            system_message,
-            MessagesPlaceholder(variable_name="messages"),
-            human_message,
-        ]
-        prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        is_done = False
-        response = None
-        response_dict = {}
-        stream_list_results = {}
-        streams_md = ""
-        while not is_done:
-            try:
-                response, response_content = get_json_str_from_llm(llm, prompt, state)
-                _, response_dict = extract_first_json_document(repair_json(response_content))
-                if not isinstance(response_dict, dict):
-                    print("Stream Data Estimator received non-dict payload, retrying...", flush=True)
-                    print(response_content, flush=True)
-                    continue
-                response_dict = prefix_mass_fraction_component_names(response_dict)
-                _, _, streams_md = equipments_and_streams_dict_to_markdown(response_dict)
-                is_done = True
-            except Exception as e:
-                print(f"Stream Data Estimator attempt failed: {e}", flush=True)
-        if streams_md:
-            print(streams_md, flush=True)
-            stream_list_results = {"streams": response_dict["streams"]}
-        return {
-            "stream_list_results": json.dumps(stream_list_results),
-            "equipment_and_stream_list": json.dumps(response_dict),
-            "messages": [response],
-        }
 
-    return stream_data_estimator
+    return stream_property_estimation_agent
 
 
-def stream_data_estimator_prompt(
+def stream_property_estimation_prompt(
     basic_pfd_markdown: str,
     design_basis_markdown: str,
     equipments_and_streams_list: str,

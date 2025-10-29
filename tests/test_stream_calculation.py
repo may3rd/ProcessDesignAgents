@@ -20,7 +20,7 @@ from langchain_core.messages import AIMessage, BaseMessage, ToolMessage, HumanMe
 # Using create_agent in langchain 1.0
 from langchain.agents import create_agent
 
-from processdesignagents.agents.designer.tools import (
+from processdesignagents.agents.designers.tools import (
     calculate_molar_flow_from_mass,
     calculate_mass_flow_from_molar,
     convert_compositions,

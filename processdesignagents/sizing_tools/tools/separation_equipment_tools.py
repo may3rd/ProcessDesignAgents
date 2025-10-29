@@ -14,10 +14,10 @@ def size_distillation_column_basic(
     feed_composition: float,
     relative_volatility: float,
     tray_efficiency_percent: float = 70.0,
-    design_pressure_barg: float = 1.0,
+    design_pressure_pa: float = 201325.0,
 ) -> str:
     """
-    Preliminary distillation column sizing based on shortcut methods (Fenske/Underwood/Gilliland).
+    Preliminary distillation column sizing based on shortcut methods (Fenske/Underwood/Gilliland). Pressure is in absolute Pascals.
     """
     return equipment_sizing(
         "distillation_column_sizing",
@@ -28,7 +28,7 @@ def size_distillation_column_basic(
         feed_composition,
         relative_volatility,
         tray_efficiency_percent,
-        design_pressure_barg,
+        design_pressure_pa,
     )
 
 
@@ -39,10 +39,10 @@ def size_absorption_column_basic(
     outlet_concentration: float,
     solvent_type: str = "water",
     henry_constant: float | None = None,
-    design_pressure_barg: float = 1.0,
+    design_pressure_pa: float = 201325.0,
 ) -> str:
     """
-    Preliminary absorption column sizing using heuristic stage and diameter estimates.
+    Preliminary absorption column sizing using heuristic stage and diameter estimates. Pressure is in absolute Pascals.
     """
     return equipment_sizing(
         "absorption_column_sizing",
@@ -51,7 +51,7 @@ def size_absorption_column_basic(
         outlet_concentration,
         solvent_type,
         henry_constant,
-        design_pressure_barg,
+        design_pressure_pa,
     )
 
 
@@ -63,11 +63,11 @@ def size_separator_vessel_basic(
     water_percentage: float,
     separator_type: str = "horizontal",
     residence_time_min: float = 3.0,
-    design_pressure_barg: float = 5.0,
+    design_pressure_pa: float = 601325.0,
     design_temperature_c: float = 40.0,
 ) -> str:
     """
-    Preliminary two- or three-phase separator sizing returning volume, geometry, and nozzle guidance.
+    Preliminary two- or three-phase separator sizing returning volume, geometry, and nozzle guidance. Pressure is in absolute Pascals.
     """
     return equipment_sizing(
         "separator_vessel_sizing",
@@ -77,6 +77,6 @@ def size_separator_vessel_basic(
         water_percentage,
         separator_type,
         residence_time_min,
-        design_pressure_barg,
+        design_pressure_pa,
         design_temperature_c,
     )

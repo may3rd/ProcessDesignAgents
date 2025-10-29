@@ -79,8 +79,8 @@ def equipment_sizing_prompt_with_tools(
         <equipment_type>Pump - Centrifugal or Positive Displacement</equipment_type>
         <inputs>
         <input name="mass_flow_kg_h">Mass flow rate in kg/h</input>
-        <input name="inlet_pressure_barg">Suction pressure in barg</input>
-        <input name="outlet_pressure_barg">Discharge pressure in barg</input>
+        <input name="inlet_pressure_pa">Suction pressure in absolute Pascals (Pa)</input>
+        <input name="outlet_pressure_pa">Discharge pressure in absolute Pascals (Pa)</input>
         <input name="fluid_density_kg_m3">Fluid density at operating temperature in kg/m³</input>
         <input name="pump_efficiency">Pump isentropic or volumetric efficiency (0.0-1.0)</input>
         <input name="motor_efficiency">Motor efficiency (typically 0.85-0.95)</input>
@@ -88,7 +88,7 @@ def equipment_sizing_prompt_with_tools(
         <outputs>
         <output name="volumetric_flow_m3_h">Volumetric flow at inlet in m³/h</output>
         <output name="total_head_m">Total dynamic head in meters</output>
-        <output name="discharge_pressure_barg">Discharge pressure in barg</output>
+        <output name="discharge_pressure_pa">Discharge pressure in absolute Pascals (Pa)</output>
         <output name="hydraulic_power_kw">Hydraulic power (shaft power) in kW</output>
         <output name="motor_power_kw">Electric motor rated power in kW</output>
         <output name="npsh_required_m">Net positive suction head required in meters</output>
@@ -101,8 +101,8 @@ def equipment_sizing_prompt_with_tools(
         <equipment_type>Compressor - Centrifugal or Reciprocating</equipment_type>
         <inputs>
         <input name="inlet_flow_m3_min">Volumetric flow at inlet conditions in m³/min</input>
-        <input name="inlet_pressure_kpa">Inlet pressure absolute in kPa</input>
-        <input name="discharge_pressure_kpa">Discharge pressure absolute in kPa</input>
+        <input name="inlet_pressure_pa">Inlet pressure in absolute Pascals (Pa)</input>
+        <input name="discharge_pressure_pa">Discharge pressure in absolute Pascals (Pa)</input>
         <input name="gas_type">Gas type (air, nitrogen, ethylene, propane, natural gas, etc.)</input>
         <input name="efficiency_polytropic">Polytropic efficiency (0.0-1.0, typically 0.75-0.85)</input>
         <input name="intercooling">Boolean: whether intercooling between stages is available</input>
@@ -131,7 +131,7 @@ def equipment_sizing_prompt_with_tools(
         <input name="feed_composition">Light component mole fraction in feed</feed_composition>
         <input name="relative_volatility">Relative volatility of light/heavy key components</relative_volatility>
         <input name="tray_efficiency_percent">Tray efficiency (Murphree) in percent</tray_efficiency_percent>
-        <input name="design_pressure_barg">Column design pressure in barg</design_pressure_barg>
+        <input name="design_pressure_pa">Column design pressure in absolute Pascals (Pa)</input>
         </inputs>
         <outputs>
         <output name="theoretical_stages">Minimum number of theoretical stages (Fenske)</output>
@@ -155,7 +155,7 @@ def equipment_sizing_prompt_with_tools(
         <input name="outlet_concentration">Component concentration in outlet gas (mole fraction)</outlet_concentration>
         <input name="solvent_type">Solvent medium (water, MEA, DEA, MDEA, etc.)</solvent_type>
         <input name="henry_constant">Henry's law constant or equilibrium data</henry_constant>
-        <input name="design_pressure_barg">Column design pressure in barg</design_pressure_barg>
+        <input name="design_pressure_pa">Column design pressure in absolute Pascals (Pa)</input>
         </inputs>
         <outputs>
         <output name="number_of_stages">Number of theoretical stages required</output>
@@ -177,8 +177,8 @@ def equipment_sizing_prompt_with_tools(
         <input name="water_percentage">Water content percentage by volume</water_percentage>
         <input name="separator_type">Separator type (horizontal, vertical, cylindrical, spherical)</separator_type>
         <input name="residence_time_min">Desired residence time in minutes (typically 3-5 min)</residence_time_min>
-        <input name="design_pressure_barg">Design pressure in barg</design_pressure_barg>
-        <input name="design_temperature_c">Design temperature in °C</design_temperature_c>
+        <input name="design_pressure_pa">Design pressure in absolute Pascals (Pa)</input>
+        <input name="design_temperature_c">Design temperature in °C</input>
         </inputs>
         <outputs>
         <output name="vessel_volume_m3">Required vessel volume in m³</output>
@@ -198,16 +198,16 @@ def equipment_sizing_prompt_with_tools(
         <inputs>
         <input name="protected_equipment_id">Equipment ID being protected (e.g., E-101, R-101)</input>
         <input name="required_relief_flow_kg_h">Required relief capacity in kg/h</input>
-        <input name="relief_pressure_barg">Relief valve set pressure in barg</relief_pressure_barg>
-        <input name="back_pressure_barg">Downstream backpressure in barg</back_pressure_barg>
+        <input name="relief_pressure_pa">Relief valve set pressure in absolute Pascals (Pa)</input>
+        <input name="back_pressure_pa">Downstream backpressure in absolute Pascals (Pa)</input>
         <input name="fluid_phase">Fluid phase being relieved (liquid, vapor, two-phase)</fluid_phase>
         <input name="fluid_density_kg_m3">Fluid density at relief conditions in kg/m³</fluid_density_kg_m3>
         </inputs>
         <outputs>
         <output name="outlet_nozzle_diameter_mm">Outlet nozzle diameter in mm</outlet_nozzle_diameter_mm>
         <output name="valve_capacity_kg_h">Verified valve capacity in kg/h</output>
-        <output name="set_pressure_barg">PSV set pressure in barg</set_pressure_barg>
-        <output name="cracking_pressure_barg">Valve cracking pressure in barg</cracking_pressure_barg>
+        <output name="set_pressure_pa">PSV set pressure in absolute Pascals (Pa)</output>
+        <output name="cracking_pressure_pa">Valve cracking pressure in absolute Pascals (Pa)</output>
         <output name="valve_size_class">Valve size classification (Size 1, 2, 3, etc.)</valve_size_class>
         <output name="discharge_requirement">Discharge line sizing recommendation</output>
         </outputs>
@@ -220,8 +220,8 @@ def equipment_sizing_prompt_with_tools(
         <input name="protected_equipment_id">Equipment ID being protected</protected_equipment_id>
         <input name="equipment_volume_m3">Equipment internal volume in m³</input>
         <input name="blowdown_time_seconds">Desired depressurization time in seconds (typically 15-30 min)</input>
-        <input name="initial_pressure_barg">Initial system pressure in barg</initial_pressure_barg>
-        <input name="final_pressure_barg">Final pressure after blowdown in barg (typically 0.5-1.0 barg)</final_pressure_barg>
+        <input name="initial_pressure_pa">Initial system pressure in absolute Pascals (Pa)</input>
+        <input name="final_pressure_pa">Final pressure after blowdown in absolute Pascals (Pa)</input>
         <input name="fluid_type">Fluid type (hydrocarbon, water, steam, air, etc.)</fluid_type>
         <input name="fluid_density_kg_m3">Fluid density in kg/m³</fluid_density_kg_m3>
         </inputs>
@@ -243,7 +243,7 @@ def equipment_sizing_prompt_with_tools(
         <input name="vapor_molecular_weight">Average molecular weight in g/mol</vapor_molecular_weight>
         <input name="vapor_temperature_c">Vapor temperature in °C</vapor_temperature_c>
         <input name="vapor_density_kg_m3">Vapor density at operating conditions in kg/m³</vapor_density_kg_m3>
-        <input name="equipment_pressure_barg">Equipment internal pressure in barg</equipment_pressure_barg>
+        <input name="equipment_pressure_pa">Equipment internal pressure in absolute Pascals (Pa)</input>
         <input name="vent_line_length_m">Length of vent line to discharge point in meters</vent_line_length_m>
         </inputs>
         <outputs>
@@ -263,7 +263,7 @@ def equipment_sizing_prompt_with_tools(
         <input name="design_capacity_m3">Design storage capacity in m³</input>
         <input name="fluid_type">Fluid type stored (crude oil, naphtha, water, etc.)</fluid_type>
         <input name="storage_duration_hours">Typical storage duration in hours</storage_duration_hours>
-        <input name="design_pressure_barg">Design pressure in barg (typically 0.05-0.2 for atmospheric)</design_pressure_barg>
+        <input name="design_pressure_pa">Design pressure in absolute Pascals (Pa)</input>
         <input name="design_temperature_c">Design temperature in °C</design_temperature_c>
         <input name="tank_type">Tank type (vertical cylindrical, horizontal, spherical)</tank_type>
         </inputs>
@@ -285,7 +285,7 @@ def equipment_sizing_prompt_with_tools(
         <input name="outlet_flow_kg_h">Maximum outlet flow rate in kg/h</input>
         <input name="fluid_density_kg_m3">Fluid density in kg/m³</fluid_density_kg_m3>
         <input name="surge_time_minutes">Surge time (buffer capacity) in minutes (typically 5-15 min)</surge_time_minutes>
-        <input name="operating_pressure_barg">Operating pressure in barg</operating_pressure_barg>
+        <input name="operating_pressure_pa">Operating pressure in absolute Pascals (Pa)</input>
         <input name="l_d_ratio">Length-to-diameter ratio</l_d_ratio>
         </inputs>
         <outputs>
@@ -306,8 +306,8 @@ def equipment_sizing_prompt_with_tools(
         <input name="mixture_density_kg_m3">Reaction mixture density in kg/m³</mixture_density_kg_m3>
         <input name="reaction_exothermic">Boolean: whether reaction is exothermic</reaction_exothermic>
         <input name="heat_removal_kw">Heat removal capacity required in kW (if exothermic)</input>
-        <input name="design_pressure_barg">Design pressure in barg</design_pressure_barg>
-        <input name="design_temperature_c">Design temperature in °C</design_temperature_c>
+        <input name="design_pressure_pa">Design pressure in absolute Pascals (Pa)</input>
+        <input name="design_temperature_c">Design temperature in °C</input>
         </inputs>
         <outputs>
         <output name="reactor_volume_m3">Required reactor volume in m³</output>
@@ -326,8 +326,8 @@ def equipment_sizing_prompt_with_tools(
         <inputs>
         <input name="vapor_flow_kmol_h">Vapor flow rate in kmol/h</input>
         <input name="liquid_content_percent">Expected liquid content by mass percentage</liquid_content_percent>
-        <input name="design_pressure_barg">Design pressure in barg</design_pressure_barg>
-        <input name="design_temperature_c">Design temperature in °C</design_temperature_c>
+        <input name="design_pressure_pa">Design pressure in absolute Pascals (Pa)</input>
+        <input name="design_temperature_c">Design temperature in °C</input>
         <input name="residence_time_seconds">Desired liquid residence time in seconds (typically 2-5 min)</residence_time_seconds>
         </inputs>
         <outputs>
@@ -345,8 +345,8 @@ def equipment_sizing_prompt_with_tools(
         <inputs>
         <input name="fluid_flow_m3_h">Fluid flow rate in m³/h</input>
         <input name="filtration_type">Type of filtration (bag filter, cartridge, sand, membrane)</filtration_type>
-        <input name="design_pressure_barg">Design pressure in barg</design_pressure_barg>
-        <input name="design_temperature_c">Design temperature in °C</design_temperature_c>
+        <input name="design_pressure_pa">Design pressure in absolute Pascals (Pa)</input>
+        <input name="design_temperature_c">Design temperature in °C</input>
         <input name="filter_media_permeability">Filter media permeability or typical face velocity m/s</input>
         </inputs>
         <outputs>
@@ -365,7 +365,7 @@ def equipment_sizing_prompt_with_tools(
         <input name="gas_flow_kmol_h">Dry gas flow in kmol/h</input>
         <input name="inlet_moisture_ppm">Inlet moisture content in ppm (vol)</inlet_moisture_ppm>
         <input name="outlet_moisture_ppm">Desired outlet moisture in ppm (vol)</outlet_moisture_ppm>
-        <input name="design_pressure_barg">Design pressure in barg</design_pressure_barg>
+        <input name="design_pressure_pa">Design pressure in absolute Pascals (Pa)</input>
         <input name="regeneration_type">Regeneration method (heated air, vacuum, pressure swing)</regeneration_type>
         </inputs>
         <outputs>
@@ -466,7 +466,7 @@ def equipment_sizing_prompt_with_tools(
           * Populate sizing_parameters array:
             - "flow_rate": {{"value": [float], "unit": "m³/h"}}
             - "head": {{"value": [float], "unit": "m"}}
-            - "discharge_pressure": {{"value": [float], "unit": "barg"}}
+            - "discharge_pressure": {{"value": [float], "unit": "Pa"}}
             - "hydraulic_power": {{"value": [float], "unit": "kW"}}
             - "pump_efficiency": {{"value": [float], "unit": "%"}}
             - "motor_power": {{"value": [float], "unit": "kW"}}
@@ -498,7 +498,7 @@ def equipment_sizing_prompt_with_tools(
             - "length": {{"value": [float], "unit": "mm"}}
             - "l_d_ratio": {{"value": [float], "unit": "dimensionless"}}
             - "shell_thickness": {{"value": [float], "unit": "mm"}}
-            - "head_thickness": {{"value": [float], "unit": "mm"}}
+            - "head_thickness": {{"value": [float], "unit": "mm"}} 
             - "design_pressure": {{"value": [float], "unit": "barg"}}
             - "design_temperature": {{"value": [float], "unit": "°C"}}
             - "material": {{"value": "[material]", "unit": "string"}}
@@ -525,7 +525,7 @@ def equipment_sizing_prompt_with_tools(
           * Populate sizing_parameters array:
             - "inlet_flow": {{"value": [float], "unit": "m³/min"}}
             - "compression_ratio": {{"value": [float], "unit": "dimensionless"}}
-            - "discharge_pressure": {{"value": [float], "unit": "barg"}}
+            - "discharge_pressure": {{"value": [float], "unit": "Pa"}}
             - "discharge_temperature": {{"value": [float], "unit": "°C"}}
             - "polytropic_efficiency": {{"value": [float], "unit": "%"}}
             - "power": {{"value": [float], "unit": "kW"}}
@@ -1072,7 +1072,7 @@ def equipment_sizing_prompt_with_tools(
           <param>motor_power (kW) - verify includes efficiency and service margin</param>
         </key_parameters>
         <manual_fallback>If tool fails: V = mass_flow / density; ΔP = P_out - P_in; head = ΔP × 10.2 / ρ; power = V × ΔP / (efficiency × 3600)</manual_fallback>
-        <validation>Verify outlet pressure: P_out = P_in + (head × 0.0981) / 100; check NPSH available &gt; NPSH required</validation>
+        <validation>Verify outlet pressure: P_out_pa = P_in_pa + (head * density * 9.81); check NPSH available &gt; NPSH required</validation>
       </equipment_type>
 
       <equipment_type name="Vessels (Tanks, Reactors, Separators)">

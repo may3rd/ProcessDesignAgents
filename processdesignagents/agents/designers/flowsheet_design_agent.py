@@ -14,10 +14,10 @@ from processdesignagents.agents.utils.prompt_utils import jinja_raw, strip_markd
 load_dotenv()
 
 
-def create_basic_pfd_designer(llm):
-    def basic_pfd_designer(state: DesignState) -> DesignState:
-        """Basic PFD Designer: synthesizes a preliminary process flow diagram consistent with the detailed concept and design basis."""
-        print("\n# Basic PFD Design", flush=True)
+def create_flowsheet_design_agent(llm):
+    def flowsheet_design_agent(state: DesignState) -> DesignState:
+        """Flowsheet Design Agent: synthesizes a preliminary process flow diagram consistent with the detailed concept and design basis."""
+        print("\n# Flowsheet Design", flush=True)
 
         requirements_markdown = state.get("requirements", "")
         selected_concept_name = state.get("selected_concept_name", "")
@@ -33,7 +33,7 @@ def create_basic_pfd_designer(llm):
         if not isinstance(design_basis_markdown, str):
             design_basis_markdown = str(design_basis_markdown)
 
-        base_prompt = basic_pfd_prompt(
+        base_prompt = flowsheet_design_prompt(
             selected_concept_name,
             concept_details_markdown,
             requirements_markdown,
@@ -64,10 +64,10 @@ def create_basic_pfd_designer(llm):
             "messages": [response],
         }
 
-    return basic_pfd_designer
+    return flowsheet_design_agent
 
 
-def basic_pfd_prompt(
+def flowsheet_design_prompt(
     concept_name: str,
     concept_details: str,
     requirements: str,

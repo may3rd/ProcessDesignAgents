@@ -96,7 +96,7 @@ def stream_calculation_prompt_with_tools(
           <input name="components" type="list[str]">List of component names (e.g., ["Ethanol", "Water"]).</input>
           <input name="mole_fractions" type="list[float]">List of mole fractions (must sum to 1.0).</input>
           <input name="temperature_c" type="float">Temperature in °C.</input>
-          <input name="pressure_barg" type="float">Pressure in barg.</input>
+          <input name="pressure_pa" type="float">Absolute pressure in Pascals (Pa).</input>
           <input name="properties_needed" type="list[str]">List of properties (e.g., ["density", "cp", "phase", "molecular_weight"]).</input>
         </inputs>
         <outputs>

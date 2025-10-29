@@ -1,18 +1,17 @@
 from .utils.agent_states import DesignState
 
-from .analysts.process_requirements_analyst import create_process_requiruments_analyst
 from .analysts.design_basis_analyst import create_design_basis_analyst
-from .researchers.innovative_researcher import create_innovative_researcher
-from .researchers.conservative_researcher import create_conservative_researcher
-from .researchers.concept_detailer import create_concept_detailer
-from .researchers.component_list_researcher import create_component_list_researcher
-from .designer.basic_pfd_designer import create_basic_pfd_designer
-from .designer.equipments_and_streams_list_builder import create_equipments_and_streams_list_builder
-from .designer.stream_data_estimator import create_stream_data_estimator
-from .designer.equipment_sizing_agent import create_equipment_sizing_agent
+from .analysts.process_requirements_analyst import create_process_requiruments_analyst
 from .analysts.safety_risk_analyst import create_safety_risk_analyst
+from .designers.equipment_sizing_agent import create_equipment_sizing_agent
+from .designers.equipment_stream_catalog_agent import create_equipment_stream_catalog_agent
+from .designers.flowsheet_design_agent import create_flowsheet_design_agent
+from .designers.stream_property_estimation_agent import create_stream_property_estimation_agent
 from .project_manager.project_manager import create_project_manager
-
+from .researchers.component_list_researcher import create_component_list_researcher
+from .researchers.conservative_researcher import create_conservative_researcher
+from .researchers.detail_concept_researcher import create_concept_detailer
+from .researchers.innovative_researcher import create_innovative_researcher
 
 __all__ = [
     "DesignState",
@@ -22,9 +21,9 @@ __all__ = [
     "create_conservative_researcher",
     "create_component_list_researcher",
     "create_concept_detailer",
-    "create_basic_pfd_designer",
-    "create_equipments_and_streams_list_builder",
-    "create_stream_data_estimator",
+    "create_flowsheet_design_agent",
+    "create_equipment_stream_catalog_agent",
+    "create_stream_property_estimation_agent",
     "create_equipment_sizing_agent",
     "create_safety_risk_analyst",
     "create_project_manager",
