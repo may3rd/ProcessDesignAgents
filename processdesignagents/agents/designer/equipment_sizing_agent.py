@@ -4,6 +4,8 @@ import json
 from json_repair import repair_json
 from typing import Dict, Any
 
+from langchain_core.messages import AIMessage
+
 from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -17,7 +19,26 @@ from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
 from processdesignagents.agents.utils.json_tools import get_json_str_from_llm, extract_first_json_document
-
+from processdesignagents.agents.designer.tools import equipment_sizing_prompt_with_tools, run_agent_with_tools
+# Import equipment sizing tools
+from processdesignagents.agents.utils.agent_sizing_tools import (
+    size_air_cooler_basic,
+    size_absorption_column_basic,
+    size_storage_tank_basic,
+    size_surge_drum_basic,
+    size_blowdown_valve_basic,
+    size_compressor_basic,
+    size_heat_exchanger_basic,
+    size_pump_basic,
+    size_reactor_vessel_basic,
+    size_separator_vessel_basic,
+    size_vent_valve_basic,
+    size_distillation_column_basic,
+    size_dryer_vessel_basic,
+    size_filter_vessel_basic,
+    size_knockout_drum_basic,
+    size_pressure_safety_valve_basic,
+)
 
 load_dotenv()
 
@@ -62,7 +83,83 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
         print("\n# Equipment Sizing", flush=True)
         design_basis_markdown = state.get("design_basis", "")
         basic_pfd_markdown = state.get("basic_pfd", "")
-        equipment_and_stream_list = state.get("equipment_and_stream_list", "")
+        equipment_and_stream_template = state.get("equipment_and_stream_template", "{}")
+        equipment_and_stream_list = state.get("equipment_and_stream_list", "{}")
+        
+        es_template = json.loads(equipment_and_stream_template)
+        es_list = json.loads(equipment_and_stream_list)
+        
+        # Simulate the equipment and stram list at this stage
+        es_foo = {
+            "equipments": es_template["equipments"],
+            "streams": es_list["streams"],
+            }
+        
+        # Create tools list to be called by agent
+        tools_list = [
+            size_air_cooler_basic,
+            size_absorption_column_basic,
+            size_storage_tank_basic,
+            size_surge_drum_basic,
+            size_blowdown_valve_basic,
+            size_compressor_basic,
+            size_heat_exchanger_basic,
+            size_pump_basic,
+            size_reactor_vessel_basic,
+            size_separator_vessel_basic,
+            size_vent_valve_basic,
+            size_distillation_column_basic,
+            size_dryer_vessel_basic,
+            size_filter_vessel_basic,
+            size_knockout_drum_basic,
+            size_pressure_safety_valve_basic,
+        ]
+        
+        equipment_stream_list_str = json.dumps(es_foo)
+        
+        # Create equipment category list from equipment_and_stream_list_template
+        equipment_category_list = create_equipment_category_list(equipment_stream_list_str)
+        
+        # Print the equipment category list in the temeplate
+        if "category_names" in equipment_category_list:
+            print(equipment_category_list["category_names"])
+            for ids in equipment_category_list["category_ids"]:
+                print(f"{ids['name']} -> {', '.join(ids['id'])}")
+        else:
+            print("No category names found in the list.")
+        
+        # Create agent prompt
+        _, system_content, human_content = equipment_sizing_prompt_with_tools(
+            equipment_and_stream_list=equipment_stream_list_str,
+        )
+        
+        # Test new run_agent_with_tools
+        output_str = run_agent_with_tools(
+            llm_model=llm,
+            system_prompt=system_content,
+            human_prompt=human_content,
+            tools_list=tools_list,
+            )
+        
+        try:
+            json_equipments = json.loads(repair_json(output_str))
+            es_foo = {
+                "equipments": json_equipments["equipments"],
+                "streams": es_list["streams"],
+                }
+            _, equipments_md, _ = equipments_and_streams_dict_to_markdown(es_foo)
+            print(equipments_md)
+            
+            ai_message = AIMessage(content=output_str)
+            
+            return {
+                "equipment_list_results": json.dumps(json_equipments),
+                "equipment_and_stream_list": json.dumps(es_foo),
+                "messages": [ai_message],
+            }
+        except Exception as e:
+            raise ValueError(f"Error: {e}")
+        
         base_prompt = equipment_sizing_prompt(
             design_basis_markdown,
             basic_pfd_markdown,

@@ -79,7 +79,7 @@ def create_stream_data_estimator(llm, llm_provider: str = "openrouter"):
         _, system_message, human_message = stream_calculation_prompt_with_tools(
             design_basis=design_basis_markdown,
             basic_pfd_description=basic_pfd_markdown,
-            stream_list_template=stream_template,
+            stream_list_template=json.dumps(stream_template),
             )
         
         output_str = run_agent_with_tools(

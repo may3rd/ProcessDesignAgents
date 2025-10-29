@@ -58,8 +58,8 @@ class GraphSetup:
         design_basis_analyst = create_design_basis_analyst(self.quick_thinking_llm)
         basic_pfd_designer = create_basic_pfd_designer(self.quick_thinking_llm)
         equipments_and_streams_list_builder = create_equipments_and_streams_list_builder(self.quick_structured_llm)
-        stream_data_estimator = create_stream_data_estimator(self.deep_structured_llm)
-        equipment_sizing_agent = create_equipment_sizing_agent(self.deep_structured_llm)
+        stream_data_estimator = create_stream_data_estimator(self.quick_thinking_llm)
+        equipment_sizing_agent = create_equipment_sizing_agent(self.quick_thinking_llm)
         safety_risk_analyst = create_safety_risk_analyst(self.quick_thinking_llm)
         project_manager = create_project_manager(self.quick_thinking_llm)
         
