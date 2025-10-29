@@ -4,87 +4,12 @@ from typing import Tuple
 from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
-    MessagesPlaceholder,
     SystemMessagePromptTemplate,
 )
-from langchain_core.messages import AIMessage
-from dotenv import load_dotenv
-
-from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
-from processdesignagents.agents.designer.tools import get_physical_properties, run_agent_with_tools, component_list_researcher_prompt_with_tools
-
-load_dotenv()
 
 
-def create_component_list_researcher(llm):
-    def component_list_researcher(state: DesignState) -> DesignState:
-        """Component List Researcher: Syntensis the problem requirement, concept details, and design basis for component list generation."""
-        print("\n# Component List Researcher:", flush=True)
-
-        requirements_markdown = state.get("requirements", "")
-        selected_concept_name = state.get("selected_concept_name", "")
-        concept_details_markdown = state.get("selected_concept_details", "")
-        
-        if not isinstance(concept_details_markdown, str):
-            concept_details_markdown = str(concept_details_markdown)
-        if not isinstance(requirements_markdown, str):
-            requirements_markdown = str(requirements_markdown)
-        if not isinstance(selected_concept_name, str):
-            selected_concept_name = str(selected_concept_name)
-
-        base_prompt, system_content, human_content = component_list_researcher_prompt_with_tools(
-            selected_concept_name,
-            concept_details_markdown,
-            requirements_markdown,
-        )
-        
-        tools_list = [ get_physical_properties ]
-
-        cleaned_output = run_agent_with_tools(
-            llm_model=llm,
-            system_prompt=system_content,
-            human_prompt=human_content,
-            tools_list=tools_list
-            )
-
-        ai_message = AIMessage(content=cleaned_output)
-        
-        print(cleaned_output, flush=True)
-        
-        return {
-            "component_list": cleaned_output,
-            "messages": [ai_message],
-          }
-        
-        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
-        prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm
-        is_done = False
-        try_count = 0
-        while not is_done:
-            try_count += 1
-            if try_count > 3:
-                print("+ Max try count reached.", flush=True)
-                exit(-1)
-            try:
-                # Get the response from LLM
-                response = chain.invoke({"messages": list(state.get("messages", []))})
-                if len(response.content) < 20:
-                    continue
-                is_done = True
-            except Exception as e:
-                print(f"Attemp {try_count}: {e}")
-        print(response.content, flush=True)
-        return {
-            "component_list": response.content,
-            "messages": [response],
-        }
-
-    return component_list_researcher
-
-
-def component_list_researcher_prompt(
+def component_list_researcher_prompt_with_tools(
     concept_name: str,
     concept_details: str,
     requirements: str,
@@ -151,7 +76,7 @@ def component_list_researcher_prompt(
 
     <instruction id="3">
       <title>Use the Physical Properties Tool</title>
-      <details>Call the `get_physical_properties` tool for each shortlisted component (pure component: mole fraction 1.0) at standard reference conditions (25°C, 1 atm gauge = 0 barg) to confirm molecular weight and physical phase. Capture the returned molecular weight (kg/kmol) and convert to g/mol for reporting. Include any notable property notes provided by the tool in your reasoning.</details>
+      <details>Call the `get_physical_properties` tool for each shortlisted component (pure component: mole fraction 1.0) at standard reference conditions (25°C, 1 atm gauge = 0 barg) to confirm molecular weight and physical phase. Capture the returned molecular weight (kg/kmol) and convert to g/mol for reporting. Include any notable property notes provided by the tool in your reasoning. Note that the name of component should be all captialized without space, i.e. CARBONDIOXIDE, CARBONMONOXIDE, ISOBUTANE, etc.</details>
     </instruction>
 
     <instruction id="4">
@@ -209,10 +134,10 @@ def component_list_researcher_prompt(
           </column>
         </required_columns>
         <table_format>
-| **Name** | **Formula** | **MW (g/mol)** | **NBP (°C)** |
-|----------|-------------|----------------|--------------|
-| [Component 1] | [Formula] | [MW] | [NBP] |
-| [Component 2] | [Formula] | [MW] | [NBP] |
+| **Name** | **Formula** | **Aliase** | **MW (g/mol)** | **NBP (°C)** |
+|----------|-------------|------------|----------------|--------------|
+| [Component 1] | [coolprop aliase] [Formula] | [MW] | [NBP] |
+| [Component 2] | [coolprop aliase] [Formula] | [MW] | [NBP] |
         </table_format>
         <sorting_order>Ascending by boiling point (low to high)</sorting_order>
         <minimum_components>2</minimum_components>
@@ -352,10 +277,10 @@ def component_list_researcher_prompt(
 
     <expected_markdown_output>## Chemical Components List
 
-| **Name** | **Formula** | **MW (g/mol)** | **NBP (°C)** |
-|----------|-------------|----------------|--------------|
-| Ethanol | C2H6O | 46.07 | 78.4 |
-| Water | H2O | 18.015 | 100.0 |</expected_markdown_output>
+| **Name** | **Formula** | **Aliase** | **MW (g/mol)** | **NBP (°C)** |
+|----------|-------------|------------|----------------|--------------|
+| Ethanol | C2H6O | ETHANOL | 46.07 | 78.4 |
+| Water | H2O | WATER | 18.015 | 100.0 |</expected_markdown_output>
 
     <explanation>
       <point>Two components identified: Water (cooling utility and contamination in ethanol) and Ethanol (main process stream).</point>

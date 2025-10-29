@@ -53,7 +53,10 @@ class GraphSetup:
         process_requirements_analyst = create_process_requiruments_analyst(self.quick_thinking_llm)
         innovative_researcher = create_innovative_researcher(self.quick_thinking_llm)
         conservative_researcher = create_conservative_researcher(self.quick_thinking_llm)
-        concept_detailer = create_concept_detailer(self.quick_thinking_llm)
+        concept_detailer = create_concept_detailer(
+            self.quick_thinking_llm,
+            lambda: self.concept_selection_provider,
+        )
         component_list_researcher = create_component_list_researcher(self.quick_thinking_llm)
         design_basis_analyst = create_design_basis_analyst(self.quick_thinking_llm)
         basic_pfd_designer = create_basic_pfd_designer(self.quick_thinking_llm)
