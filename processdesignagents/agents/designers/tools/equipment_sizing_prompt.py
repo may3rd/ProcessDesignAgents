@@ -9,7 +9,9 @@ from langchain_core.prompts import (
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
 def equipment_sizing_prompt_with_tools(
-    equipment_and_stream_list: str,
+    design_basis: str,
+    flowsheet_description: str,
+    equipment_and_stream_results: str,
 ) -> Tuple[ChatPromptTemplate, str, str]:
     """
     Create prompt with pre-computed tool results
@@ -1246,12 +1248,18 @@ def equipment_sizing_prompt_with_tools(
 """
 
     human_content = f"""
-Based on the equipment and stream list below, using tools provided to calculate and update the equipment list.
+Based on the design basis, flowsheet description, and equipment and stream data below, use the available sizing tools to calculate and update the equipment list.
 
 **Output ONLY the final equipment list with updated sizing parameters (JSON): object (no code fences, no additional text).**
 
+**Design Basis**
+{design_basis}
+
+**Flowsheet Description**
+{flowsheet_description}
+
 **Equipment and Stream Data (JSON):**
-{equipment_and_stream_list}
+{equipment_and_stream_results}
 """
 
     messages = [

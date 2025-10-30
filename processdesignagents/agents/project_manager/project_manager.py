@@ -21,16 +21,16 @@ def create_project_manager(llm):
         """Project Manager: Reviews design for approval and generates implementation plan."""
         print("\n# Project Review", flush=True)
 
-        requirements_markdown = state.get("requirements", "")
+        requirements_markdown = state.get("process_requirements", "")
         design_basis = state.get("design_basis", "")
-        basic_pfd_markdown = state.get("basic_pfd", "")
-        equipment_and_stream_list = state.get("equipment_and_stream_list", "")
+        flowsheet_description_markdown = state.get("flowsheet_description", "")
+        equipment_and_stream_results = state.get("equipment_and_stream_results", "")
         safety_report = state.get("safety_risk_analyst_report", "")
         base_prompt = project_manager_prompt(
             requirements_markdown,
             design_basis,
-            basic_pfd_markdown,
-            equipment_and_stream_list,
+            flowsheet_description_markdown,
+            equipment_and_stream_results,
             safety_report
         )
 
@@ -50,7 +50,7 @@ def create_project_manager(llm):
         print(approval_markdown, flush=True)
 
         return {
-            "approval": approval_status or "",
+            "project_approval": approval_status or "",
             "project_manager_report": approval_markdown,
             "messages": [response],
         }
@@ -66,10 +66,10 @@ def _extract_status(markdown_text: str) -> str | None:
 
 
 def project_manager_prompt(
-    project_requirements: str,
+    process_requirements_markdown: str,
     design_basis: str,
-    basic_pfd: str,
-    equipment_and_stream_list: str,
+    flowsheet_description_markdown: str,
+    equipment_and_stream_results: str,
     safety_and_risk_json: str,
 ) -> ChatPromptTemplate:
     system_content = f"""
@@ -607,16 +607,16 @@ def project_manager_prompt(
 Create a project summary based on the following data:
 
 **Requirements Summary:**
-{project_requirements}
+{process_requirements_markdown}
 
 **Design Basis:**
 {design_basis}
 
 **Basic Process Flow Diagram:**
-{basic_pfd}
+{flowsheet_description_markdown}
 
 **Equipments and Streams Data:**
-{equipment_and_stream_list}
+{equipment_and_stream_results}
 
 **Safety & Risk Assessments:**
 {safety_and_risk_json}

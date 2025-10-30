@@ -120,6 +120,12 @@ COOLPROP_NAME_MAP = {
     "r507a": "R507A",
 }
 
+NON_COOLPROP_NAMES = {
+    # Name: [ID, MW, NBP]
+    "monoethanolamine": ["MEA", 61.08, 170],
+    "diethanolamine": ["DEA", 105.14, 268.8],
+    "methyldiethanolamine": ["MDEA", 119.163, 247],
+}
 
 def _debug_tool_call(tool_name: str) -> None:
     print(f"DEBUG: Stream Calculation Tool '{tool_name}' invoked", flush=True)
@@ -136,8 +142,12 @@ def _get_mw_kg_kmol(component_name: str) -> float:
         mw_kg_mol = CP.PropsSI('M', cp_name)
         return mw_kg_mol * 1000.0 # Convert kg/mol to kg/kmol
     except ValueError:
-        print(f"Warning: Could not find molecular weight for '{component_name}' (CoolProp name: '{cp_name}'). Using 0.", flush=True)
-        return 0.0 # Indicate error or unknown
+        print(f"Warning: Could not find molecular weight for '{component_name}' (CoolProp name: '{cp_name}'). Fine in other list.", flush=True)
+        if NON_COOLPROP_NAMES.get(cp_name.lower(), None):
+            return NON_COOLPROP_NAMES[cp_name][1]
+        else:
+            print(f"Warning: {cp_name} is not in the NON_COOLPROP_NAMES dictionary.", flush=True)
+            return 0.0 # Indicate error or unknown
 
 def _calculate_avg_mw_molar(compositions_molar: Dict[str, Dict[str, Any]]) -> float:
     """Calculates average molecular weight from molar fractions using CoolProp MWs."""

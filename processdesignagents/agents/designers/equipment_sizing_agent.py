@@ -81,18 +81,8 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
         """Equipment Sizing Agent: populates the equipment table using tool-assisted estimates."""
         print("\n# Equipment Sizing", flush=True)
         design_basis_markdown = state.get("design_basis", "")
-        basic_pfd_markdown = state.get("basic_pfd", "")
-        equipment_and_stream_template = state.get("equipment_and_stream_template", "{}")
-        equipment_and_stream_list = state.get("equipment_and_stream_list", "{}")
-        
-        es_template = json.loads(equipment_and_stream_template)
-        es_list = json.loads(equipment_and_stream_list)
-        
-        # Simulate the equipment and stram list at this stage
-        equipment_stream_final_dict = {
-            "equipments": es_template["equipments"],
-            "streams": es_list["streams"],
-            }
+        flowsheet_description_markdown = state.get("flowsheet_description", "")
+        equipment_and_stream_results_json = state.get("equipment_and_stream_results", "{}")
         
         # Create tools list to be called by agent
         tools_list = [
@@ -114,10 +104,8 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
             size_pressure_safety_valve_basic,
         ]
         
-        equipment_stream_list_str = json.dumps(equipment_stream_final_dict)
-        
         # Create equipment category list from equipment_and_stream_list_template
-        equipment_category_list = create_equipment_category_list(equipment_stream_list_str)
+        equipment_category_list = create_equipment_category_list(equipment_and_stream_results_json)
         
         # Print the equipment category list in the temeplate
         if "category_names" in equipment_category_list:
@@ -127,34 +115,40 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
         else:
             print("No category names found in the list.")
         
-        # Create agent prompt
-        _, system_content, human_content = equipment_sizing_prompt_with_tools(
-            equipment_and_stream_list=equipment_stream_list_str,
+        # Create system and human messages
+        _, system_message, human_message = equipment_sizing_prompt_with_tools(
+            design_basis=design_basis_markdown,
+            flowsheet_description=flowsheet_description_markdown,
+            equipment_and_stream_results=equipment_and_stream_results_json,
         )
         
-        # Test new run_agent_with_tools
-        output_str = run_agent_with_tools(
+        # Call agent with tools
+        ai_messages = run_agent_with_tools(
             llm_model=llm,
-            system_prompt=system_content,
-            human_prompt=human_content,
+            system_prompt=system_message,
+            human_prompt=human_message,
             tools_list=tools_list,
             )
         
         try:
+            # Extract the final answer from agent with tools
+            output_str = ai_messages[-1].content
             equipment_list_dict = json.loads(repair_json(output_str))
+            equipment_and_stream_dict = json.loads(equipment_and_stream_results_json)
             equipment_stream_final_dict = {
                 "equipments": equipment_list_dict["equipments"],
-                "streams": es_list["streams"],
+                "streams": equipment_and_stream_dict["streams"],
                 }
+            
+            # Format and display equipment list results
             _, equipments_md, _ = equipments_and_streams_dict_to_markdown(equipment_stream_final_dict)
             print(equipments_md)
             
-            ai_message = AIMessage(content=output_str)
-            
+            # Return: update the agent state
             return {
                 "equipment_list_results": json.dumps(equipment_list_dict),
-                "equipment_and_stream_list": json.dumps(equipment_stream_final_dict),
-                "messages": [ai_message],
+                "equipment_and_stream_results": json.dumps(equipment_stream_final_dict),
+                "messages": ai_messages,
             }
         except Exception as e:
             raise ValueError(f"Error: {e}")
@@ -164,8 +158,8 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
 
 def equipment_sizing_prompt(
     design_basis_markdown: str,
-    basic_pfd_markdown: str,
-    equipment_and_stream_list_json: str,
+    flowsheet_description_markdown: str,
+    equipment_and_stream_results_json: str,
 ) -> ChatPromptTemplate:
     system_content = f"""
 <?xml version="1.0" encoding="UTF-8"?>
@@ -1226,11 +1220,11 @@ def equipment_sizing_prompt(
 **Design Basis (Markdown):**
 {design_basis_markdown}
 
-**Basic Process Flow Diagram (Markdown):**
-{basic_pfd_markdown}
+**Flowsheet Description (Markdown):**
+{flowsheet_description_markdown}
 
 **Equipment Template (JSON):**
-{equipment_and_stream_list_json}
+{equipment_and_stream_results_json}
 
 ---
 

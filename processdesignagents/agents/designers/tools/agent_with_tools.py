@@ -4,7 +4,8 @@ from typing import Any, List
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage, HumanMessage
-
+from langchain.agents.structured_output import ToolStrategy, ProviderStrategy
+from pydantic import BaseModel
 # Using create_agent in langchain 1.0
 from langchain.agents import create_agent
 
@@ -13,6 +14,7 @@ def run_agent_with_tools(
     system_prompt: str,
     human_prompt: str,
     tools_list: List[Any],
+    output_schema: BaseModel = None,
 ) -> str:
     """
     Runs the stream calculation agent, handling tool calls and returning the final JSON output.
@@ -34,11 +36,21 @@ def run_agent_with_tools(
     # The tool map will be used to look up and invoke the correct tool by name.
     tool_map = {tool.name: tool for tool in tools_list}
     
-    agent = create_agent(
-        model=llm_model,
-        system_prompt=system_prompt,
-        tools=tools_list,
-    )
+    agent = None
+    if output_schema:
+        agent = create_agent(
+            model=llm_model,
+            system_prompt=system_prompt,
+            tools=tools_list,
+            # explicitly using tool strategy
+            response_format=ToolStrategy(output_schema)
+        )
+    else:
+        agent = create_agent(
+            model=llm_model,
+            system_prompt=system_prompt,
+            tools=tools_list,
+        )
 
     messages: List[BaseMessage] = [HumanMessage(content=human_prompt)]
 
@@ -135,7 +147,8 @@ def run_agent_with_tools(
                     # print("\n--- Final Stream Data List JSON ---", flush=True)
                     # print(json.dumps(final_json, indent=2), flush=True)
                     # print("\n--- End of Final Stream Data List JSON ---", flush=True)
-                    return final_answer_content # Return the content
+                    messages.append(AIMessage(content=final_answer_content))
+                    return messages # Return the content
                 except json.JSONDecodeError as e:
                     print(f"Error decoding final answer as JSON: {e}", flush=True)
                     print(f"Raw final answer content: {final_answer_content}", flush=True)

@@ -20,7 +20,7 @@ class SizingParameter(BaseModel):
 
 
 class Equipment(BaseModel):
-    """Equipment entry matching the equipment_and_stream_list JSON contract."""
+    """Equipment entry matching the equipment_and_stream_results JSON contract."""
 
     id: str = Field(..., description="Unique equipment identifier (e.g., 'E-101').")
     name: str = Field(..., description="Descriptive equipment name.")
@@ -63,7 +63,7 @@ class CompositionEntry(BaseModel):
 
 
 class Stream(BaseModel):
-    """Stream entry matching the equipment_and_stream_list JSON contract."""
+    """Stream entry matching the equipment_and_stream_results JSON contract."""
 
     model_config = ConfigDict(populate_by_name=True)
 

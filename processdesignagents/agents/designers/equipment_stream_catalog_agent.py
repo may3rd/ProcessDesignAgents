@@ -24,12 +24,12 @@ def create_equipment_stream_catalog_agent(llm, llm_provider: str = "openrouter")
     def equipment_stream_catalog_agent(state: DesignState) -> DesignState:
         """Equipment & Stream Catalog Agent: Produces a JSON stream inventory template for process streams."""
         print("\n# Create Equipment & Stream Catalog Template", flush=True)
-        basic_pfd_markdown = state.get("basic_pfd", "")
+        flowsheet_description_markdown = state.get("flowsheet_description", "")
         design_basis_markdown = state.get("design_basis", "")
-        requirements_markdown = state.get("requirements", "")
+        requirements_markdown = state.get("process_requirements", "")
         concept_details_markdown = state.get("selected_concept_details", "")
         base_prompt = equipment_stream_catalog_prompt(
-            basic_pfd_markdown,
+            flowsheet_description_markdown,
             design_basis_markdown,
             requirements_markdown,
             concept_details_markdown,
@@ -67,7 +67,7 @@ def create_equipment_stream_catalog_agent(llm, llm_provider: str = "openrouter")
 
 
 def equipment_stream_catalog_prompt(
-    basic_pfd_markdown: str,
+    flowsheet_description_markdown: str,
     design_basis_markdown: str,
     requirements_markdown: str,
     concept_details_markdown: str,
@@ -715,8 +715,8 @@ def equipment_stream_catalog_prompt(
     human_content = f"""
 # DATA FOR ANALYSIS
 ---
-**Basic PFD Description (Markdown):**
-{basic_pfd_markdown}
+**Flowsheet Description (Markdown):**
+{flowsheet_description_markdown}
 
 **Design Basis (Markdown):**
 {design_basis_markdown}

@@ -78,7 +78,6 @@ class ProcessDesignGraph:
             #     "text_format" = EquipmentAndStreamList 
             # }
             
-            pass
         elif self.config["llm_provider"].lower() == "openrouter":
             base_url = self._get_url_by_name(self.config["llm_provider"].lower())
             api_key = os.getenv("OPENROUTER_API_KEY")
@@ -90,7 +89,7 @@ class ProcessDesignGraph:
             self.response_format = {
                 "type": "json_schema",
                 "json_schema": {
-                    "name": "equipment_and_stream_list",
+                    "name": "equipment_and_stream_results",
                     "strict": True,
                     "schema": schema
                 }
@@ -345,20 +344,21 @@ class ProcessDesignGraph:
         """Log the final state to a JSON file."""
         self.log_state_dict = {
             "problem_statement": final_state.get("problem_statement", ""),
-            "requirements": final_state.get("requirements", ""),
+            "process_requirements": final_state.get("process_requirements", ""),
             "research_concepts": final_state.get("research_concepts", ""),
             "selected_concept_name": final_state.get("selected_concept_name", ""),
             "selected_concept_details": final_state.get("selected_concept_details", ""),
             "design_basis": final_state.get("design_basis", ""),
-            "basic_pfd": final_state.get("basic_pfd", ""),
+            "flowsheet_description": final_state.get("flowsheet_description", ""),
             "stream_list_template": final_state.get("stream_list_template", ""),
             "stream_list_results": final_state.get("stream_list_results", ""),
             "equipment_list_template": final_state.get("equipment_list_template", ""),
             "equipment_list_results": final_state.get("equipment_list_results", ""),
             "equipment_and_stream_template": final_state.get("equipment_and_stream_template", ""),
-            "equipment_and_stream_list": final_state.get("equipment_and_stream_list", ""),
+            "equipment_and_stream_results": final_state.get("equipment_and_stream_results", ""),
             "safety_risk_analyst_report": final_state.get("safety_risk_analyst_report", ""),
             "project_manager_report": final_state.get("project_manager_report", ""),
+            "project_approval": final_state.get("project_approval", ""),
         }
         
         # Save to file
@@ -371,7 +371,7 @@ class ProcessDesignGraph:
             json.dump(self.log_state_dict, f, indent=4)
         
     def _compose_report_sections(self, final_state: Dict[str, Any]) -> list[tuple[str, str]]:
-        raw_equipment_and_streams = final_state.get("equipment_and_stream_list", "")
+        raw_equipment_and_streams = final_state.get("equipment_and_stream_results", "")
         if isinstance(raw_equipment_and_streams, str):
             raw_equipment_and_streams = json.loads(raw_equipment_and_streams)
             equipment_and_streams_markdown, _, _ = equipments_and_streams_dict_to_markdown(raw_equipment_and_streams)
@@ -380,10 +380,10 @@ class ProcessDesignGraph:
 
         sections = [
             ("Problem Statement", final_state.get("problem_statement", "")),
-            ("Process Requirements", final_state.get("requirements", "")),
+            ("Process Requirements", final_state.get("process_requirements", "")),
             ("Concept Detail", final_state.get("selected_concept_details", "")),
             ("Design Basis", final_state.get("design_basis", "")),
-            ("Basic Process Flow Diagram", final_state.get("basic_pfd", "")),
+            ("Flowsheet Description", final_state.get("flowsheet_description", "")),
             ("Equipment and Streams List", equipment_and_streams_markdown),
             ("Safety & Risk Assessment", final_state.get("safety_risk_analyst_report", "")),
             ("Project Manager Report", final_state.get("project_manager_report", "")),

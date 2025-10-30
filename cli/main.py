@@ -61,11 +61,11 @@ class MessageBuffer:
         }
         self.current_agent = None
         self.report_sections = {
-            "requirements": None,
+            "process_requirements": None,
             "research_concepts": None,
             "selected_concept_details": None,
             "design_basis": None,
-            "basic_pfd": None,
+            "flowsheet_description": None,
             "stream_list_template": None,
             "stream_list_results": None,
             "equipment_list_template": None,
@@ -107,11 +107,11 @@ class MessageBuffer:
         if latest_section and latest_content:
             # Format the current section for display
             section_titles = {
-                "requirements": "Process Requirements",
+                "process_requirements": "Process Requirements",
                 "research_concepts": "Concept Portfolio",
                 "selected_concept_details": "Selected Concept Detail",
                 "design_basis": "Design Basis",
-                "basic_pfd": "Basic Process Flow Diagram",
+                "flowsheet_description": "Basic Process Flow Diagram",
                 "stream_list_template": "Stream Template",
                 "stream_list_results": "Heat & Material Balance",
                 "equipment_list_template": "Equipment Template",
@@ -133,14 +133,14 @@ class MessageBuffer:
         if any(
             self.report_sections[section]
             for section in [
-                "requirements",
+                "process_requirements",
                 "design_basis",
             ]
         ):
             report_parts.append("## Analyst Team Reports")
-            if self.report_sections["requirements"]:
+            if self.report_sections["process_requirements"]:
                 report_parts.append(
-                    f"### Process Requirements\n{self.report_sections['requirements']}"
+                    f"### Process Requirements\n{self.report_sections['process_requirements']}"
                 )
             if self.report_sections["design_basis"]:
                 report_parts.append(
@@ -169,7 +169,7 @@ class MessageBuffer:
         if any(
             self.report_sections[section]
             for section in [
-                "basic_pfd",
+                "flowsheet_description",
                 "stream_list_template",
                 "stream_list_results",
                 "equipment_list_template",
@@ -177,9 +177,9 @@ class MessageBuffer:
             ]
         ):
             report_parts.append("## Designer Team Reports")
-            if self.report_sections["basic_pfd"]:
+            if self.report_sections["flowsheet_description"]:
                 report_parts.append(
-                    f"### Basic Process Flow Diagram\n{self.report_sections['basic_pfd']}"
+                    f"### Basic Process Flow Diagram\n{self.report_sections['flowsheet_description']}"
                 )
             if self.report_sections["stream_list_template"]:
                 report_parts.append(
@@ -507,7 +507,7 @@ def display_complete_report(final_state):
         (
             "Analyst Team Reports",
             [
-                ("requirements", "Process Requirements"),
+                ("process_requirements", "Process Requirements"),
                 ("design_basis", "Design Basis"),
             ],
         ),
@@ -521,7 +521,7 @@ def display_complete_report(final_state):
         (
             "Designer Team Reports",
             [
-                ("basic_pfd", "Basic Process Flow Diagram"),
+                ("flowsheet_description", "Basic Process Flow Diagram"),
                 ("stream_list_template", "Stream Template"),
                 ("stream_list_results", "Heat & Material Balance"),
                 ("equipment_list_template", "Equipment Template"),
@@ -744,8 +744,8 @@ def run_analysis():
                 
                 # Update reports and agent status based on chunk content
                 # Analyst Team Outputs
-                if chunk.get("requirements"):
-                    message_buffer.update_report_section("requirements", chunk["requirements"])
+                if chunk.get("process_requirements"):
+                    message_buffer.update_report_section("process_requirements", chunk["process_requirements"])
                     message_buffer.update_agent_status("Process Requirement Analyst", "completed")
                     message_buffer.update_agent_status("Innovative Researcher", "in_progress")
 
@@ -774,8 +774,8 @@ def run_analysis():
                     message_buffer.update_agent_status("Design Basis Analyst", "in_progress")
 
         # Designer Team Outputs
-        if chunk.get("basic_pfd"):
-            message_buffer.update_report_section("basic_pfd", chunk["basic_pfd"])
+        if chunk.get("flowsheet_description"):
+            message_buffer.update_report_section("flowsheet_description", chunk["flowsheet_description"])
             message_buffer.update_agent_status("Basic PFD Designer", "completed")
             message_buffer.update_agent_status("Equipments & Streams List Builder", "in_progress")
 

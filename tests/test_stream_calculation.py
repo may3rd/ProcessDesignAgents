@@ -53,12 +53,12 @@ config["quick_think_llm"] = "x-ai/grok-4-fast"
 
 
 # Before creating agent, validate inputs
-def validate_stream_inputs(design_basis, basic_pfd_description, stream_template):
+def validate_stream_inputs(design_basis, flowsheet_description, stream_template):
     """Validate input data before processing"""
     if not design_basis or len(design_basis.strip()) < 20:
         raise ValueError("design_basis is empty or too short")
-    if not basic_pfd_description or len(basic_pfd_description.strip()) < 20:
-        raise ValueError("basic_pfd_description is empty or too short")
+    if not flowsheet_description or len(flowsheet_description.strip()) < 20:
+        raise ValueError("flowsheet_description is empty or too short")
     try:
         template_obj = json.loads(stream_template)
         if "streams" not in template_obj:
@@ -82,16 +82,16 @@ def main():
         temp_data = json.load(f)
     
     # temp_data: Dict[str, Any]= json.load("eval_results/ProcessDesignAgents_logs/full_states_log.json")
-    requirement_md = temp_data.get("requirements", "")
+    requirement_md = temp_data.get("process_requirements", "")
     design_basis_md = temp_data.get("design_basis", "")
-    basic_pfd_md = temp_data.get("basic_pfd", "")
+    flowsheet_description_md = temp_data.get("flowsheet_description", "")
     equipment_stream_template = temp_data.get("equipment_and_stream_template", "{}")
-    equipment_stream_list_str = temp_data.get("equipment_and_stream_list", "{}")
+    equipment_stream_list_str = temp_data.get("equipment_and_stream_results", "{}")
     
     es_template = json.loads(equipment_stream_template)
     stream_template = {"streams": es_template["streams"] if "streams" in es_template else []}
     
-    validate_stream_inputs(design_basis_md, basic_pfd_md, json.dumps(stream_template))
+    validate_stream_inputs(design_basis_md, flowsheet_description_md, json.dumps(stream_template))
     
     # ---
     # Actual workflow start from here
@@ -114,11 +114,11 @@ def main():
     # Create agent prompt
     _, system_content, human_content = stream_calculation_prompt_with_tools(
         design_basis=design_basis_md,
-        basic_pfd_description=basic_pfd_md,
+        flowsheet_description=flowsheet_description_md,
         stream_list_template=json.dumps(stream_template),
     )
     
-    output_str = run_agent_with_tools(
+    ai_messages = run_agent_with_tools(
         llm_model=quick_thinking_llm,
         system_prompt=system_content,
         human_prompt=human_content,
@@ -126,6 +126,7 @@ def main():
         )
     
     try:
+        output_str = ai_messages[-1].content
         final_json = json.loads(repair_json(output_str))
         es_foo = {
             "equipments": es_template["equipments"],

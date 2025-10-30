@@ -12,11 +12,11 @@ Stream Data Estimator → Equipment Sizing → Safety & Risk → Project Manager
 
 | Field | Description | Primary Writer |
 |-------|-------------|----------------|
-| `requirements` | Markdown summary of objectives, constraints, components | Process Requirements Analyst |
+| `process_requirements` | Markdown summary of objectives, constraints, components | Process Requirements Analyst |
 | `selected_concept_details`, `selected_concept_name` | Detailed concept brief and name | Concept Detailer |
 | `design_basis` | Markdown design basis for sizing/validation | Design Basis Analyst |
-| `basic_pfd` | Conceptual flowsheet narrative | Basic PFD Designer |
-| `equipment_and_stream_list` | Combined equipment/stream JSON that remains the canonical artefact through estimation and sizing | Equipments & Streams List Builder (updated downstream) |
+| `flowsheet_description` | Conceptual flowsheet narrative | Basic PFD Designer |
+| `equipment_and_stream_results` | Combined equipment/stream JSON that remains the canonical artefact through estimation and sizing | Equipments & Streams List Builder (updated downstream) |
 | `stream_list_template` | Stream inventory JSON template | Equipments & Streams List Builder |
 | `stream_list_results` | Heat & material balance JSON payload | Stream Data Estimator |
 | `equipment_list_template` | Equipment catalogue JSON with placeholders (currently populated by the combined builder) | Equipments & Streams List Builder |

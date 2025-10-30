@@ -19,17 +19,17 @@ class Propagator:
         return {
             "messages": [HumanMessage(content=problem_statement)],
             "problem_statement": problem_statement,
-            "requirements": "",
+            "process_requirements": "",
             "research_concepts": "",
             "selected_concept_details": "",
             "selected_concept_name": "",
-            "basic_pfd": "",
-            "equipment_and_stream_list": "",
+            "flowsheet_description": "",
+            "equipment_and_stream_results": "",
             "stream_list_results": "",
             "equipment_list_template": "",
             "equipment_list_results": "",
             "stream_list_template": "",
-            "approval": ""
+            "project_approval": ""
         }
         
     def get_graph_args(self) -> Dict[str, Any]:

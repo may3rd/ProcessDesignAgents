@@ -19,7 +19,7 @@ def create_flowsheet_design_agent(llm):
         """Flowsheet Design Agent: synthesizes a preliminary process flow diagram consistent with the detailed concept and design basis."""
         print("\n# Flowsheet Design", flush=True)
 
-        requirements_markdown = state.get("requirements", "")
+        requirements_markdown = state.get("process_requirements", "")
         selected_concept_name = state.get("selected_concept_name", "")
         concept_details_markdown = state.get("selected_concept_details", "")
         design_basis_markdown = state.get("design_basis", "")
@@ -48,19 +48,19 @@ def create_flowsheet_design_agent(llm):
         try_count = 0
         while not is_done:
             response = chain.invoke({"messages": list(state.get("messages", []))})
-            basic_pfd_markdown = (
+            flowsheet_description_markdown = (
                 response.content if isinstance(response.content, str) else str(response.content)
             ).strip()
-            basic_pfd_markdown = strip_markdown_code_fences(basic_pfd_markdown)
-            is_done = len(basic_pfd_markdown) > 100
+            flowsheet_description_markdown = strip_markdown_code_fences(flowsheet_description_markdown)
+            is_done = len(flowsheet_description_markdown) > 100
             try_count += 1
             if try_count > 10:
                 print("+ Maximum try is reached.")
                 exit(-1)
 
-        print(basic_pfd_markdown, flush=True)
+        print(flowsheet_description_markdown, flush=True)
         return {
-            "basic_pfd": basic_pfd_markdown,
+            "flowsheet_description": flowsheet_description_markdown,
             "messages": [response],
         }
 
@@ -70,7 +70,7 @@ def create_flowsheet_design_agent(llm):
 def flowsheet_design_prompt(
     concept_name: str,
     concept_details: str,
-    requirements: str,
+    process_requirements: str,
     design_basis: str,
 ) -> ChatPromptTemplate:
     system_content = f"""
@@ -78,7 +78,7 @@ def flowsheet_design_prompt(
 <agent>
   <metadata>
     <role>Senior Process Design Engineer</role>
-    <experience>20 years specializing in creating clear, innovative, and accurate Process Flow Diagrams (PFDs)</experience>
+    <experience>20 years specializing in creating clear, innovative, and accurate Process Flow Diagrams (PFDs) or Flowsheets</experience>
     <function>Translate conceptual data into preliminary Process Flow Diagrams</function>
     <deliverable_focus>State-of-the-art flowsheets with advanced integration, modularization, and smart instrumentation</deliverable_focus>
   </metadata>
@@ -86,17 +86,17 @@ def flowsheet_design_prompt(
   <context>
     <inputs>
       <input>
+        <n>PROCESS REQUIREMENTS</n>
+        <format>Markdown or text</format>
+        <description>Project requirements including objectives, design constraints, critical specifications, and key drivers</description>
+      </input>
+      <input>
         <n>DESIGN BASIS</n>
         <format>Markdown or text</format>
         <description>Detailed process design basis including capacity, operating conditions, utilities, process flow overview, and material specifications</description>
       </input>
-      <input>
-        <n>REQUIREMENTS</n>
-        <format>Markdown or text</format>
-        <description>Project requirements including objectives, design constraints, critical specifications, and key drivers</description>
-      </input>
     </inputs>
-    <purpose>Create a preliminary PFD that serves as the backbone for downstream engineering</purpose>
+    <purpose>Create a preliminary flowsheet that serves as the backbone for downstream engineering</purpose>
     <downstream_applications>
       <application>Stream definition and mass balance</application>
       <application>Equipment sizing and design</application>
@@ -145,7 +145,7 @@ def flowsheet_design_prompt(
         - Distillation columns, absorption columns
         - Filters, dryers, mills
         
-        Do NOT include instrumentation such as valves, control valves, transmitters, or alarms. These are typically shown on detailed P&amp;IDs, not the conceptual PFD.</details>
+        Do NOT include instrumentation such as valves, control valves, transmitters, or alarms. These are typically shown on detailed P&amp;IDs, not the conceptual flowsheet.</details>
     </instruction>
 
     <instruction id="6">
@@ -226,7 +226,7 @@ def flowsheet_design_prompt(
             <description>Stream purpose, main components, and key parameters (temperature, pressure, flow rate if known)</description>
           </column>
         </required_columns>
-        <minimum_streams>5</minimum_streams>
+        <minimum_streams>2</minimum_streams>
         <stream_numbering_convention>
           <convention>1xxx: Process feed and intermediate streams</convention>
           <convention>2xxx: Utility supply and return streams</convention>
@@ -363,7 +363,7 @@ Hot ethanol from the upstream blending unit (Stream 1001) is fed to the shell si
 # DESIGN INPUTS
 
 **REQUIREMENTS:**
-{requirements}
+{process_requirements}
 
 **Selected Concept Name:**
 {concept_name or "Not provided"}
