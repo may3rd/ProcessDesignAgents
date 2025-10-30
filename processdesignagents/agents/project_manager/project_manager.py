@@ -36,14 +36,27 @@ def create_project_manager(llm):
 
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
+        
+        is_done = False
+        try_conut = 0
+        approval_markdown = ""
+        while not is_done:
+            try_conut += 1
+            if try_conut > 3:
+                print("Maximum try count reached. Exiting...", flush=True)
+                raise Exception("Maximum try count reached. Exiting...")
+            try:
+                chain = prompt | llm
+                response = chain.invoke({"messages": list(state.get("messages", []))})
 
-        chain = prompt | llm
-        response = chain.invoke({"messages": list(state.get("messages", []))})
-
-        approval_markdown = (
-            response.content if isinstance(response.content, str) else str(response.content)
-        ).strip()
-        approval_markdown = strip_markdown_code_fences(approval_markdown)
+                approval_markdown = (
+                    response.content if isinstance(response.content, str) else str(response.content)
+                ).strip()
+                approval_markdown = strip_markdown_code_fences(approval_markdown)
+                if len(approval_markdown) > 50:
+                    is_done = True
+            except Exception as e:
+                continue
         approval_status = _extract_status(approval_markdown)
 
         print(f"Project review completed. Status: **{approval_status or 'Unknown'}**\n", flush=True)

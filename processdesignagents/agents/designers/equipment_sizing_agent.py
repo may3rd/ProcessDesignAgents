@@ -14,6 +14,7 @@ from langchain_core.prompts import (
 )
 
 from dotenv import load_dotenv
+from regex import FULLCASE
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
@@ -132,33 +133,42 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
             equipment_and_stream_list=equipment_stream_list_str,
         )
         
-        # Test new run_agent_with_tools
-        output_str = run_agent_with_tools(
-            llm_model=llm,
-            system_prompt=system_content,
-            human_prompt=human_content,
-            tools_list=tools_list,
-            )
-        
-        try:
-            equipment_list_dict = json.loads(repair_json(output_str))
-            equipment_stream_final_dict = {
-                "equipments": equipment_list_dict["equipments"],
-                "streams": es_list["streams"],
-                }
-            _, equipments_md, _ = equipments_and_streams_dict_to_markdown(equipment_stream_final_dict)
-            print(equipments_md)
-            
-            ai_message = AIMessage(content=output_str)
-            
-            return {
-                "equipment_list_results": json.dumps(equipment_list_dict),
-                "equipment_and_stream_list": json.dumps(equipment_stream_final_dict),
-                "messages": [ai_message],
-            }
-        except Exception as e:
-            raise ValueError(f"Error: {e}")
-
+        is_done = False
+        try_count = 0
+        while not is_done:
+            try_count += 1
+            if try_count >= 10:
+                print("DEBUG: Max try count reached. Exiting...")
+                exit(-1)
+            try:
+                # Test new run_agent_with_tools
+                output_str = run_agent_with_tools(
+                    llm_model=llm,
+                    system_prompt=system_content,
+                    human_prompt=human_content,
+                    tools_list=tools_list,
+                    )
+                
+                try:
+                    equipment_list_dict = json.loads(repair_json(output_str))
+                    equipment_stream_final_dict = {
+                        "equipments": equipment_list_dict["equipments"],
+                        "streams": es_list["streams"],
+                        }
+                    _, equipments_md, _ = equipments_and_streams_dict_to_markdown(equipment_stream_final_dict)
+                    print(equipments_md)
+                    
+                    ai_message = AIMessage(content=output_str)
+                    
+                    return {
+                        "equipment_list_results": json.dumps(equipment_list_dict),
+                        "equipment_and_stream_list": json.dumps(equipment_stream_final_dict),
+                        "messages": [ai_message],
+                    }
+                except Exception as e:
+                    print(f"DEBUG: Attemp {try_count} has failed. Error: {e}")
+            except:
+                continue
     return equipment_sizing_agent
 
 

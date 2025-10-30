@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from operator import le
 import re
 from langchain_core.messages import AIMessage
 from langchain_core.prompts import (
@@ -9,6 +10,7 @@ from langchain_core.prompts import (
     SystemMessagePromptTemplate,
 )
 from dotenv import load_dotenv
+from sympy import continued_fraction_periodic
 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
@@ -56,6 +58,7 @@ def create_safety_risk_analyst(llm):
         chain = prompt | llm
         is_done = False
         try_count = 0
+        cleaned_content = ""
         while not is_done:
             try_count += 1
             if try_count > 10:
@@ -64,10 +67,13 @@ def create_safety_risk_analyst(llm):
             try:
                 # Get the response from LLM
                 response = chain.invoke({"messages": list(state.get("messages", []))})
-                is_done = True
+                cleaned_content = strip_markdown_code_block(response.content)
+                if not cleaned_content:
+                    continue
+                if len(cleaned_content) > 500:
+                    is_done = True
             except Exception as e:
                 print(f"Attemp {try_count} has failed.")
-        cleaned_content = strip_markdown_code_block(response.content)
         print(cleaned_content, flush=True)
         return {
             "safety_risk_analyst_report": cleaned_content,

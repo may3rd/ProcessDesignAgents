@@ -80,32 +80,41 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
             stream_list_template=json.dumps(stream_template),
             )
         
-        output_str = run_agent_with_tools(
-            llm_model=llm,
-            system_prompt=system_message,
-            human_prompt=human_message,
-            tools_list=tools_list
-            )
-        
-        try:
-            streams_list_dict = json.loads(repair_json(output_str))
-            equipment_stream_list_dict = {
-                "equipments": es_template["equipments"],
-                "streams": streams_list_dict["streams"],
-                }
-            _, _, streams_md = equipments_and_streams_dict_to_markdown(equipment_stream_list_dict)
-            print(streams_md)
-            
-            ai_message = AIMessage(content=output_str)
-            
-            return {
-                "stream_list_results": json.dumps(streams_list_dict),
-                "equipment_and_stream_list": json.dumps(equipment_stream_list_dict),
-                "messages": [ai_message],
-            }
-        except Exception as e:
-            raise ValueError(f"Error: {e}")
-
+        is_done = False
+        try_count = 0
+        while not is_done:
+            try_count += 1
+            if try_count > 3:
+                print("DEBUG: Maximum try count reached. Exiting")
+                exit(-1)
+            try:
+                output_str = run_agent_with_tools(
+                    llm_model=llm,
+                    system_prompt=system_message,
+                    human_prompt=human_message,
+                    tools_list=tools_list
+                    )
+                
+                try:
+                    streams_list_dict = json.loads(repair_json(output_str))
+                    equipment_stream_list_dict = {
+                        "equipments": es_template["equipments"],
+                        "streams": streams_list_dict["streams"],
+                        }
+                    _, _, streams_md = equipments_and_streams_dict_to_markdown(equipment_stream_list_dict)
+                    print(streams_md)
+                    
+                    ai_message = AIMessage(content=output_str)
+                    
+                    return {
+                        "stream_list_results": json.dumps(streams_list_dict),
+                        "equipment_and_stream_list": json.dumps(equipment_stream_list_dict),
+                        "messages": [ai_message],
+                    }
+                except Exception as e:
+                    print(f"DEBUG: Attemp {try_count}: has failed. Error: {e}")
+            except:
+                continue
     return stream_property_estimation_agent
 
 
