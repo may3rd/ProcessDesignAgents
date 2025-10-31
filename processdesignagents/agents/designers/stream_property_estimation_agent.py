@@ -16,6 +16,7 @@ from processdesignagents.agents.designers.tools.stream_calculation_tools import 
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
+from processdesignagents.utils.pydantic_utils import EquipmentAndStreamList
 from processdesignagents.agents.designers.tools import (
     calculate_molar_flow_from_mass,
     calculate_mass_flow_from_molar,
@@ -44,21 +45,18 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
         print("\n# Stream Property Estimation", flush=True)
         
         # Loaded prior LLM results
-        basic_pfd_markdown = state.get("basic_pfd", "")
+        flowsheet_description_markdown = state.get("flowsheet_description", "")
         design_basis_markdown = state.get("design_basis", "")
-        equipments_and_streams_list = state.get("equipment_and_stream_template", "")
+        equipments_and_streams_list_json = state.get("equipment_and_stream_template", "{}")
         
-        if not basic_pfd_markdown or not design_basis_markdown or not equipments_and_streams_list:
+        # Check if all inputs has value
+        if not flowsheet_description_markdown or not design_basis_markdown or not equipments_and_streams_list_json:
             print("FAILED: Previous data is missing...", flush=True)
             exit(-1)
+            
+        equipments_and_streams_list_dict = json.loads(equipments_and_streams_list_json)
         
-        # Create base prompt from input data
-        base_prompt = stream_property_estimation_prompt(
-            basic_pfd_markdown,
-            design_basis_markdown,
-            equipments_and_streams_list,
-        )
-        
+        # Create tools list to be called by agent
         tools_list = [
             calculate_molar_flow_from_mass,
             calculate_mass_flow_from_molar,
@@ -74,14 +72,11 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
             # unit_converts,
         ]
         
-        # Create streamp template to input to messages creation function
-        es_template = json.loads(equipments_and_streams_list)
-        stream_template = {"streams": es_template["streams"] if "streams" in es_template else []}
-        
+        # Create a system and human prompts
         _, system_message, human_message = stream_calculation_prompt_with_tools(
             design_basis=design_basis_markdown,
-            basic_pfd_description=basic_pfd_markdown,
-            stream_list_template=json.dumps(stream_template),
+            flowsheet_description=flowsheet_description_markdown,
+            stream_list_template=equipments_and_streams_list_json,
             )
         
         is_done = False
@@ -103,7 +98,7 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
                     streams_list_dict = json.loads(repair_json(output_str))
                     # print(streams_list_dict)
                     equipment_stream_list_dict = {
-                        "equipments": es_template["equipments"],
+                        "equipments": equipments_and_streams_list_dict["equipments"],
                         "streams": streams_list_dict["streams"],
                         }
                     _, _, streams_md = equipments_and_streams_dict_to_markdown(equipment_stream_list_dict)
@@ -124,7 +119,7 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
 
 
 def stream_property_estimation_prompt(
-    basic_pfd_markdown: str,
+    flowsheet_description_markdown: str,
     design_basis_markdown: str,
     equipments_and_streams_list: str,
 ) -> ChatPromptTemplate:
@@ -1236,8 +1231,8 @@ def stream_property_estimation_prompt(
 **Design Basis (Markdown):**
 {design_basis_markdown}
 
-**Basic Process Flow Diagram (Markdown):**
-{basic_pfd_markdown}
+**Flowsheet Description (Markdown):**
+{flowsheet_description_markdown}
 
 You MUST respond only with a valid JSON object without commentary or code fences.
 """

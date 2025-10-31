@@ -24,7 +24,7 @@ def create_innovative_researcher(llm):
         print("\n# Innovative Research Concepts", flush=True)
 
         # Get the requirement summary from state
-        requirements_summary = state.get("requirements", "")
+        requirements_summary = state.get("process_requirements", "")
         if not isinstance(requirements_summary, str):
             requirements_summary = str(requirements_summary)
             

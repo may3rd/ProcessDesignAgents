@@ -23,7 +23,7 @@ def create_concept_detailer(llm, selection_provider_getter=None):
         
         # Get the input data
         evaluations_json_raw = state.get("research_rateing_results")
-        requirements_markdown = state.get("requirements", "")
+        requirements_markdown = state.get("process_requirements", "")
 
         try:
             evaluation_payload = json.loads(repair_json(evaluations_json_raw))
@@ -73,12 +73,12 @@ def create_concept_detailer(llm, selection_provider_getter=None):
             chosen = _select_best_evaluation(concept_options)
 
         best_evaluation = chosen["evaluation"]
-        best_title = best_evaluation.get("name", chosen["title"])
+        selected_concept_title = best_evaluation.get("name", chosen["title"])
         best_score = chosen["score"]
-        selected_evaluation_json = json.dumps(best_evaluation, ensure_ascii=False)
+        selected_concept_evaluations_json = json.dumps(best_evaluation, ensure_ascii=False)
 
         print(
-            f"Chosen concept: {best_title}\n(Feasibility Score: {best_score if best_score is not None else 'N/A'})",
+            f"Chosen concept: {selected_concept_title}\n(Feasibility Score: {best_score if best_score is not None else 'N/A'})",
             flush=True,
         )
         # print("DEBUG: Call LLM to generate detailed concept brief...", flush=True)
@@ -88,6 +88,7 @@ def create_concept_detailer(llm, selection_provider_getter=None):
         chain = prompt | llm
         is_done = False
         try_count = 0
+        concept_description_markdown = ""
         while not is_done:
             try_count += 1
             if try_count > 3:
@@ -95,21 +96,21 @@ def create_concept_detailer(llm, selection_provider_getter=None):
                 exit(-1)
             try:
                 response = chain.invoke({"messages": list(state.get("messages", []))})
-                detail_markdown = (
+                concept_description_markdown = (
                     response.content if isinstance(response.content, str) else str(response.content)
                 ).strip()
-                detail_markdown = strip_markdown_code_fences(detail_markdown)
-                if len(detail_markdown) < 10:
-                    print(f"DEBUG: Try number {try_count} is failed.")
-                    continue
-                is_done = True
+                concept_description_markdown = strip_markdown_code_fences(concept_description_markdown)
+                if len(concept_description_markdown) > 50:
+                    is_done = True
+                else:
+                    print("DEBUG: The respones message is too short. Try again.")
             except Exception as e:
                 print(f"Attemp {try_count}: {e}")
-        print(detail_markdown, flush=True)
+        print(concept_description_markdown, flush=True)
         return {
-            "selected_concept_name": best_title,
-            "selected_concept_details": detail_markdown,
-            "selected_concept_evaluation": selected_evaluation_json,
+            "selected_concept_name": selected_concept_title,
+            "selected_concept_details": concept_description_markdown,
+            "selected_concept_evaluation": selected_concept_evaluations_json,
             "messages": [response],
         }
     return concept_detailer

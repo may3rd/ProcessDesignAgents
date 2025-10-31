@@ -26,7 +26,7 @@ def create_conservative_researcher(llm):
         
         # Get problem requirement and research concepts list
         concepts_json = state.get("research_concepts", "")
-        requirements_markdown = state.get("requirements", "")
+        requirements_markdown = state.get("process_requirements", "")
         
         # Create system prompt and user prompt
         base_prompt = conservative_researcher_prompt(concepts_json, requirements_markdown)

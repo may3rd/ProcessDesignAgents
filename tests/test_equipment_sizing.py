@@ -50,17 +50,17 @@ def main():
             temp_data = json.load(f)
         
         # temp_data: Dict[str, Any]= json.load("eval_results/ProcessDesignAgents_logs/full_states_log.json")
-        requirement_md = temp_data.get("requirements", "")
+        requirement_md = temp_data.get("process_requirements", "")
         design_basis_md = temp_data.get("design_basis", "")
-        basic_pfd_md = temp_data.get("basic_pfd", "")
-        equipment_stream_list_str = temp_data.get("equipment_and_stream_list", "")
+        flowsheet_description_md = temp_data.get("flowsheet_description", "")
+        equipment_stream_list_str = temp_data.get("equipment_and_stream_results", "")
         
         # Adapt agent_state
         state = create_design_state(
-            requirements=requirement_md,
+            process_requirements=requirement_md,
             design_basis=design_basis_md,
-            basic_pfd=basic_pfd_md,
-            equipment_and_stream_list=equipment_stream_list_str,
+            flowsheet_description=flowsheet_description_md,
+            equipment_and_stream_results=equipment_stream_list_str,
         )
         
         # Todo: implement below logit to agents/designers/equipment_sizing_agent.py

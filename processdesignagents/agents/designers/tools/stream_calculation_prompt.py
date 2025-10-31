@@ -10,7 +10,7 @@ from processdesignagents.agents.utils.prompt_utils import jinja_raw
 
 def stream_calculation_prompt_with_tools(
     design_basis: str,
-    basic_pfd_description: str,
+    flowsheet_description: str,
     stream_list_template: str,
 ) -> Tuple[ChatPromptTemplate, str, str]:
     """
@@ -18,7 +18,7 @@ def stream_calculation_prompt_with_tools(
 
     Args:
         design_basis: Text describing the overall design parameters (feed, products, utilities).
-        basic_pfd_description: Text describing the sequence of unit operations.
+        flowsheet_description: Text describing the sequence of unit operations.
         stream_list_template: JSON template string for the desired output structure.
 
     Returns:
@@ -42,7 +42,7 @@ def stream_calculation_prompt_with_tools(
   </metadata>
 
   <context>
-    <tool_environment>Python-based stream property and balance calculation tools (using CoolProp)</tool_environment>
+    <tool_environment>Python-based stream property and balance calculation tools (using CoolProp). It should be noted that when calling tools, the name of component should be only common name without space, e.g., "Ethanol", "Water", "CarbonDioxide".</tool_environment>
     <available_tools>
       <tool name="calculate_molar_flow_from_mass">
         <description>Calculates molar flow (kmol/h) and average MW (kg/kmol) from mass flow (kg/h) and composition (molar or mass fractions).</description>
@@ -189,7 +189,7 @@ def stream_calculation_prompt_with_tools(
     </available_tools>
     <inputs_to_agent>
       <input name="design_basis" format="text">Overall design parameters (feed, products, utilities).</input>
-      <input name="basic_pfd_description" format="text">Sequence of unit operations.</input>
+      <input name="flowsheet_description" format="text">Sequence of unit operations.</input>
       <input name="stream_list_template" format="json">JSON structure for the final output (contains 'streams' list).</input>
     </inputs_to_agent>
     <purpose>Generate a complete, consistent stream table by calculating unknown stream properties based on known inputs and process flow, using the available tools.</purpose>
@@ -205,7 +205,7 @@ def stream_calculation_prompt_with_tools(
     <instruction id="1">
       <title>Understand the Process Flow and Design Basis</title>
       <details>
-        - Read the `basic_pfd_description` to understand the sequence of equipment (e.g., Feed -> Splitter -> E-101 -> Mixer -> P-101 -> Product).
+        - Read the `flowsheet_description` to understand the sequence of equipment (e.g., Feed -> Splitter -> E-101 -> Mixer -> P-101 -> Product).
         - Read the `design_basis` to identify known feed conditions (flow, T, P, composition), product specifications (T, P, composition), utility conditions (e.g., CW T_in, T_out), and key operational targets (e.g., final product temperature).
         - Identify all streams mentioned implicitly or explicitly in the description and design basis. Assign preliminary IDs if needed.
       </details>
@@ -227,7 +227,7 @@ def stream_calculation_prompt_with_tools(
     <instruction id="3">
       <title>Calculate Streams Unit by Unit (Iterative Process)</title>
       <details>
-        - Follow the equipment sequence from the `basic_pfd_description`.
+        - Follow the equipment sequence from the `flowsheet_description`.
         - For each unit operation:
           * **Identify Inputs/Outputs:** Determine the ID(s) of the stream(s) entering and leaving the unit.
           * **Gather Known Input Data:** Retrieve the full data for the input stream(s) calculated previously.
@@ -277,7 +277,7 @@ def stream_calculation_prompt_with_tools(
       <title>Final Formatting and Output</title>
       <details>
         - Assemble all the generated stream objects (JSON strings from `build_stream_object`) into a final list.
-        - Create the final JSON output object with a single top-level key "streams" containing this list.
+        - Create the final JSON output object with a key "streams" containing this list and a key "equipments" containing the equipment list from input `stream_list_template`.
         - Ensure the final output strictly adheres to the structure provided in the `stream_list_template`.
         - Make sure all numerical values are represented as floats (e.g., 50.0, not 50).
         - Ensure all strings use double quotes.
@@ -316,6 +316,7 @@ def stream_calculation_prompt_with_tools(
     <example>
       ```json
       {{
+        "equipments": [... (copy from input `stream_list_template`)]
         "streams": [
           {{
             "id": "1001",
@@ -369,9 +370,9 @@ Generate the **complete stream table** in JSON format based on the following inf
 {design_basis}
 ```
 
-**2. Basic PFD Description:**
+**2. Flowsheet Description:**
 ```text
-{basic_pfd_description}
+{flowsheet_description}
 ```
 
 **3. Stream List JSON Template (Target Structure):**

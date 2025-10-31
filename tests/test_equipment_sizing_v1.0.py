@@ -71,14 +71,14 @@ def main():
             temp_data = json.load(f)
         
         # temp_data: Dict[str, Any]= json.load("eval_results/ProcessDesignAgents_logs/full_states_log.json")
-        # requirement_md = temp_data.get("requirements", "")
-        # design_basis_md = temp_data.get("design_basis", "")
-        # basic_pfd_md = temp_data.get("basic_pfd", "")
+        # requirement_md = temp_data.get("process_requirements", "")
+        design_basis_md = temp_data.get("design_basis", "")
+        flowsheet_description_md = temp_data.get("flowsheet_description", "")
         equipment_stream_template = temp_data.get("equipment_and_stream_template", "{}")
-        equipment_stream_list_str = temp_data.get("equipment_and_stream_list", "{}")
+        equipment_stream_results_str = temp_data.get("equipment_and_stream_results", "{}")
         
         es_template = json.loads(equipment_stream_template)
-        es_list = json.loads(equipment_stream_list_str)
+        es_list = json.loads(equipment_stream_results_str)
         
         # Simulate the equipment and stram list at this stage
         es_foo = {
@@ -86,13 +86,13 @@ def main():
             "streams": es_list["streams"],
             }
         
-        equipment_stream_list_str = json.dumps(es_foo)
+        equipment_stream_results_str = json.dumps(es_foo)
         
         _, equipment_md, _ = equipments_and_streams_dict_to_markdown(es_foo)
         # print(equipment_md)
         
         # Create equipment category list from equipment_and_stream_list_template
-        equipment_category_list = create_equipment_category_list(equipment_stream_list_str)
+        equipment_category_list = create_equipment_category_list(equipment_stream_results_str)
         
         # Print the equipment category list in the temeplate
         if "category_names" in equipment_category_list:
@@ -128,17 +128,20 @@ def main():
         
         # Create agent prompt
         _, system_content, human_content = equipment_sizing_prompt_with_tools(
-            equipment_and_stream_list=equipment_stream_list_str,
+            design_basis=design_basis_md,
+            flowsheet_description=flowsheet_description_md,
+            equipment_and_stream_results=equipment_stream_results_str,
         )
         
         # Test new run_agent_with_tools
-        cleaned_content = run_agent_with_tools(
+        ai_messages = run_agent_with_tools(
             llm_model=quick_thinking_llm,
             system_prompt=system_content,
             human_prompt=human_content,
             tools_list=tools_list,
             )
         
+        cleaned_content = repair_json(ai_messages[-1].content)
         print(cleaned_content)
         exit(0)
         

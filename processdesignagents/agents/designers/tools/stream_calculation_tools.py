@@ -129,7 +129,6 @@ NON_COOLPROP_NAMES = {
     "methyldiethanolamine": ["MDEA", 119.163, 247],
 }
 
-
 def _debug_tool_call(tool_name: str) -> None:
     print(f"DEBUG: Stream Calculation Tool '{tool_name}' invoked", flush=True)
 

@@ -22,7 +22,7 @@ def create_component_list_researcher(llm):
         """Component List Researcher: Syntensis the problem requirement, concept details, and design basis for component list generation."""
         print("\n# Component List Researcher:", flush=True)
 
-        requirements_markdown = state.get("requirements", "")
+        requirements_markdown = state.get("process_requirements", "")
         selected_concept_name = state.get("selected_concept_name", "")
         concept_details_markdown = state.get("selected_concept_details", "")
         
@@ -41,46 +41,21 @@ def create_component_list_researcher(llm):
         
         tools_list = [ get_physical_properties ]
 
-        cleaned_output = run_agent_with_tools(
+        ai_messages = run_agent_with_tools(
             llm_model=llm,
             system_prompt=system_content,
             human_prompt=human_content,
             tools_list=tools_list
             )
 
-        ai_message = AIMessage(content=cleaned_output)
+        cleaned_output = ai_messages[-1].content
         
         print(cleaned_output, flush=True)
-        
+
         return {
             "component_list": cleaned_output,
-            "messages": [ai_message],
+            "messages": ai_messages,
           }
-        
-        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
-        prompt = ChatPromptTemplate.from_messages(prompt_messages)
-        chain = prompt | llm
-        is_done = False
-        try_count = 0
-        while not is_done:
-            try_count += 1
-            if try_count > 3:
-                print("+ Max try count reached.", flush=True)
-                exit(-1)
-            try:
-                # Get the response from LLM
-                response = chain.invoke({"messages": list(state.get("messages", []))})
-                if len(response.content) < 20:
-                    continue
-                is_done = True
-            except Exception as e:
-                print(f"Attemp {try_count}: {e}")
-        print(response.content, flush=True)
-        return {
-            "component_list": response.content,
-            "messages": [response],
-        }
-
     return component_list_researcher
 
 

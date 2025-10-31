@@ -21,7 +21,7 @@ def create_design_basis_analyst(llm):
         print("\n# Design Basis Analyst", flush=True)
 
         problem_statement = state.get("problem_statement", "")
-        requirements_markdown = state.get("requirements", "")
+        requirements_markdown = state.get("process_requirements", "")
         selected_concept_details = state.get("selected_concept_details", "")
         selected_concept_name = state.get("selected_concept_name", "")
         component_list = state.get("component_list", "")

@@ -42,16 +42,16 @@ def create_safety_risk_analyst(llm):
     def safety_risk_analyst(state: DesignState) -> DesignState:
         """Safety and Risk Analyst: Performs HAZOP-inspired risk assessment on current concept."""
         print("\n# Safety and Risk Assessment", flush=True)
-        requirements_markdown = state.get("requirements", "")
+        requirements_markdown = state.get("process_requirements", "")
         design_basis_markdown = state.get("design_basis", "")
-        basic_pfd_markdown = state.get("basic_pfd", "")
-        equipment_and_stream_list = state.get("equipment_and_stream_list", "")
+        flowsheet_description_markdown = state.get("flowsheet_description", "")
+        equipment_and_stream_results = state.get("equipment_and_stream_results", "")
 
         base_prompt = safety_risk_prompt(
             requirements_markdown,
             design_basis_markdown,
-            basic_pfd_markdown,
-            equipment_and_stream_list,
+            flowsheet_description_markdown,
+            equipment_and_stream_results,
         )
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
@@ -83,10 +83,10 @@ def create_safety_risk_analyst(llm):
 
 
 def safety_risk_prompt(
-    process_requirement: str,
+    process_requirements_markdown: str,
     design_basis_markdown: str,
-    basic_pfd_markdown: str,
-    equipment_and_stream_list: str,
+    flowsheet_description_markdown: str,
+    equipment_and_stream_results: str,
 ) -> ChatPromptTemplate:
     system_content = """
 <?xml version="1.0" encoding="UTF-8"?>
@@ -676,16 +676,16 @@ Equipment E-101, Stream 1002, and control system TC-101/TAH-101 involved. Temper
 # DATA FOR HAZOP ANALYSIS
 ---
 **REQUIREMENTS / CONSTRAINTS (Markdown):**
-{process_requirement}
+{process_requirements_markdown}
 
 **DESIGN BASIS (Markdown):**
 {design_basis_markdown}
 
 **BASIC PROCESS FLOW DIAGRAM (Markdown):**
-{basic_pfd_markdown}
+{flowsheet_description_markdown}
 
 **EQUIPMENT AND STREAMS DATA (JSON):**
-{equipment_and_stream_list}
+{equipment_and_stream_results}
 
 **You must output only pure markdown format, not code blocks, XML, or JSON.**
 ---

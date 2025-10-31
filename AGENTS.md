@@ -8,25 +8,25 @@ The graph wiring is defined in `processdesignagents/graph/setup.py` and compiled
 
 | Step | Agent | Module | Reads | Writes | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Process Requirements Analyst | `processdesignagents/agents/analysts/process_requirements_analyst.py` | `problem_statement`, `messages` | `requirements`, `messages` | Extracts a structured Markdown brief; exits early if the response is too short. |
-| 2 | Innovative Researcher | `processdesignagents/agents/researchers/innovative_researcher.py` | `requirements`, `messages` | `research_concepts`, `messages` | Generates 3–6 concepts as JSON (`concepts[...]`) with maturity tags. |
-| 3 | Conservative Researcher | `processdesignagents/agents/researchers/conservative_researcher.py` | `research_concepts`, `requirements`, `messages` | `research_rateing_results`, `messages` | Replays each concept with feasibility scores, risks, and recommendations. |
-| 4 | Concept Detailer | `processdesignagents/agents/researchers/detail_concept_researcher.py` | `research_rateing_results`, `requirements`, `messages` | `selected_concept_name`, `selected_concept_details`, `selected_concept_evaluation`, `messages` | Auto-selects the highest-scoring concept unless a manual provider is injected via `ProcessDesignGraph.propagate(manual_concept_selection=True)`. |
-| 5 | Component List Researcher | `processdesignagents/agents/researchers/component_list_researcher.py` | `requirements`, `selected_concept_details`, `selected_concept_name`, `design_basis`, `messages` | `component_list`, `messages` | Produces a Markdown component table (formula + MW) using the built-in CSV as reference. |
-| 6 | Design Basis Analyst | `processdesignagents/agents/analysts/design_basis_analyst.py` | `problem_statement`, `requirements`, `selected_concept_details`, `selected_concept_name`, `component_list`, `messages` | `design_basis`, `messages` | Builds the preliminary basis-of-design document. |
-| 7 | Flowsheet Design Agent | `processdesignagents/agents/designer/flowsheet_design_agent.py` | `requirements`, `design_basis`, `selected_concept_details`, `selected_concept_name`, `messages` | `basic_pfd`, `messages` | Returns a Markdown flowsheet narrative with equipment/stream tables. |
-| 8 | Equipment & Stream Catalog Agent | `processdesignagents/agents/designer/equipment_stream_catalog_agent.py` | `basic_pfd`, `design_basis`, `requirements`, `selected_concept_details`, `messages` | `equipment_and_stream_list`, `messages` | Emits the canonical equipment/stream JSON scaffold; CLI renders it to Markdown via `equipments_and_streams_dict_to_markdown`. |
-| 9 | Stream Property Estimation Agent | `processdesignagents/agents/designer/stream_property_estimation_agent.py` | `basic_pfd`, `design_basis`, `messages` | `equipment_and_stream_list`, `messages` | Re-generates the combined JSON with reconciled stream properties (dedicated `stream_list_results` is not yet populated). |
-| 10 | Equipment Sizing Agent | `processdesignagents/agents/designer/equipment_sizing_agent.py` | `design_basis`, `basic_pfd`, `equipment_and_stream_list`, `messages` | `equipment_and_stream_list`, `messages` | Calls sizing helpers to fill equipment duties, dimensions, and notes. |
-| 11 | Safety & Risk Analyst | `processdesignagents/agents/analysts/safety_risk_analyst.py` | `requirements`, `design_basis`, `basic_pfd`, `equipment_and_stream_list`, `messages` | `safety_risk_analyst_report`, `messages` | Produces a markdown HAZOP-style assessment (hazards + mitigations). |
-| 12 | Project Manager | `processdesignagents/agents/project_manager/project_manager.py` | `requirements`, `design_basis`, `basic_pfd`, `equipment_and_stream_list`, `safety_risk_analyst_report`, `messages` | `approval`, `project_manager_report`, `messages` | Issues the gate decision and implementation plan in Markdown. |
+| 1 | Process Requirements Analyst | `processdesignagents/agents/analysts/process_requirements_analyst.py` | `problem_statement`, `messages` | `process_requirements`, `messages` | Extracts a structured Markdown brief; exits early if the response is too short. |
+| 2 | Innovative Researcher | `processdesignagents/agents/researchers/innovative_researcher.py` | `process_requirements`, `messages` | `research_concepts`, `messages` | Generates 3–6 concepts as JSON (`concepts[...]`) with maturity tags. |
+| 3 | Conservative Researcher | `processdesignagents/agents/researchers/conservative_researcher.py` | `research_concepts`, `process_requirements`, `messages` | `research_rateing_results`, `messages` | Replays each concept with feasibility scores, risks, and recommendations. |
+| 4 | Concept Detailer | `processdesignagents/agents/researchers/detail_concept_researcher.py` | `research_rateing_results`, `process_requirements`, `messages` | `selected_concept_name`, `selected_concept_details`, `selected_concept_evaluation`, `messages` | Auto-selects the highest-scoring concept unless a manual provider is injected via `ProcessDesignGraph.propagate(manual_concept_selection=True)`. |
+| 5 | Component List Researcher | `processdesignagents/agents/researchers/component_list_researcher.py` | `process_requirements`, `selected_concept_details`, `selected_concept_name`, `design_basis`, `messages` | `component_list`, `messages` | Produces a Markdown component table (formula + MW) using the built-in CSV as reference. |
+| 6 | Design Basis Analyst | `processdesignagents/agents/analysts/design_basis_analyst.py` | `problem_statement`, `process_requirements`, `selected_concept_details`, `selected_concept_name`, `component_list`, `messages` | `design_basis`, `messages` | Builds the preliminary basis-of-design document. |
+| 7 | Flowsheet Design Agent | `processdesignagents/agents/designer/flowsheet_design_agent.py` | `process_requirements`, `design_basis`, `selected_concept_details`, `selected_concept_name`, `messages` | `flowsheet_description`, `messages` | Returns a Markdown flowsheet narrative with equipment/stream tables. |
+| 8 | Equipment & Stream Catalog Agent | `processdesignagents/agents/designer/equipment_stream_catalog_agent.py` | `flowsheet_description`, `design_basis`, `process_requirements`, `selected_concept_details`, `messages` | `equipment_and_stream_results`, `messages` | Emits the canonical equipment/stream JSON scaffold; CLI renders it to Markdown via `equipments_and_streams_dict_to_markdown`. |
+| 9 | Stream Property Estimation Agent | `processdesignagents/agents/designer/stream_property_estimation_agent.py` | `flowsheet_description`, `design_basis`, `messages` | `equipment_and_stream_results`, `messages` | Re-generates the combined JSON with reconciled stream properties (dedicated `stream_list_results` is not yet populated). |
+| 10 | Equipment Sizing Agent | `processdesignagents/agents/designer/equipment_sizing_agent.py` | `design_basis`, `flowsheet_description`, `equipment_and_stream_results`, `messages` | `equipment_and_stream_results`, `messages` | Calls sizing helpers to fill equipment duties, dimensions, and notes. |
+| 11 | Safety & Risk Analyst | `processdesignagents/agents/analysts/safety_risk_analyst.py` | `process_requirements`, `design_basis`, `flowsheet_description`, `equipment_and_stream_results`, `messages` | `safety_risk_analyst_report`, `messages` | Produces a markdown HAZOP-style assessment (hazards + mitigations). |
+| 12 | Project Manager | `processdesignagents/agents/project_manager/project_manager.py` | `process_requirements`, `design_basis`, `flowsheet_description`, `equipment_and_stream_results`, `safety_risk_analyst_report`, `messages` | `project_approval`, `project_manager_report`, `messages` | Issues the gate decision and implementation plan in Markdown. |
 
 ## Shared State Keys
 
 | Field | Description | Primary setter(s) | Downstream consumers |
 | --- | --- | --- | --- |
 | `problem_statement` | Raw design brief seeded as the first human message. | Propagator | Requirements analyst (reference only). |
-| `requirements` | Structured Markdown requirements package. | Requirements analyst | All later agents. |
+| `process_requirements` | Structured Markdown requirements package. | Requirements analyst | All later agents. |
 | `research_concepts` | JSON list of candidate concepts. | Innovative researcher | Conservative researcher. |
 | `research_rateing_results` | JSON evaluations with scores/risks. | Conservative researcher | Concept detailer. |
 | `selected_concept_name` | Winning concept identifier. | Concept detailer | Component list, design basis, PFD, downstream stages. |
@@ -34,14 +34,14 @@ The graph wiring is defined in `processdesignagents/graph/setup.py` and compiled
 | `selected_concept_evaluation` | JSON payload for the chosen concept (stored for reference). | Concept detailer | Currently informational; exposed to CLI snapshots. |
 | `component_list` | Markdown table of key components. | Component list researcher | Design basis analyst. |
 | `design_basis` | Markdown basis-of-design. | Design basis analyst | PFD, list builder, estimator, sizing, safety, PM. |
-| `basic_pfd` | Markdown flowsheet summary. | Flowsheet design agent | Equipment & stream catalog agent, estimator, sizing, safety, PM. |
-| `equipment_and_stream_list` | Canonical JSON string holding equipment and stream data. | List builder → estimator → sizing | Safety analyst, project manager, report exporters. |
+| `flowsheet_description` | Markdown flowsheet summary. | Flowsheet design agent | Equipment & stream catalog agent, estimator, sizing, safety, PM. |
+| `equipment_and_stream_results` | Canonical JSON string holding equipment and stream data. | List builder → estimator → sizing | Safety analyst, project manager, report exporters. |
 | `safety_risk_analyst_report` | Markdown hazard summary. | Safety & risk analyst | Project manager, exports. |
 | `project_manager_report` | Final approval memo. | Project manager | Report exporters. |
-| `approval` | Extracted status (`Approved`, `Conditional`, `Rejected`, etc.). | Project manager | CLI, downstream orchestration. |
+| `project_approval` | Extracted status (`Approved`, `Conditional`, `Rejected`, etc.). | Project manager | CLI, downstream orchestration. |
 | `messages` | Running transcript of LLM calls. | All agents | CLI streaming, debugging. |
 
-The `DesignState` also defines placeholders for `stream_list_template`, `stream_list_results`, `equipment_list_template`, and `equipment_list_results`. These currently remain blank because the combined `equipment_and_stream_list` artefact fulfils both roles; update the agents and CLI panels together if you choose to activate the separate fields.
+The `DesignState` also defines placeholders for `stream_list_template`, `stream_list_results`, `equipment_list_template`, and `equipment_list_results`. These currently remain blank because the combined `equipment_and_stream_results` artefact fulfils both roles; update the agents and CLI panels together if you choose to activate the separate fields.
 
 ## Tool Nodes & External Helpers
 
