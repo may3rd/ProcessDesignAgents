@@ -6,6 +6,8 @@ from typing import Dict, List, Any, Optional
 import CoolProp.CoolProp as CP # Import CoolProp
 from langchain_core.tools import tool # Import LangChain tool decorator
 
+from .unit_converter.unit_converter.converter import convert, converts
+
 # ============================================================================
 # Helper Functions with CoolProp Integration
 # ============================================================================
@@ -290,6 +292,35 @@ def _get_phase_string(phase_index: int) -> str:
 # ============================================================================
 # Stream Calculation Tools (Using CoolProp Helpers & LangChain Decorator)
 # ============================================================================
+
+@tool
+def unit_converts(
+    original_value_with_unit: str,
+    target_unit: str
+) -> str:
+    """
+    Converts a value from one unit to another.
+    Args:
+        original_value_with_unit:
+        target_unit:
+    Returns:
+        JSON string: {"value": float, "unit": str} or {"error": str}.
+    """
+    _debug_tool_call("unit_converts")
+    try:
+        # Input validation
+        if not original_value_with_unit or not target_unit:
+            return json.dumps({"error": "Input values cannot be empty."})
+
+        target_value = converts(original_value_with_unit, target_unit)
+        
+        if target_value is None:
+            return json.dumps({"error": "Conversion failed."})
+
+        return json.dumps({"value": float(target_value), "unit": target_unit})
+    except:
+        # Return original if failed
+        return json.dumps({"error": "Conversion failed."})
 
 @tool
 def calculate_molar_flow_from_mass(

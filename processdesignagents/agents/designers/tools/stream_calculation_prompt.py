@@ -45,6 +45,16 @@ def stream_calculation_prompt_with_tools(
     <tool_environment>Python-based stream property and balance calculation tools (using CoolProp)</tool_environment>
     <available_tools>
       <!-- Property Calculation Tools -->
+      <tool name="unit_converts">
+        <description>Convert the input value from one unit to another.</description>
+        <inputs>
+          <input name="original_value_with_unit" type="string">Original Value with unit, i.e. "10.0 kg", "30.0 °C", "25000.0 kg*s^-1", "0.5 barg", etc.</input>
+          <input name="target_unit" type="string">Target unit</input>
+        </inputs>
+        <outputs>
+          <output name="converted_value_with_unit" type="string">JSON string: {{"value": float, "unit": str}} or {{"error": str}}</output>
+        </outputs>
+      </tool>
       <tool name="calculate_molar_flow_from_mass">
         <description>Calculates molar flow (kmol/h) and average MW (kg/kmol) from mass flow (kg/h) and composition (molar or mass fractions).</description>
         <inputs>
@@ -222,6 +232,7 @@ def stream_calculation_prompt_with_tools(
         - Use `get_physical_properties` to find density, phase, and Cp at the known T and P. Use ["density", "cp", "phase", "molecular_weight"] as `properties_needed`. Verify the phase reported by CoolProp matches expectations.
         - Once density is known, use `calculate_volume_flow` if mass flow is known.
         - Use the `build_stream_object` tool to create the complete JSON object for each known stream. Add detailed notes explaining the source of the data (e.g., "From Design Basis", "Calculated using CoolProp"). Keep track of these completed stream objects.
+        - Use the `unit_converts` tool to convert the unit of measurement of the value from one unit to another unit.
       </details>
     </instruction>
 
