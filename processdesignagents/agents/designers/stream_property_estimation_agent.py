@@ -10,7 +10,9 @@ from langchain_core.prompts import (
     SystemMessagePromptTemplate,
 )
 from dotenv import load_dotenv
+from langsmith import unit
 
+from processdesignagents.agents.designers.tools.stream_calculation_tools import unit_converts
 from processdesignagents.agents.utils.agent_states import DesignState
 from processdesignagents.agents.utils.prompt_utils import jinja_raw
 from processdesignagents.agents.utils.equipment_stream_markdown import equipments_and_streams_dict_to_markdown
@@ -27,7 +29,8 @@ from processdesignagents.agents.designers.tools import (
     get_physical_properties, # Now uses CoolProp
     build_stream_object,
     run_agent_with_tools,
-    stream_calculation_prompt_with_tools
+    stream_calculation_prompt_with_tools,
+    unit_converts
     )
 
 from langchain_core.messages import AIMessage
@@ -68,6 +71,7 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
             calculate_heat_exchanger_duty,
             get_physical_properties, # Now uses CoolProp
             build_stream_object,
+            # unit_converts,
         ]
         
         # Create streamp template to input to messages creation function
@@ -97,6 +101,7 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
                 
                 try:
                     streams_list_dict = json.loads(repair_json(output_str))
+                    # print(streams_list_dict)
                     equipment_stream_list_dict = {
                         "equipments": es_template["equipments"],
                         "streams": streams_list_dict["streams"],
