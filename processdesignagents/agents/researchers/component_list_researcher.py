@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from operator import is_
 from typing import Tuple
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -41,21 +42,42 @@ def create_component_list_researcher(llm):
         
         tools_list = [ get_physical_properties ]
 
-        ai_messages = run_agent_with_tools(
-            llm_model=llm,
-            system_prompt=system_content,
-            human_prompt=human_content,
-            tools_list=tools_list
-            )
+        is_done = False
+        try_count = 0
+        while not is_done:
+            try_count += 1
+            if try_count > 10:
+                print("DEBUG: Maximum try count reached. Exiting")
+                exit(-1)
+            try:
+                print(f"DEBUG: Attemp {try_count} ---")
+                ai_messages = run_agent_with_tools(
+                    llm_model=llm,
+                    system_prompt=system_content,
+                    human_prompt=human_content,
+                    tools_list=tools_list
+                    )
+                
+                if isinstance(ai_messages, list):
+                    final_answer = ai_messages[-1]
+                    if isinstance(final_answer, AIMessage):
+                        output_str = final_answer.content
+                    else:
+                        print("last message is not a AIMessage")
+                        print(final_answer)
+                        continue
+                else:
+                    print(f"ai_messages is not a list: {ai_messages}")
+                    continue
+                
+                print(output_str, flush=True)
 
-        cleaned_output = ai_messages[-1].content
-        
-        print(cleaned_output, flush=True)
-
-        return {
-            "component_list": cleaned_output,
-            "messages": ai_messages,
-          }
+                return {
+                    "component_list": output_str,
+                    "messages": ai_messages,
+                }
+            except:
+                continue
     return component_list_researcher
 
 
@@ -74,6 +96,23 @@ def component_list_researcher_prompt(
   </metadata>
 
   <context>
+    <tool_environment>Python-based stream property and balance calculation tools (using CoolProp). It should be noted that when calling tools, the name of component should be only common name without space, e.g., "Ethanol", "Water", "CarbonDioxide".</tool_environment>
+    <available_tools>
+      <tool name="get_physical_properties">
+        <description>Looks up physical properties (density, cp, viscosity, phase, molecular_weight) for a mixture using CoolProp.</description>
+        <inputs>
+          <input name="components" type="list[str]">List of component names (e.g., ["Ethanol", "Water"]).</input>
+          <input name="mole_fractions" type="list[float]">List of mole fractions (must sum to 1.0).</input>
+          <input name="temperature_c" type="float">Temperature in °C.</input>
+          <input name="pressure_pa" type="float">Absolute pressure in Pascals (Pa).</input>
+          <input name="properties_needed" type="list[str]">List of properties (e.g., ["density", "cp", "phase", "molecular_weight"]).</input>
+        </inputs>
+        <outputs>
+          <output name="properties" type="dict">Dict of calculated properties with values and units.</output>
+          <output name="notes" type="string">Calculation notes, including any errors.</output>
+        </outputs>
+      </tool>
+    </available_tools>
     <inputs>
       <input>
         <n>REQUIREMENTS</n>
@@ -92,8 +131,8 @@ def component_list_researcher_prompt(
       </input>
       <input>
         <n>PHYSICAL PROPERTIES TOOL</n>
-        <format>Function tool call: get_physical_properties</format>
-        <description>Use the get_physical_properties tool to retrieve molecular weight and thermophysical data for individual components or mixtures.</description>
+        <format>Function tool call: `get_physical_properties`</format>
+        <description>Use the `get_physical_properties` tool to retrieve molecular weight and thermophysical data for individual components or mixtures.</description>
       </input>
     </inputs>
     <purpose>Translate design documentation into a curated component list that serves as the backbone for downstream engineering</purpose>
@@ -353,14 +392,6 @@ Create a components list based on the following data:
 
 **Concept Details (Markdown):**
 {concept_details}
-
-**Physical Properties Tool Instructions:**
-Use the `get_physical_properties` tool whenever you need molecular weight or any physical property for a candidate component. Call it with:
-- `components`: ["ComponentName"]
-- `mole_fractions`: [1.0] for a pure component
-- `temperature_c`: 25.0 (adjust if project documentation specifies otherwise)
-- `pressure_barg`: 0.0
-- `properties_needed`: ["molecular_weight", "phase"]
 
 The tool returns molecular weight in kg/kmol (numerically equivalent to g/mol). Reflect the value in the Markdown table and capture any relevant notes in your reasoning. If the tool reports an error for a component, record the issue and cite the reference you use for a fallback estimate.
 

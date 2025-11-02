@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import final
 from json_repair import repair_json
 
 from langchain_core.prompts import (
@@ -39,7 +40,7 @@ from langchain_core.messages import AIMessage
 load_dotenv()
 
 
-def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter"):
+def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter", max_count:int = 10):
     def stream_property_estimation_agent(state: DesignState) -> DesignState:
         """Stream Property Estimation Agent: Generates JSON stream data with reconciled estimates."""
         print("\n# Stream Property Estimation", flush=True)
@@ -47,15 +48,17 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
         # Loaded prior LLM results
         flowsheet_description_markdown = state.get("flowsheet_description", "")
         design_basis_markdown = state.get("design_basis", "")
-        equipments_and_streams_list_json = state.get("equipment_and_stream_template", "{}")
+        equipment_and_stream_template_json = state.get("equipment_and_stream_template", "{}")
         
         # Check if all inputs has value
-        if not flowsheet_description_markdown or not design_basis_markdown or not equipments_and_streams_list_json:
+        if not flowsheet_description_markdown or not design_basis_markdown or not equipment_and_stream_template_json:
             print("FAILED: Previous data is missing...", flush=True)
             exit(-1)
             
-        equipments_and_streams_list_dict = json.loads(equipments_and_streams_list_json)
-        
+        equipment_and_stream_template_dict = json.loads(repair_json(equipment_and_stream_template_json))
+        if "equipments" not in equipment_and_stream_template_dict or "streams" not in equipment_and_stream_template_dict:
+            print("FAILED: Incorrect format of Equipment and Stream Template", flush=True)
+            exit(-1)
         # Create tools list to be called by agent
         tools_list = [
             calculate_molar_flow_from_mass,
@@ -76,18 +79,21 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
         _, system_message, human_message = stream_calculation_prompt_with_tools(
             design_basis=design_basis_markdown,
             flowsheet_description=flowsheet_description_markdown,
-            stream_list_template=equipments_and_streams_list_json,
+            stream_list_template=equipment_and_stream_template_json,
             )
+        
+        llm.temperature = 0.3
         
         is_done = False
         try_count = 0
         while not is_done:
             try_count += 1
-            if try_count > 3:
+            if try_count > max_count:
                 print("DEBUG: Maximum try count reached. Exiting")
                 exit(-1)
             try:
-                output_str = run_agent_with_tools(
+                print(f"DEBUG: Attemp {try_count} ---")
+                ai_messages = run_agent_with_tools(
                     llm_model=llm,
                     system_prompt=system_message,
                     human_prompt=human_message,
@@ -95,10 +101,25 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
                     )
                 
                 try:
+                    if isinstance(ai_messages, list):
+                        final_answer = ai_messages[-1]
+                        if isinstance(final_answer, AIMessage):
+                            output_str = final_answer.content
+                        else:
+                            print("last message is not a AIMessage")
+                            print(final_answer)
+                            continue
+                    else:
+                        print(f"ai_messages is not a list: {ai_messages}")
+                        continue
+                    
                     streams_list_dict = json.loads(repair_json(output_str))
+                    if "streams" not in streams_list_dict:
+                        print("FAILED: Incorrect format of Stream List", flush=True)
+                        continue
                     # print(streams_list_dict)
                     equipment_stream_list_dict = {
-                        "equipments": equipments_and_streams_list_dict["equipments"],
+                        "equipments": equipment_and_stream_template_dict["equipments"],
                         "streams": streams_list_dict["streams"],
                         }
                     _, _, streams_md = equipments_and_streams_dict_to_markdown(equipment_stream_list_dict)
@@ -108,11 +129,12 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
                     
                     return {
                         "stream_list_results": json.dumps(streams_list_dict),
-                        "equipment_and_stream_list": json.dumps(equipment_stream_list_dict),
-                        "messages": [ai_message],
+                        "equipment_and_stream_results": json.dumps(equipment_stream_list_dict),
+                        "messages": ai_messages,
                     }
                 except Exception as e:
                     print(f"DEBUG: Attemp {try_count}: has failed. Error: {e}")
+                    print(ai_messages)
             except:
                 continue
     return stream_property_estimation_agent

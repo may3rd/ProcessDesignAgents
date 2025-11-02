@@ -127,6 +127,7 @@ NON_COOLPROP_NAMES = {
     "monoethanolamine": ["MEA", 61.08, 170],
     "diethanolamine": ["DEA", 105.14, 268.8],
     "methyldiethanolamine": ["MDEA", 119.163, 247],
+    "Hexamethylcyclotrisiloxane": ["D3", 222.462, 134]
 }
 
 def _debug_tool_call(tool_name: str) -> None:

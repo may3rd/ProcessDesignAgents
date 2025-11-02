@@ -77,15 +77,19 @@ def create_equipment_category_list(equipment_stream_list_str: str) -> Dict[str, 
     
     return equipment_category_list
 
-def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
+def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter", max_count: int = 10):
     def equipment_sizing_agent(state: DesignState) -> DesignState:
         """Equipment Sizing Agent: populates the equipment table using tool-assisted estimates."""
         print("\n# Equipment Sizing", flush=True)
         design_basis_markdown = state.get("design_basis", "")
         flowsheet_description_markdown = state.get("flowsheet_description", "")
         equipment_and_stream_results_json = state.get("equipment_and_stream_results", "{}")
-        equipment_and_stream_results_dict = json.loads(equipment_and_stream_results_json)
+        equipment_and_stream_results_dict = json.loads(repair_json(equipment_and_stream_results_json))
         
+        if "equipments" not in equipment_and_stream_results_dict or "streams" not in equipment_and_stream_results_dict:
+            print("FAILED: Incorrect format of Equipment and Stream Template", flush=True)
+            exit(-1)
+            
         # Create tools list to be called by agent
         tools_list = [
             size_air_cooler_basic,
@@ -124,16 +128,19 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
             equipment_and_stream_results=equipment_and_stream_results_json,
         )
         
+        llm.temperature = 0.3
+        
         is_done = False
         try_count = 0
         while not is_done:
             try_count += 1
-            if try_count >= 10:
+            if try_count > max_count:
                 print("DEBUG: Max try count reached. Exiting...")
                 exit(-1)
             try:
                 # Test new run_agent_with_tools
-                output_str = run_agent_with_tools(
+                print(f"DEBUG: Attempt {try_count} ---")
+                ai_messages = run_agent_with_tools(
                     llm_model=llm,
                     system_prompt=system_message,
                     human_prompt=human_message,
@@ -141,7 +148,23 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
                     )
                 
                 try:
+                    if isinstance(ai_messages, list):
+                        final_answer = ai_messages[-1]
+                        if isinstance(final_answer, AIMessage):
+                            output_str = final_answer.content
+                        else:
+                            print("last message is not a AIMessage")
+                            print(final_answer)
+                            continue
+                    else:
+                        print(f"ai_messages is not a list: {ai_messages}")
+                        continue
+                    
                     equipment_list_dict = json.loads(repair_json(output_str))
+                    if "equipments" not in equipment_list_dict:
+                        print("FAILED: Incorrect format of Equipment List", flush=True)
+                        print(output_str)
+                        continue
                     equipment_stream_final_dict = {
                         "equipments": equipment_list_dict["equipments"],
                         "streams": equipment_and_stream_results_dict["streams"],
@@ -153,11 +176,12 @@ def create_equipment_sizing_agent(llm, llm_provider: str = "openrouter"):
                     
                     return {
                         "equipment_list_results": json.dumps(equipment_list_dict),
-                        "equipment_and_stream_list": json.dumps(equipment_stream_final_dict),
-                        "messages": [ai_message],
+                        "equipment_and_stream_results": json.dumps(equipment_stream_final_dict),
+                        "messages": ai_messages,
                     }
                 except Exception as e:
                     print(f"DEBUG: Attemp {try_count} has failed. Error: {e}")
+                    print(ai_messages)
             except:
                 continue
     return equipment_sizing_agent

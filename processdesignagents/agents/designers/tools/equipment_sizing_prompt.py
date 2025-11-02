@@ -1250,8 +1250,6 @@ def equipment_sizing_prompt_with_tools(
     human_content = f"""
 Based on the design basis, flowsheet description, and equipment and stream data below, use the available sizing tools to calculate and update the equipment list.
 
-**Output ONLY the final equipment list with updated sizing parameters (JSON): object (no code fences, no additional text).**
-
 **Design Basis**
 {design_basis}
 
@@ -1260,6 +1258,8 @@ Based on the design basis, flowsheet description, and equipment and stream data 
 
 **Equipment and Stream Data (JSON):**
 {equipment_and_stream_results}
+
+**Output ONLY the final equipment list JSON object (no code fences, no additional text, no tool calls, no XML tags). The output must start directly with `{{` and end with `}}`.**
 """
 
     messages = [

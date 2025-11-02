@@ -6,8 +6,8 @@ from processdesignagents.default_config import DEFAULT_CONFIG
 config = DEFAULT_CONFIG.copy()
 
 config["llm_provider"] = "openrouter"
-config["quick_think_llm"] = "google/gemini-2.5-flash-preview-09-2025"
-config["deep_think_llm"] = "google/gemini-2.5-flash-preview-09-2025"
+# config["quick_think_llm"] = "google/gemini-2.5-flash-preview-09-2025"
+# config["deep_think_llm"] = "google/gemini-2.5-flash-preview-09-2025"
 
 # config["quick_think_llm"] = "google/gemini-2.5-flash-lite-preview-09-2025"
 # config["deep_think_llm"] = "google/gemini-2.5-flash-lite-preview-09-2025"
@@ -21,7 +21,8 @@ config["deep_think_llm"] = "google/gemini-2.5-flash-preview-09-2025"
 # config["quick_think_llm"] = "x-ai/grok-4-fast"
 # config["deep_think_llm"] = "x-ai/grok-4-fast"
 
-# config["quick_think_llm"] = "openai/gpt-oss-safeguard-20b"
+config["quick_think_llm"] = "google/gemini-2.5-flash-lite-preview-09-2025"
+config["deep_think_llm"] = "google/gemini-2.5-flash-preview-09-2025"
 
 delay_time = 0.1
 

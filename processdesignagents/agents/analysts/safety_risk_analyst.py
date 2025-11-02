@@ -55,6 +55,9 @@ def create_safety_risk_analyst(llm):
         )
         prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
+        
+        llm.temperature = 1.0
+        
         chain = prompt | llm
         is_done = False
         try_count = 0
@@ -69,9 +72,14 @@ def create_safety_risk_analyst(llm):
                 response = chain.invoke({"messages": list(state.get("messages", []))})
                 cleaned_content = strip_markdown_code_block(response.content)
                 if not cleaned_content:
+                    print(f"Attemp {try_count} - response is empty.")
+                    print(response, flush=True)
                     continue
-                if len(cleaned_content) > 500:
+                if len(cleaned_content) > 50:
                     is_done = True
+                else:
+                    print(f"Attemp {try_count} - response is too short.")
+                    print(response, flush=True)
             except Exception as e:
                 print(f"Attemp {try_count} has failed.")
         print(cleaned_content, flush=True)

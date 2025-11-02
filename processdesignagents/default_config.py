@@ -44,6 +44,7 @@ DEFAULT_CONFIG = {
     "max_debate_rounds": 1,
     "max_risk_discuss_rounds": 1,
     "max_recur_limit": 100,
+    "max_agent_call": 10,
     # Tool settings
     "online_tools": True,
     "property_data_source": "pubchem",

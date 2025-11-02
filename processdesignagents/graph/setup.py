@@ -23,6 +23,7 @@ class GraphSetup:
         tool_nodes: Dict[str, ToolNode] = None,
         checkpointer = None,
         delay_time: float = 0.5,
+        max_agent_call:int = 10,
     ):
         """Initialize with required components."""
         self.llm_provider = llm_provider
@@ -34,6 +35,7 @@ class GraphSetup:
         self.checkpointer = checkpointer
         self.concept_selection_provider = None
         self.delay_time = delay_time
+        self.max_agent_call = max_agent_call
 
     def _wrap_with_delay(self, agent_fn):
         """Ensure each agent pauses briefly before yielding control."""
@@ -54,15 +56,21 @@ class GraphSetup:
         innovative_researcher = create_innovative_researcher(self.quick_thinking_llm)
         conservative_researcher = create_conservative_researcher(self.quick_thinking_llm)
         concept_detailer = create_concept_detailer(
-            self.quick_thinking_llm,
+            self.deep_thinking_llm,
             lambda: self.concept_selection_provider,
         )
         component_list_researcher = create_component_list_researcher(self.quick_thinking_llm)
         design_basis_analyst = create_design_basis_analyst(self.quick_thinking_llm)
         flowsheet_design_agent = create_flowsheet_design_agent(self.quick_thinking_llm)
         equipment_stream_catalog_agent = create_equipment_stream_catalog_agent(self.quick_structured_llm)
-        stream_property_estimation_agent = create_stream_property_estimation_agent(self.deep_thinking_llm)
-        equipment_sizing_agent = create_equipment_sizing_agent(self.deep_thinking_llm)
+        stream_property_estimation_agent = create_stream_property_estimation_agent(
+            llm=self.deep_thinking_llm,
+            max_count=self.max_agent_call,
+        )
+        equipment_sizing_agent = create_equipment_sizing_agent(
+            llm=self.deep_thinking_llm,
+            max_count=self.max_agent_call,
+        )
         safety_risk_analyst = create_safety_risk_analyst(self.quick_thinking_llm)
         project_manager = create_project_manager(self.quick_thinking_llm)
         
