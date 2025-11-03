@@ -34,7 +34,7 @@ def create_equipment_stream_catalog_agent(llm, llm_provider: str = "openrouter")
             requirements_markdown,
             concept_details_markdown,
         )
-        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt_messages = base_prompt.messages # + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         
         llm.temperature = 0.0

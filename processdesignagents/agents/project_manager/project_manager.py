@@ -34,7 +34,7 @@ def create_project_manager(llm):
             safety_report
         )
 
-        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt_messages = base_prompt.messages # + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         
         is_done = False

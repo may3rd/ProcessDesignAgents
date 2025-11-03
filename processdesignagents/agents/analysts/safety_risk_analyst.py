@@ -53,7 +53,7 @@ def create_safety_risk_analyst(llm):
             flowsheet_description_markdown,
             equipment_and_stream_results,
         )
-        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt_messages = base_prompt.messages # + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         
         llm.temperature = 1.0

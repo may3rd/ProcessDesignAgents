@@ -30,7 +30,7 @@ def create_conservative_researcher(llm):
         
         # Create system prompt and user prompt
         base_prompt = conservative_researcher_prompt(concepts_json, requirements_markdown)
-        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt_messages = base_prompt.messages # + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         
         try:

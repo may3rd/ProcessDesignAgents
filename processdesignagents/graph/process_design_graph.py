@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import json
+from datetime import datetime
 import pypandoc
 
 try:
@@ -10,15 +11,18 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     Document = None
 
-from typing import Dict, Any
+from typing import Any, Dict, List, Tuple
 
 from langchain_openai import ChatOpenAI
 # from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from langgraph.prebuilt import ToolNode
+from langgraph.graph import add_messages
 
 from dotenv import load_dotenv
+
+from langchain_core.messages import messages_from_dict, messages_to_dict
 
 from processdesignagents.default_config import DEFAULT_CONFIG
 from processdesignagents.agents.utils.agent_sizing_tools import (
@@ -203,9 +207,13 @@ class ProcessDesignGraph:
         
         # Set up the graph
         self.graph = self.graph_setup.setup_graph()
+        self.agent_execution_order: List[Tuple[str, Any]] = self.graph_setup.get_agent_execution_order()
         
         # Print the graph
         self.graph.get_graph().print_ascii()
+        
+        # Set log paths
+        self.current_state_log_path = Path("eval_results/ProcessDesignAgents_logs/current_state_log.json")
         
     def propagate(
         self,
@@ -259,52 +267,89 @@ class ProcessDesignGraph:
             self.graph_setup.concept_selection_provider = _auto_provider
 
 
-        init_agent_state = self.propagator.create_initial_state(problem_statement)
+        current_state, completed_agents, agent_outputs, resume_enabled = self._prepare_initial_state(
+            problem_statement
+        )
+        completed_agents = list(completed_agents)
+        agent_outputs = dict(agent_outputs)
+        pending_agents = [name for name, _ in self.agent_execution_order if name not in completed_agents]
 
-        args = self.propagator.get_graph_args()
-        
+        is_complete = False
         try:
-            if self.debug:
-                # Debug mode with tracing
-                trace = []
-                for chunk in self.graph.astream(init_agent_state, **args):
-                    if len(chunk["messages"]) == 0:
-                        pass
-                    else:
-                        chunk["messages"][-1].pretty_print()
-                        trace.append(chunk)
-                final_state = trace[-1]
-            else:
-                # Production mode
-                print(f"\n=========================== Start Line ===========================", flush=True)
-                
-                # Printout the LLM provider and the model of quick and deep thinking llm
-                print(f"LLM Provider: {self.config['llm_provider']}", flush=True)
-                print(f"Quick Thinking LLM: {self.config['quick_think_llm']}", flush=True)
-                print(f"Deep Thinking LLM: {self.config['deep_think_llm']}", flush=True)
-                
-                print(f"=================================================================\n", flush=True)
-                
-                # Run the graph
-                final_state = self.graph.invoke(init_agent_state, **args)
-                
-                print(f"\n=========================== Finish Line ===========================", flush=True)
+            print(f"\n=========================== Start Line ===========================", flush=True)
+            print(f"LLM Provider: {self.config['llm_provider']}", flush=True)
+            print(f"Quick Thinking LLM: {self.config['quick_think_llm']}", flush=True)
+            print(f"Deep Thinking LLM: {self.config['deep_think_llm']}", flush=True)
+            if resume_enabled and completed_agents:
+                if pending_agents:
+                    print(
+                        f"Resuming from agent: {pending_agents[0]} "
+                        f"({len(completed_agents)} completed)",
+                        flush=True,
+                    )
+                else:
+                    print("No pending agents detected; validating stored results.", flush=True)
+            print(f"=================================================================\n", flush=True)
+
+            for agent_name, agent_fn in self.agent_execution_order:
+                if agent_name in completed_agents:
+                    continue
+
+                try:
+                    agent_result = agent_fn(current_state) or {}
+                    if not isinstance(agent_result, dict):
+                        agent_result = {}
+                except Exception:
+                    # Persist current progress before propagating the exception
+                    self._save_current_state_log(
+                        problem_statement=problem_statement,
+                        current_state=current_state,
+                        completed_agents=completed_agents,
+                        agent_outputs=agent_outputs,
+                        is_complete=False,
+                    )
+                    raise
+
+                self._merge_state_updates(current_state, agent_result)
+                serialized_output = (
+                    self._serialize_state_dict(agent_result) if agent_result else {}
+                )
+                agent_outputs[agent_name] = serialized_output
+                completed_agents.append(agent_name)
+
+                self._save_current_state_log(
+                    problem_statement=problem_statement,
+                    current_state=current_state,
+                    completed_agents=completed_agents,
+                    agent_outputs=agent_outputs,
+                    is_complete=False,
+                )
+
+            is_complete = True
+            print(f"\n=========================== Finish Line ===========================", flush=True)
         finally:
             self.graph_setup.concept_selection_provider = previous_provider
+            self._save_current_state_log(
+                problem_statement=problem_statement,
+                current_state=current_state,
+                completed_agents=completed_agents,
+                agent_outputs=agent_outputs,
+                is_complete=is_complete,
+            )
         
         # Store current state for reflection
-        self.curr_state = final_state
+        self.curr_state = current_state
         
         # Log state to default location
-        self._log_state(final_state)
+        self._log_state(current_state)
 
         if save_markdown:
-            self._write_markdown_report(final_state, save_markdown)
+            self._write_markdown_report(current_state, save_markdown)
             
         if save_word_doc:
-            self._write_word_report(final_state, save_word_doc)
+            self._write_word_report(current_state, save_word_doc)
         
-        return final_state
+        return current_state
         
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different equipment using abstract methods."""
@@ -316,6 +361,144 @@ class ProcessDesignGraph:
                 ]
             ),
         }
+    
+    # ------------------------------------------------------------------ #
+    # Logging and resume helpers
+    # ------------------------------------------------------------------ #
+
+    def _make_json_safe(self, value: Any) -> Any:
+        """Ensure values are JSON serializable."""
+        if isinstance(value, dict):
+            return {k: self._make_json_safe(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self._make_json_safe(v) for v in value]
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        return str(value)
+
+    def _serialize_state_dict(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert a design state into a JSON-safe dictionary."""
+        serialized: Dict[str, Any] = {}
+        for key, value in state.items():
+            if key == "messages" and isinstance(value, list):
+                serialized[key] = messages_to_dict(value)
+            else:
+                serialized[key] = self._make_json_safe(value)
+        return serialized
+
+    def _deserialize_state_dict(self, state_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Restore a design state dictionary from JSON-safe payload."""
+        restored: Dict[str, Any] = dict(state_data or {})
+        messages_payload = restored.get("messages")
+        if messages_payload is not None:
+            try:
+                restored["messages"] = messages_from_dict(messages_payload)
+            except Exception:
+                restored["messages"] = []
+        else:
+            restored["messages"] = restored.get("messages", [])
+        return restored
+
+    def _merge_state_updates(self, state: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply partial updates from an agent into the current state."""
+        if not updates:
+            return state
+        for key, value in updates.items():
+            if key == "messages" and value is not None:
+                existing_messages = state.get("messages", [])
+                if not isinstance(existing_messages, list):
+                    existing_messages = list(existing_messages) if existing_messages else []
+                state["messages"] = add_messages(existing_messages, value)
+            else:
+                state[key] = value
+        return state
+
+    def _load_current_state_log(self) -> Dict[str, Any] | None:
+        """Load the on-disk resume log if it exists."""
+        if not self.current_state_log_path.exists():
+            return None
+        try:
+            return json.loads(self.current_state_log_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return None
+
+    def _save_current_state_log(
+        self,
+        *,
+        problem_statement: str,
+        current_state: Dict[str, Any],
+        completed_agents: List[str],
+        agent_outputs: Dict[str, Dict[str, Any]],
+        is_complete: bool,
+    ) -> None:
+        """Persist the incremental agent progress for resume capability."""
+        serialized_state = self._serialize_state_dict(current_state)
+        log_payload = {
+            "problem_statement": problem_statement,
+            "agent_order": [name for name, _ in self.agent_execution_order],
+            "completed_agents": completed_agents,
+            "pending_agents": [
+                name for name, _ in self.agent_execution_order if name not in completed_agents
+            ],
+            "last_completed_agent": completed_agents[-1] if completed_agents else None,
+            "current_state": serialized_state,
+            "agent_outputs": {
+                name: self._make_json_safe(value) for name, value in agent_outputs.items()
+            },
+            "is_complete": is_complete,
+            "updated_at": datetime.utcnow().isoformat() + "Z",
+        }
+        self.current_state_log_path.parent.mkdir(parents=True, exist_ok=True)
+        self.current_state_log_path.write_text(
+            json.dumps(log_payload, indent=4),
+            encoding="utf-8",
+        )
+
+    def _prepare_initial_state(
+        self, problem_statement: str
+    ) -> tuple[Dict[str, Any], List[str], Dict[str, Dict[str, Any]], bool]:
+        """Load existing progress if available, otherwise create a fresh state."""
+        log_data = self._load_current_state_log()
+        resume_enabled = False
+        completed_agents: List[str] = []
+        agent_outputs: Dict[str, Dict[str, Any]] = {}
+
+        if (
+            log_data
+            and log_data.get("problem_statement") == problem_statement
+            and not log_data.get("is_complete", False)
+        ):
+            resume_enabled = True
+            current_state = self._deserialize_state_dict(
+                log_data.get("current_state", {})
+            )
+            completed_agents = list(dict.fromkeys(log_data.get("completed_agents", [])))
+            valid_agent_names = {name for name, _ in self.agent_execution_order}
+            completed_agents = [name for name in completed_agents if name in valid_agent_names]
+            agent_outputs = {
+                name: value
+                for name, value in dict(log_data.get("agent_outputs", {})).items()
+                if name in valid_agent_names
+            }
+        else:
+            current_state = self.propagator.create_initial_state(problem_statement)
+            current_state["llm_provider"] = self.config["llm_provider"]
+            resume_enabled = False
+            completed_agents = []
+            agent_outputs = {}
+
+        current_state.setdefault("llm_provider", self.config["llm_provider"])
+        current_state.setdefault("messages", current_state.get("messages", []))
+
+        self._save_current_state_log(
+            problem_statement=problem_statement,
+            current_state=current_state,
+            completed_agents=completed_agents,
+            agent_outputs=agent_outputs,
+            is_complete=False,
+        )
+
+        return current_state, completed_agents, agent_outputs, resume_enabled
         
     def _get_url_by_name(self, name: str) -> str:
         """
@@ -343,22 +526,22 @@ class ProcessDesignGraph:
     def _log_state(self, final_state):
         """Log the final state to a JSON file."""
         self.log_state_dict = {
-            "problem_statement": final_state.get("problem_statement", ""),
-            "process_requirements": final_state.get("process_requirements", ""),
-            "research_concepts": final_state.get("research_concepts", ""),
-            "selected_concept_name": final_state.get("selected_concept_name", ""),
-            "selected_concept_details": final_state.get("selected_concept_details", ""),
-            "design_basis": final_state.get("design_basis", ""),
-            "flowsheet_description": final_state.get("flowsheet_description", ""),
-            "stream_list_template": final_state.get("stream_list_template", ""),
-            "stream_list_results": final_state.get("stream_list_results", ""),
-            "equipment_list_template": final_state.get("equipment_list_template", ""),
-            "equipment_list_results": final_state.get("equipment_list_results", ""),
-            "equipment_and_stream_template": final_state.get("equipment_and_stream_template", ""),
-            "equipment_and_stream_results": final_state.get("equipment_and_stream_results", ""),
-            "safety_risk_analyst_report": final_state.get("safety_risk_analyst_report", ""),
-            "project_manager_report": final_state.get("project_manager_report", ""),
-            "project_approval": final_state.get("project_approval", ""),
+            "problem_statement": self._make_json_safe(final_state.get("problem_statement", "")),
+            "process_requirements": self._make_json_safe(final_state.get("process_requirements", "")),
+            "research_concepts": self._make_json_safe(final_state.get("research_concepts", "")),
+            "selected_concept_name": self._make_json_safe(final_state.get("selected_concept_name", "")),
+            "selected_concept_details": self._make_json_safe(final_state.get("selected_concept_details", "")),
+            "design_basis": self._make_json_safe(final_state.get("design_basis", "")),
+            "flowsheet_description": self._make_json_safe(final_state.get("flowsheet_description", "")),
+            "stream_list_template": self._make_json_safe(final_state.get("stream_list_template", "")),
+            "stream_list_results": self._make_json_safe(final_state.get("stream_list_results", "")),
+            "equipment_list_template": self._make_json_safe(final_state.get("equipment_list_template", "")),
+            "equipment_list_results": self._make_json_safe(final_state.get("equipment_list_results", "")),
+            "equipment_and_stream_template": self._make_json_safe(final_state.get("equipment_and_stream_template", "")),
+            "equipment_and_stream_results": self._make_json_safe(final_state.get("equipment_and_stream_results", "")),
+            "safety_risk_analyst_report": self._make_json_safe(final_state.get("safety_risk_analyst_report", "")),
+            "project_manager_report": self._make_json_safe(final_state.get("project_manager_report", "")),
+            "project_approval": self._make_json_safe(final_state.get("project_approval", "")),
         }
         
         # Save to file

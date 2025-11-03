@@ -40,7 +40,7 @@ def create_flowsheet_design_agent(llm):
             design_basis_markdown,
         )
 
-        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt_messages = base_prompt.messages # + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         llm.temperature = 1.0
         chain = prompt | llm

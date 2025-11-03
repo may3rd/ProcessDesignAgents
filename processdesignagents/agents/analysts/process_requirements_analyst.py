@@ -27,7 +27,7 @@ def create_process_requiruments_analyst(llm):
         
         # Create base prompt from problem statement
         base_prompt = process_requirements_prompt(problem_statement=problem_statement)
-        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt_messages = base_prompt.messages # + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         chain = prompt | llm
         is_done = False

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Callable, Dict, List, Tuple
 import time
 from functools import wraps
 from langchain_openai import ChatOpenAI
@@ -36,6 +36,7 @@ class GraphSetup:
         self.concept_selection_provider = None
         self.delay_time = delay_time
         self.max_agent_call = max_agent_call
+        self.agent_execution_order: List[Tuple[str, Callable[[DesignState], DesignState]]] = []
 
     def _wrap_with_delay(self, agent_fn):
         """Ensure each agent pauses briefly before yielding control."""
@@ -51,6 +52,7 @@ class GraphSetup:
     ):
         """Set up and complie the agent graph."""
         graph = StateGraph(DesignState)
+        self.agent_execution_order = []
         
         process_requirements_analyst = create_process_requiruments_analyst(self.quick_thinking_llm)
         innovative_researcher = create_innovative_researcher(self.quick_thinking_llm)
@@ -71,7 +73,7 @@ class GraphSetup:
             llm=self.deep_thinking_llm,
             max_count=self.max_agent_call,
         )
-        safety_risk_analyst = create_safety_risk_analyst(self.quick_thinking_llm)
+        safety_risk_analyst = create_safety_risk_analyst(self.deep_thinking_llm)
         project_manager = create_project_manager(self.quick_thinking_llm)
         
         # Set up all node function by wrapping with delay timer
@@ -90,17 +92,29 @@ class GraphSetup:
         
         # Add implemented nodes (expand as agents are developed)
         graph.add_node("process_requirements_analyst", process_requirements_analyst)
+        self.agent_execution_order.append(("process_requirements_analyst", process_requirements_analyst))
         graph.add_node("innovative_researcher", innovative_researcher)
+        self.agent_execution_order.append(("innovative_researcher", innovative_researcher))
         graph.add_node("conservative_researcher", conservative_researcher)
+        self.agent_execution_order.append(("conservative_researcher", conservative_researcher))
         graph.add_node("concept_detailer", concept_detailer)
+        self.agent_execution_order.append(("concept_detailer", concept_detailer))
         graph.add_node("component_list_researcher", component_list_researcher)
+        self.agent_execution_order.append(("component_list_researcher", component_list_researcher))
         graph.add_node("design_basis_analyst", design_basis_analyst)
+        self.agent_execution_order.append(("design_basis_analyst", design_basis_analyst))
         graph.add_node("flowsheet_design_agent", flowsheet_design_agent)
+        self.agent_execution_order.append(("flowsheet_design_agent", flowsheet_design_agent))
         graph.add_node("equipment_stream_catalog_agent", equipment_stream_catalog_agent)
+        self.agent_execution_order.append(("equipment_stream_catalog_agent", equipment_stream_catalog_agent))
         graph.add_node("stream_property_estimation_agent", stream_property_estimation_agent)
+        self.agent_execution_order.append(("stream_property_estimation_agent", stream_property_estimation_agent))
         graph.add_node("equipment_sizing_agent", equipment_sizing_agent)
+        self.agent_execution_order.append(("equipment_sizing_agent", equipment_sizing_agent))
         graph.add_node("safety_risk_analyst", safety_risk_analyst)
+        self.agent_execution_order.append(("safety_risk_analyst", safety_risk_analyst))
         graph.add_node("project_manager", project_manager)
+        self.agent_execution_order.append(("project_manager", project_manager))
         
         # Set all edges, entry and exit point.
         graph.set_entry_point("process_requirements_analyst")
@@ -120,3 +134,7 @@ class GraphSetup:
         if self.checkpointer is not None:
             return graph.compile(checkpointer=self.checkpointer)
         return graph.compile()
+
+    def get_agent_execution_order(self) -> List[Tuple[str, Callable[[DesignState], DesignState]]]:
+        """Return the ordered list of agent callables."""
+        return list(self.agent_execution_order)

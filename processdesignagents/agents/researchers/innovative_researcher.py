@@ -30,7 +30,7 @@ def create_innovative_researcher(llm):
             
         # Create system prompt and user prompt
         base_prompt = innovative_researcher_prompt(requirements_summary)
-        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt_messages = base_prompt.messages # + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         
         try:

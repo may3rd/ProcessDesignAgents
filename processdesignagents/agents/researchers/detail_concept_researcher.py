@@ -83,7 +83,7 @@ def create_concept_detailer(llm, selection_provider_getter=None):
         )
         # print("DEBUG: Call LLM to generate detailed concept brief...", flush=True)
         base_prompt = concept_detailer_prompt(best_evaluation, requirements_markdown)
-        prompt_messages = base_prompt.messages + [MessagesPlaceholder(variable_name="messages")]
+        prompt_messages = base_prompt.messages # + [MessagesPlaceholder(variable_name="messages")]
         prompt = ChatPromptTemplate.from_messages(prompt_messages)
         chain = prompt | llm
         is_done = False
