@@ -89,8 +89,12 @@ class MessageBuffer:
         
     def update_agent_status(self, agent, status):
         if agent in self.agents_status:
+            previous_status = self.agents_status.get(agent)
             self.agents_status[agent] = status
             self.current_agent = agent
+            if previous_status != status and status in {"in_progress", "completed"}:
+                verb = "Starting" if status == "in_progress" else "Finished"
+                self.add_message("Activity", f"{verb} {agent} Agent")
             
     def update_report_section(self, section, report):
         if section in self.report_sections:
@@ -487,10 +491,10 @@ def update_display(layout, snippet_text=None):
     message_table.add_column("Time", style="cyan", justify="center", width=8)
     message_table.add_column("Type", style="green", justify="center", width=10)
     message_table.add_column(
-        "Content", style="white", no_wrap=False, ratio=1
-    )  # Make content column expand
+        "Activity", style="white", no_wrap=False, ratio=1
+    )  # Make activity column expand
     
-    # Combine tool calls and message
+    # Combine tool calls and activity messages
     all_messages = []
     
     # Add tool calls
@@ -502,34 +506,17 @@ def update_display(layout, snippet_text=None):
     
     # Add regular messages
     for timestamp, message_type, content in message_buffer.messages:
-        # covert content to string if if it's not already
-        content_str = content
-        if isinstance(content, List):
-            # Handle list of content blocks (Anthropic format)
-            text_parts = []
-            for item in content:
-                if isinstance(item, dict):
-                    if item.get("type") == "text":
-                        text_parts.append(item.get("text", ""))
-                    elif item.get("type") == "tool_use":
-                        text_parts.append(f"[Tool: {item.get('name', 'unknown')}]")
-                else:
-                    text_parts.append(str(item))
-            content_str = " ".join(text_parts)
-        elif not isinstance(content, str):
-            content_str = str(content)
-
-        # Truncate message content if too long
+        content_str = str(content)
         if len(content_str) > 200:
             content_str = content_str[:197] + "..."
         all_messages.append((timestamp, message_type, content_str))
     
-    # Sort messages by timestamp, newer on top
-    all_messages.sort(key=lambda x: x[0], reverse=True)
+    # Sort messages by timestamp
+    all_messages.sort(key=lambda x: x[0])
     
     # Calculate how many messages we can show based on available space
     # Start with a resaonable number and adjust based on content length
-    max_messages = 12
+    max_messages = 7
     
     # Get the last N messages that will fit in the panel
     recent_messages = all_messages[-max_messages:]
@@ -758,25 +745,6 @@ def update_research_team_status(status):
     for agent in research_team:
         message_buffer.update_agent_status(agent, status)
 
-def extract_content_string(content):
-    """Extract string content from various message formats."""
-    if isinstance(content, str):
-        return content
-    elif isinstance(content, list):
-        # Handle Anthropic's list format
-        text_parts = []
-        for item in content:
-            if isinstance(item, dict):
-                if item.get('type') == 'text':
-                    text_parts.append(item.get('text', ''))
-                elif item.get('type') == 'tool_use':
-                    text_parts.append(f"[Tool: {item.get('name', 'unknown')}]")
-            else:
-                text_parts.append(str(item))
-        return ' '.join(text_parts)
-    else:
-        return str(content)
-
 def run_analysis():
     # First get all user selections
     selections = get_user_selections()
@@ -881,33 +849,24 @@ def run_analysis():
         trace = []
         for chunk in graph.graph.stream(init_agent_state, **args):
             messages_chunk = chunk.get("messages", [])
-            if messages_chunk:
-                # Get the last message from the chunk
-                last_message = messages_chunk[-1]
-                
-                # Extract message content and type
-                if hasattr(last_message, "content"):
-                    content = extract_content_string(last_message.content)
-                    msg_type = "Reasoning"
-                else:
-                    content = str(last_message)
-                    msg_type = "System"
-                
-                # Add message to buffer
-                message_buffer.add_message(msg_type, content)
-                
-                # If it's a tool call, add it to tool calls
-                if hasattr(last_message, "tool_calls"):
-                    for tool_call in last_message.tool_calls:
-                        # Handle both dictionary and object tool calls
-                        if isinstance(tool_call, dict):
-                            message_buffer.add_tool_call(
-                                tool_call["name"], tool_call["args"]
-                            )
-                        else:
-                            message_buffer.add_tool_call(
-                                tool_call.name, tool_call.args
-                            )
+            for message in messages_chunk:
+                tool_calls = getattr(message, "tool_calls", None)
+                if not tool_calls and isinstance(message, dict):
+                    tool_calls = message.get("tool_calls")
+                if not tool_calls:
+                    continue
+
+                for tool_call in tool_calls:
+                    if isinstance(tool_call, dict):
+                        message_buffer.add_tool_call(
+                            tool_call.get("name", "unknown_tool"),
+                            tool_call.get("args", {}),
+                        )
+                    else:
+                        message_buffer.add_tool_call(
+                            getattr(tool_call, "name", "unknown_tool"),
+                            getattr(tool_call, "args", {}),
+                        )
             
             # Update reports and agent status based on chunk content
             # Analyst Team Outputs
