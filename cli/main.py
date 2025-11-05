@@ -80,11 +80,11 @@ class MessageBuffer:
         }
     
     def add_message(self, message_type, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now().strftime("%d/%m/%y %H:%M:%S")
         self.messages.append((timestamp, message_type, message))
         
     def add_tool_call(self, tool_call, agrs):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now().strftime("%d/%m/%y %H:%M:%S")
         self.tool_calls.append((timestamp, tool_call, agrs))
         
     def update_agent_status(self, agent, status):
@@ -524,8 +524,8 @@ def update_display(layout, snippet_text=None):
             content_str = content_str[:197] + "..."
         all_messages.append((timestamp, message_type, content_str))
     
-    # Sort messages by timestamp
-    all_messages.sort(key=lambda x: x[0])
+    # Sort messages by timestamp, newer on top
+    all_messages.sort(key=lambda x: x[0], reverse=True)
     
     # Calculate how many messages we can show based on available space
     # Start with a resaonable number and adjust based on content length
@@ -633,17 +633,26 @@ def get_user_selections():
     
     problem_statement = get_problem_statement(console)
     
-    # Step 2: Thinking agents
+    # Step 2: LLM provider
     console.print(
         create_question_box(
-            "Step 2: Thinking Agents", "Select your thinking agents for analysis"
+            "Step 2: LLM Provider", "Select the provider that supplies your LLM engines"
         )
     )
-    selected_shallow_thinker = select_shallow_thinking_agent(console)
-    selected_deep_thinker = select_deep_thinking_agent(console)
+    selected_llm_provider = select_llm_provider(console)
+
+    # Step 3: Thinking agents
+    console.print(
+        create_question_box(
+            "Step 3: Thinking Agents", "Select your thinking agents for analysis"
+        )
+    )
+    selected_shallow_thinker = select_quick_thinking_agent(console, provider=selected_llm_provider)
+    selected_deep_thinker = select_deep_thinking_agent(console, provider=selected_llm_provider)
     
     return {
         "problem_statement": problem_statement,
+        "llm_provider": selected_llm_provider,
         "quick_think_llm": selected_shallow_thinker,
         "deep_think_llm": selected_deep_thinker
     }
@@ -774,6 +783,7 @@ def run_analysis():
 
     # Create config with selected parameter from selections
     config = DEFAULT_CONFIG.copy()
+    config["llm_provider"] = selections["llm_provider"]
     config["quick_think_llm"] = selections["quick_think_llm"]
     config["deep_think_llm"] = selections["deep_think_llm"]
 

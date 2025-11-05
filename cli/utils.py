@@ -23,11 +23,45 @@ def get_problem_statement(console: Console) -> str:
     return problem
 
 
-def select_shallow_thinking_agent(console: Console, provider: str="openrouter") -> str:
+def select_llm_provider(console: Console) -> str:
+    """Select the provider that supplies the LLM engines."""
+
+    provider_choices = {
+        "OpenRouter (aggregated marketplace)": "openrouter",
+        "OpenAI": "openai",
+        "Anthropic": "anthropic",
+        "Google": "google",
+        "Ollama (local models)": "ollama",
+    }
+
+    choice = questionary.select(
+        "Choose the provider backing your LLM agents:",
+        choices=[
+            questionary.Choice(display, value=value)
+            for display, value in provider_choices.items()
+        ],
+        instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
+        style=questionary.Style(
+            [
+                ("selected", "fg:magenta noinherit"),
+                ("highlighted", "fg:magenta noinherit"),
+                ("pointer", "fg:magenta noinherit"),
+            ]
+        ),
+    ).ask()
+
+    if choice is None:
+        console.print("\n[red]No LLM provider selected. Exiting...[/red]")
+        exit(1)
+
+    return choice
+
+
+def select_quick_thinking_agent(console: Console, provider: str="openrouter") -> str:
     """Select shallow thinking llm engine using an interactive selection."""
 
     # Define shallow thinking llm engine options with their corresponding model names
-    SHALLOW_AGENT_OPTIONS = {
+    QUICK_AGENT_OPTIONS = {
         "openai": [
             ("GPT-4o-mini - Fast and efficient for quick tasks", "gpt-4o-mini"),
             ("GPT-4.1-nano - Ultra-lightweight model for basic operations", "gpt-4.1-nano"),
@@ -63,7 +97,7 @@ def select_shallow_thinking_agent(console: Console, provider: str="openrouter") 
         "Select Your [Quick-Thinking LLM Engine]:",
         choices=[
             questionary.Choice(display, value=value)
-            for display, value in SHALLOW_AGENT_OPTIONS[provider.lower()]
+            for display, value in QUICK_AGENT_OPTIONS[provider.lower()]
         ],
         instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
         style=questionary.Style(
