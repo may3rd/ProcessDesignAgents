@@ -89,7 +89,7 @@ def process_requirements_prompt(problem_statement: str) -> ChatPromptTemplate:
         - Key drivers (e.g., Energy Conservation, Emission Reduction, High Productivity)
         - All chemical components
         - Capacity/throughput
-        - Purity targets
+        - Purity targets (if applicable)
         - Operational constraints or assumptions
       </details>
     </instruction>
@@ -157,7 +157,6 @@ def process_requirements_prompt(problem_statement: str) -> ChatPromptTemplate:
     human_content = f"""
 # PROBLEM STATEMENT TO ANALYZE:
 {problem_statement}
-
 """
 
     messages = [

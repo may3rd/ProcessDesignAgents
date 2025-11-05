@@ -99,11 +99,13 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
                     human_prompt=human_message,
                     tools_list=tools_list
                     )
-                
+                print(f"DEBUG: Return from run_agent_with_tools.")
                 try:
                     if isinstance(ai_messages, list):
+                        print("DEBUG: ai_messages is a list")
                         final_answer = ai_messages[-1]
                         if isinstance(final_answer, AIMessage):
+                            print("DEBUG: last message is an AIMessage")
                             output_str = final_answer.content
                         else:
                             print("last message is not a AIMessage")
@@ -113,19 +115,21 @@ def create_stream_property_estimation_agent(llm, llm_provider: str = "openrouter
                         print(f"ai_messages is not a list: {ai_messages}")
                         continue
                     
+                    print("DEBUG: Convert ai_message to dict.")
                     streams_list_dict = json.loads(repair_json(output_str))
                     if "streams" not in streams_list_dict:
                         print("FAILED: Incorrect format of Stream List", flush=True)
+                        print(output_str)
                         continue
-                    # print(streams_list_dict)
+                    
+                    print("DEBUG: Convert dict is successful.")
                     equipment_stream_list_dict = {
                         "equipments": equipment_and_stream_template_dict["equipments"],
                         "streams": streams_list_dict["streams"],
                         }
                     _, _, streams_md = equipments_and_streams_dict_to_markdown(equipment_stream_list_dict)
+                    print("DEBUG: ** Steam List **")
                     print(streams_md)
-                    
-                    ai_message = AIMessage(content=output_str)
                     
                     return {
                         "stream_list_results": json.dumps(streams_list_dict),

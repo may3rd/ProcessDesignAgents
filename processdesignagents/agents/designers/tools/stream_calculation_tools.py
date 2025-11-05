@@ -124,8 +124,11 @@ COOLPROP_NAME_MAP = {
 
 NON_COOLPROP_NAMES = {
     # Name: [ID, MW, NBP]
+    "mea": ["MEA", 61.08, 170],
     "monoethanolamine": ["MEA", 61.08, 170],
+    "dea": ["DEA", 105.14, 268.8],
     "diethanolamine": ["DEA", 105.14, 268.8],
+    "mdea": ["MDEA", 119.163, 247],
     "methyldiethanolamine": ["MDEA", 119.163, 247],
     "Hexamethylcyclotrisiloxane": ["D3", 222.462, 134]
 }
@@ -148,7 +151,7 @@ def _get_mw_kg_kmol(component_name: str) -> float:
         return mw_kg_mol * 1000.0  # Convert kg/mol to kg/kmol
     except ValueError:
         print(
-            f"Warning: Could not find molecular weight for '{component_name}' (CoolProp name: '{cp_name}'). Fine in other list.", flush=True)
+            f"Warning: Could not find molecular weight for '{component_name}' (CoolProp name: '{cp_name}'). Find in other list.", flush=True)
         if NON_COOLPROP_NAMES.get(cp_name.lower(), None):
             return NON_COOLPROP_NAMES[cp_name][1]
         else:

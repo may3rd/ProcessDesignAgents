@@ -15,11 +15,11 @@ The graph wiring is defined in `processdesignagents/graph/setup.py` and compiled
 | 5 | Component List Researcher | `processdesignagents/agents/researchers/component_list_researcher.py` | `process_requirements`, `selected_concept_details`, `selected_concept_name`, `design_basis`, `messages` | `component_list`, `messages` | Produces a Markdown component table (formula + MW) using the built-in CSV as reference. |
 | 6 | Design Basis Analyst | `processdesignagents/agents/analysts/design_basis_analyst.py` | `problem_statement`, `process_requirements`, `selected_concept_details`, `selected_concept_name`, `component_list`, `messages` | `design_basis`, `messages` | Builds the preliminary basis-of-design document. |
 | 7 | Flowsheet Design Agent | `processdesignagents/agents/designer/flowsheet_design_agent.py` | `process_requirements`, `design_basis`, `selected_concept_details`, `selected_concept_name`, `messages` | `flowsheet_description`, `messages` | Returns a Markdown flowsheet narrative with equipment/stream tables. |
-| 8 | Equipment & Stream Catalog Agent | `processdesignagents/agents/designer/equipment_stream_catalog_agent.py` | `flowsheet_description`, `design_basis`, `process_requirements`, `selected_concept_details`, `messages` | `equipment_and_stream_results`, `messages` | Emits the canonical equipment/stream JSON scaffold; CLI renders it to Markdown via `equipments_and_streams_dict_to_markdown`. |
-| 9 | Stream Property Estimation Agent | `processdesignagents/agents/designer/stream_property_estimation_agent.py` | `flowsheet_description`, `design_basis`, `messages` | `equipment_and_stream_results`, `messages` | Re-generates the combined JSON with reconciled stream properties (dedicated `stream_list_results` is not yet populated). |
-| 10 | Equipment Sizing Agent | `processdesignagents/agents/designer/equipment_sizing_agent.py` | `design_basis`, `flowsheet_description`, `equipment_and_stream_results`, `messages` | `equipment_and_stream_results`, `messages` | Calls sizing helpers to fill equipment duties, dimensions, and notes. |
-| 11 | Safety & Risk Analyst | `processdesignagents/agents/analysts/safety_risk_analyst.py` | `process_requirements`, `design_basis`, `flowsheet_description`, `equipment_and_stream_results`, `messages` | `safety_risk_analyst_report`, `messages` | Produces a markdown HAZOP-style assessment (hazards + mitigations). |
-| 12 | Project Manager | `processdesignagents/agents/project_manager/project_manager.py` | `process_requirements`, `design_basis`, `flowsheet_description`, `equipment_and_stream_results`, `safety_risk_analyst_report`, `messages` | `project_approval`, `project_manager_report`, `messages` | Issues the gate decision and implementation plan in Markdown. |
+| 8 | Equipment & Stream Catalog Agent | `processdesignagents/agents/designer/equipment_stream_catalog_agent.py` | `flowsheet_description`, `design_basis`, `process_requirements`, `selected_concept_details`, `messages` | `equipment_list_template`, `stream_list_template`, `messages` | Emits the canonical equipment and stream templates; CLI renders the merged view via `equipments_and_streams_dict_to_markdown`. |
+| 9 | Stream Property Estimation Agent | `processdesignagents/agents/designer/stream_property_estimation_agent.py` | `flowsheet_description`, `design_basis`, `equipment_list_template`, `stream_list_template`, `messages` | `stream_list_results`, `messages` | Re-generates the stream JSON with reconciled properties, leaving the equipment template intact. |
+| 10 | Equipment Sizing Agent | `processdesignagents/agents/designer/equipment_sizing_agent.py` | `design_basis`, `flowsheet_description`, `equipment_list_results`, `equipment_list_template`, `stream_list_results`, `messages` | `equipment_list_results`, `messages` | Calls sizing helpers to fill equipment duties, dimensions, and notes. |
+| 11 | Safety & Risk Analyst | `processdesignagents/agents/analysts/safety_risk_analyst.py` | `process_requirements`, `design_basis`, `flowsheet_description`, `equipment_list_results`, `stream_list_results`, `messages` | `safety_risk_analyst_report`, `messages` | Produces a markdown HAZOP-style assessment (hazards + mitigations). |
+| 12 | Project Manager | `processdesignagents/agents/project_manager/project_manager.py` | `process_requirements`, `design_basis`, `flowsheet_description`, `equipment_list_results`, `stream_list_results`, `safety_risk_analyst_report`, `messages` | `project_approval`, `project_manager_report`, `messages` | Issues the gate decision and implementation plan in Markdown. |
 
 ## Shared State Keys
 
@@ -35,23 +35,27 @@ The graph wiring is defined in `processdesignagents/graph/setup.py` and compiled
 | `component_list` | Markdown table of key components. | Component list researcher | Design basis analyst. |
 | `design_basis` | Markdown basis-of-design. | Design basis analyst | PFD, list builder, estimator, sizing, safety, PM. |
 | `flowsheet_description` | Markdown flowsheet summary. | Flowsheet design agent | Equipment & stream catalog agent, estimator, sizing, safety, PM. |
-| `equipment_and_stream_results` | Canonical JSON string holding equipment and stream data. | List builder → estimator → sizing | Safety analyst, project manager, report exporters. |
+| `equipment_list_template` | JSON template defining equipment fields and placeholders. | Equipment & Stream Catalog Agent | Stream estimator, sizing agent. |
+| `equipment_list_results` | JSON equipment list enriched with sizing results. | Equipment Sizing Agent | Safety analyst, project manager, report exporters. |
+| `stream_list_template` | JSON template enumerating streams and placeholder properties. | Equipment & Stream Catalog Agent | Stream property estimator. |
+| `stream_list_results` | JSON stream list populated with reconciled properties. | Stream Property Estimation Agent | Equipment sizing agent, safety analyst, project manager. |
 | `safety_risk_analyst_report` | Markdown hazard summary. | Safety & risk analyst | Project manager, exports. |
 | `project_manager_report` | Final approval memo. | Project manager | Report exporters. |
 | `project_approval` | Extracted status (`Approved`, `Conditional`, `Rejected`, etc.). | Project manager | CLI, downstream orchestration. |
 | `messages` | Running transcript of LLM calls. | All agents | CLI streaming, debugging. |
 
-The `DesignState` also defines placeholders for `stream_list_template`, `stream_list_results`, `equipment_list_template`, and `equipment_list_results`. These currently remain blank because the combined `equipment_and_stream_results` artefact fulfils both roles; update the agents and CLI panels together if you choose to activate the separate fields.
+The combined equipment/stream Markdown is rendered on demand by merging `equipment_list_*` and `stream_list_*` via `build_equipment_stream_payload`, so no dedicated `equipment_and_stream_*` fields remain in the state.
 
 ## Tool Nodes & External Helpers
 
 - `ProcessDesignGraph._create_tool_nodes()` registers the equipment sizing tool node and currently exposes `size_heat_exchanger_basic` and `size_pump_basic` from `processdesignagents/agents/utils/agent_sizing_tools.py`. Additional sizing helpers can be added by extending this mapping.
-- `equipments_and_streams_dict_to_markdown` converts combined JSON artefacts into Markdown for CLI display and report exports.
+- `equipments_and_streams_dict_to_markdown` converts combined JSON artefacts into Markdown for CLI display and report exports (use `build_equipment_stream_payload` to assemble the combined input when needed).
 - `size_heat_exchanger_basic` and `size_pump_basic` rely on cached property data in `processdesignagents/sizing_tools/`.
 
 ## Operational Notes
 
 - Instantiate the workflow via `ProcessDesignGraph.propagate(...)`. Use `manual_concept_selection=True` to prompt the operator before the concept detailer runs.
+- The graph resumes from the most recent unfinished run by default; pass `resume_from_last_run=False` to force a clean start for the current problem statement.
 - Set `save_markdown` and/or `save_word_doc` when calling `propagate` to emit aggregated reports. DOCX export uses Pandoc with a reference template in `reports/template.docx`.
 - Every run logs the final state to `eval_results/ProcessDesignAgents_logs/full_states_log.json` for offline inspection.
 - The Rich CLI (`python -m cli.main -p "design ..."`) streams agent outputs, tool calls, and report sections as they are generated.

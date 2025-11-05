@@ -221,6 +221,7 @@ class ProcessDesignGraph:
         save_markdown: str | None = None,
         save_word_doc: str | None = None,
         manual_concept_selection: bool = False,
+        resume_from_last_run: bool = True,
     ):
         """Run the agent graph for a problem statement.
 
@@ -229,6 +230,8 @@ class ProcessDesignGraph:
             save_markdown: Optional path for saving the aggregated markdown report.
             manual_concept_selection: When True, prompt the user to choose a concept
                 instead of automatically selecting the highest feasibility score.
+            resume_from_last_run: When True (default), continue from the last incomplete run
+                for the same problem statement if a checkpoint exists.
         """
         
         # Set the prompt statement from user
@@ -268,7 +271,7 @@ class ProcessDesignGraph:
 
 
         current_state, completed_agents, agent_outputs, resume_enabled = self._prepare_initial_state(
-            problem_statement
+            problem_statement, resume_from_last_run
         )
         completed_agents = list(completed_agents)
         agent_outputs = dict(agent_outputs)
@@ -455,10 +458,10 @@ class ProcessDesignGraph:
         )
 
     def _prepare_initial_state(
-        self, problem_statement: str
+        self, problem_statement: str, resume_from_last_run: bool
     ) -> tuple[Dict[str, Any], List[str], Dict[str, Dict[str, Any]], bool]:
         """Load existing progress if available, otherwise create a fresh state."""
-        log_data = self._load_current_state_log()
+        log_data = self._load_current_state_log() if resume_from_last_run else None
         resume_enabled = False
         completed_agents: List[str] = []
         agent_outputs: Dict[str, Dict[str, Any]] = {}

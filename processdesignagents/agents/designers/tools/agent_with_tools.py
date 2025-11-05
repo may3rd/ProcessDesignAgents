@@ -148,6 +148,7 @@ def run_agent_with_tools(
                     # print(json.dumps(final_json, indent=2), flush=True)
                     # print("\n--- End of Final Stream Data List JSON ---", flush=True)
                     messages.append(AIMessage(content=final_answer_content))
+                    print("DEBUG: run_agent_with_tools: Return messages to caller.")
                     return messages # Return the content
                 except json.JSONDecodeError as e:
                     print(f"Error decoding final answer as JSON: {e}", flush=True)
