@@ -112,7 +112,7 @@ def select_deep_thinking_agent(console: Console, provider: str="openrouter") -> 
             ("Gemini 2.5 Pro", "gemini-2.5-pro-preview-06-05"),
         ],
         "openrouter": [
-            ("Gemini 2.5 Flash - Preview model 09-2025", "google/gemini-2.5-flash-preview-09-2025")
+            ("Gemini 2.5 Flash - Preview model 09-2025", "google/gemini-2.5-flash-preview-09-2025"),
             ("Grok 4 Fast - best of its kind model.", "x-ai/grok-4-fast"),
             ("DeepSeek V3 - a 685B-parameter, mixture-of-experts model", "deepseek/deepseek-chat-v3-0324:free"),
             ("Deepseek - latest iteration of the flagship chat model family from the DeepSeek team.", "deepseek/deepseek-chat-v3-0324:free"),

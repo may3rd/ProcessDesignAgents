@@ -1,8 +1,9 @@
 from datetime import datetime
-import typer
+import json
 from pathlib import Path
 from functools import wraps
-from typing import List
+from typing import Any, Dict, List
+import typer
 from rich.console import Console
 
 from rich.panel import Panel
@@ -23,6 +24,9 @@ from rich.rule import Rule
 
 from processdesignagents.graph.process_design_graph import ProcessDesignGraph
 from processdesignagents.default_config import DEFAULT_CONFIG
+from processdesignagents.agents.utils.equipment_stream_markdown import (
+    equipments_and_streams_dict_to_markdown,
+)
 from cli.utils import *
 
 console = Console()
@@ -226,6 +230,150 @@ class MessageBuffer:
         self.final_report = "\n\n".join(report_parts) if report_parts else None
 
 message_buffer = MessageBuffer()
+
+
+def _format_label(name: str) -> str:
+    """Convert snake_case keys into title case labels."""
+    return name.replace("_", " ").strip().title()
+
+
+def _stringify_mapping_entry(entry: Dict[str, Any]) -> str:
+    """Render a mapping entry as a semicolon-delimited string."""
+    parts: list[str] = []
+    for key, value in entry.items():
+        if value in (None, "", [], {}):
+            continue
+        parts.append(f"{_format_label(key)}: {value}")
+    if parts:
+        return "; ".join(parts)
+    return json.dumps(entry, ensure_ascii=False)
+
+
+def _format_list_items(items: List[Any]) -> list[str]:
+    """Format list values as indented markdown bullets."""
+    lines: list[str] = []
+    for item in items:
+        if isinstance(item, dict):
+            item_text = _stringify_mapping_entry(item)
+        else:
+            item_text = str(item)
+        if not item_text:
+            continue
+        lines.append(f"  - {item_text}")
+    return lines
+
+
+def _research_concepts_to_markdown(payload: Any) -> str:
+    """Convert research concept JSON to readable markdown."""
+    if isinstance(payload, dict):
+        concepts = payload.get("concepts") or payload.get("concept_list") or []
+    elif isinstance(payload, list):
+        concepts = payload
+    else:
+        return ""
+
+    if not concepts:
+        return ""
+
+    lines: list[str] = []
+    for index, concept in enumerate(concepts, start=1):
+        if isinstance(concept, dict):
+            name = concept.get("name") or f"Concept {index}"
+            lines.append(f"#### Concept {index}: {name}")
+            maturity = concept.get("maturity")
+            if maturity:
+                lines.append(f"- **Maturity**: {str(maturity).replace('_', ' ').title()}")
+
+            handled_keys = {"name", "maturity"}
+            for key, value in concept.items():
+                if key in handled_keys or value in (None, "", [], {}):
+                    continue
+                label = _format_label(key)
+                if isinstance(value, list):
+                    if not value:
+                        continue
+                    lines.append(f"- **{label}:**")
+                    lines.extend(_format_list_items(value))
+                elif isinstance(value, dict):
+                    if not value:
+                        continue
+                    lines.append(f"- **{label}:**")
+                    for sub_key, sub_value in value.items():
+                        if sub_value in (None, "", [], {}):
+                            continue
+                        sub_label = _format_label(sub_key)
+                        lines.append(f"  - **{sub_label}**: {sub_value}")
+                else:
+                    lines.append(f"- **{label}**: {value}")
+            lines.append("")
+        else:
+            lines.append(f"#### Concept {index}")
+            lines.append(f"- {concept}")
+            lines.append("")
+
+    return "\n".join(lines).strip()
+
+
+def _streams_to_markdown(payload: Any) -> str:
+    """Convert stream JSON payload into a markdown table."""
+    if isinstance(payload, dict):
+        streams = payload.get("streams", [])
+        equipments = payload.get("equipments") or []
+    elif isinstance(payload, list):
+        streams = payload
+        equipments = []
+    else:
+        return ""
+
+    combined_md, _, streams_md = equipments_and_streams_dict_to_markdown(
+        {"streams": streams or [], "equipments": equipments or []}
+    )
+    return streams_md or combined_md
+
+
+def _equipments_to_markdown(payload: Any) -> str:
+    """Convert equipment JSON payload into a markdown table."""
+    if isinstance(payload, dict):
+        equipments = payload.get("equipments", [])
+        streams = payload.get("streams") or []
+    elif isinstance(payload, list):
+        equipments = payload
+        streams = []
+    else:
+        return ""
+
+    _, equipment_md, _ = equipments_and_streams_dict_to_markdown(
+        {"equipments": equipments or [], "streams": streams or []}
+    )
+    return equipment_md
+
+
+def convert_section_to_markdown(section: str, content: Any) -> Any:
+    """
+    Attempt to convert JSON payloads for specific sections into markdown
+    before storing or saving them.
+    """
+    if not isinstance(content, str):
+        return content
+
+    text = content.strip()
+    if not text:
+        return content
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return content
+
+    markdown = ""
+    if section == "research_concepts":
+        markdown = _research_concepts_to_markdown(parsed)
+    elif section in {"stream_list_template", "stream_list_results"}:
+        markdown = _streams_to_markdown(parsed)
+    elif section in {"equipment_list_template", "equipment_list_results"}:
+        markdown = _equipments_to_markdown(parsed)
+
+    return markdown or content
 
 
 def create_layout():
@@ -548,7 +696,7 @@ def display_complete_report(final_state):
     for team_title, sections in team_sections:
         rendered_sections = []
         for key, title in sections:
-            report_content = final_state.get(key) or message_buffer.report_sections.get(key)
+            report_content = message_buffer.report_sections.get(key) or final_state.get(key)
             if report_content:
                 rendered_sections.append(
                     Panel(
@@ -665,13 +813,16 @@ def run_analysis():
         func = getattr(obj, func_name)
         @wraps(func)
         def wrapper(section_name, content):
-            func(section_name, content)
-            if section_name in obj.report_sections and obj.report_sections[section_name] is not None:
-                content = obj.report_sections[section_name]
-                if content:
-                    file_name = f"{section_name}.md"
-                    with open(report_dir / file_name, "w") as f:
-                        f.write(content)
+            formatted_content = (
+                convert_section_to_markdown(section_name, content)
+                if content is not None
+                else content
+            )
+            func(section_name, formatted_content)
+            stored_content = obj.report_sections.get(section_name)
+            if stored_content:
+                file_path = report_dir / f"{section_name}.md"
+                file_path.write_text(stored_content, encoding="utf-8")
         return wrapper
     
     message_buffer.add_message = save_message_decorator(message_buffer, "add_message")
@@ -831,6 +982,7 @@ def run_analysis():
         for section in message_buffer.report_sections.keys():
             if section in final_state:
                 message_buffer.update_report_section(section, final_state[section])
+                final_state[section] = message_buffer.report_sections.get(section)
     
         # Display the complete Final report
         display_complete_report(final_state)
