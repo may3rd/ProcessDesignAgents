@@ -1,15 +1,21 @@
 from __future__ import annotations
 
-import os
-from pathlib import Path
 import json
+import os
 from datetime import datetime
+from pathlib import Path
 import pypandoc
 
 try:
     from docx import Document
 except ImportError:  # pragma: no cover - optional dependency
     Document = None
+
+try:
+    from IPython.display import Image, display
+except ImportError:  # pragma: no cover - optional dependency for notebooks
+    Image = None
+    display = None
 
 from typing import Any, Dict, List, Tuple
 
@@ -50,6 +56,8 @@ class ProcessDesignGraph:
         debug: bool = False,  # debug mode use with cli
         config: Dict[str, Any] = None,  # config dictionary
         delay_time: float = 0.5,  # set up the delay time in second
+        save_graph_image: bool = False,
+        graph_image_filename: str = "graph.png",
     ):
         """Initialize the process design agents graph and component.
         Args:
@@ -61,6 +69,8 @@ class ProcessDesignGraph:
         
         # a response_format for equipment and stream list output from llm
         self.response_format = {}
+        self.save_graph_image = save_graph_image
+        self.graph_image_filename = graph_image_filename
         
         # Initialize LLMs
         self.deep_thinking_llm = None
@@ -210,7 +220,7 @@ class ProcessDesignGraph:
         self.agent_execution_order: List[Tuple[str, Any]] = self.graph_setup.get_agent_execution_order()
         
         # Print the graph
-        self.graph.get_graph().print_ascii()
+        self._render_graph_image()
         
         # Set log paths
         self.current_state_log_path = Path("eval_results/ProcessDesignAgents_logs/current_state_log.json")
@@ -365,6 +375,40 @@ class ProcessDesignGraph:
             ),
         }
     
+    def _render_graph_image(self) -> None:
+        """Optionally render and persist the compiled graph to a PNG image."""
+        if not self.save_graph_image:
+            return
+
+        app = getattr(self, "graph", None)
+        if app is None:
+            return
+
+        try:
+            self.graph.get_graph().print_ascii()
+            png_bytes = app.get_graph().draw_png()
+        except Exception as exc:  # pragma: no cover - visualization helper
+            if self.debug:
+                print(f"Unable to render graph diagram: {exc}", flush=True)
+            return
+
+        output_path = Path(self.graph_image_filename)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            output_path.write_bytes(png_bytes)
+            if self.debug:
+                print(f"Graph PNG saved to: {output_path.resolve()}", flush=True)
+        except OSError as exc:  # pragma: no cover - filesystem error
+            if self.debug:
+                print(f"Failed to write graph PNG: {exc}", flush=True)
+
+        if Image is not None and display is not None:
+            try:
+                display(Image(data=png_bytes))
+            except Exception as exc:  # pragma: no cover - display helper
+                if self.debug:
+                    print(f"Unable to display graph image: {exc}", flush=True)
+
     # ------------------------------------------------------------------ #
     # Logging and resume helpers
     # ------------------------------------------------------------------ #

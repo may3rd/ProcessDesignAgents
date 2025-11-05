@@ -9,9 +9,7 @@ GEMINI.md
 .DS_Store
 */.DS_Store
 **/.DS_Store
-
-#
-test_auth.py
+graph.png
 
 # Forec to upload to GitHub
 !examples/reports/

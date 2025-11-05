@@ -38,7 +38,7 @@ config["quick_think_temperature"] = 0.7
 config["deep_think_temperature"] = 0.7
 
 def main():
-    graph = ProcessDesignGraph(debug=False, config=config, delay_time=delay_time)
+    graph = ProcessDesignGraph(debug=False, config=config, delay_time=delay_time, save_graph_image=True, graph_image_filename="graph.png")
     problem_statement = ""
     problem_statement = "design generic compressed air unit for refinery with capacity 300 Nm3/h for plant air and instrument air."
     # problem_statement = "design carbon capture unit with capacity 100 ton per day of captured carbon product, the feed is flue gas with CO2 around 12.4 wt%."
