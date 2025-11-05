@@ -41,6 +41,7 @@ class MessageBuffer:
         self.tool_calls = deque(maxlen=max_length)
         self.current_report = None
         self.final_report = None  # Store the complete final report
+        self._last_updated_section = None
         self.agents_status = {
             # Analyst Team
             "Process Requirement Analyst": "pending",
@@ -50,7 +51,7 @@ class MessageBuffer:
             "Conservative Researcher": "pending",
             "Concept Detailer": "pending",
             # Designer Team
-            "Basic PFD Designer": "pending",
+            "Flowsheet Designer": "pending",
             "Equipments & Streams List Builder": "pending",
             "Equipment List Builder": "pending",
             "Stream Data Estimator": "pending",
@@ -90,25 +91,31 @@ class MessageBuffer:
     def update_report_section(self, section, report):
         if section in self.report_sections:
             self.report_sections[section] = report
+            if report:
+                self._last_updated_section = section
+            elif self._last_updated_section == section:
+                self._last_updated_section = None
             self._update_current_report()
             
     def _update_current_report(self):
         # For the panel display, only show the most recently update section
-        latest_section = None
-        latest_content = None
-        
-        # Find the most recently updated section
-        for section, report in self.report_sections.items():
-            if report is not None:
-                latest_section = section
-                latest_content = report
-                break
+        latest_section = self._last_updated_section
+        latest_content = (
+            self.report_sections.get(latest_section) if latest_section else None
+        )
+
+        if not latest_content:
+            for section, report in reversed(list(self.report_sections.items())):
+                if report is not None:
+                    latest_section = section
+                    latest_content = report
+                    break
 
         if latest_section and latest_content:
             # Format the current section for display
             section_titles = {
                 "process_requirements": "Process Requirements",
-                "research_concepts": "Concept Portfolio",
+                "research_concepts": "Concept Details",
                 "selected_concept_details": "Selected Concept Detail",
                 "design_basis": "Design Basis",
                 "flowsheet_description": "Basic Process Flow Diagram",
@@ -269,10 +276,9 @@ def update_display(layout, snippet_text=None):
         "Analyst Team": ["Process Requirement Analyst", "Design Basis Analyst"],
         "Research Team": ["Innovative Researcher", "Conservative Researcher", "Concept Detailer"],
         "Designer Team": [
-            "Basic PFD Designer",
+            "Flowsheet Designer",
             "Equipments & Streams List Builder",
             "Stream Data Estimator",
-            "Equipment List Builder",
             "Equipment Sizing Agent",
         ],
         "Lead Process Design Engineer": ["Safety Risk Analyst", "Project Manager"],
@@ -585,9 +591,8 @@ def update_research_team_status(status):
         "Conservative Researcher",
         "Concept Detailer",
         "Design Basis Analyst",
-        "Basic PFD Designer",
+        "Flowsheet Designer",
         "Equipments & Streams List Builder",
-        "Equipment List Builder",
         "Stream Data Estimator",
         "Equipment Sizing Agent",
         "Safety Risk Analyst",
@@ -714,9 +719,10 @@ def run_analysis():
         # Stream the analysis
         trace = []
         for chunk in graph.graph.stream(init_agent_state, **args):
-            if len(chunk.get("messages", [])) > 0:
+            messages_chunk = chunk.get("messages", [])
+            if messages_chunk:
                 # Get the last message from the chunk
-                last_message = chunk["messages"][-1]
+                last_message = messages_chunk[-1]
                 
                 # Extract message content and type
                 if hasattr(last_message, "content"):
@@ -741,92 +747,72 @@ def run_analysis():
                             message_buffer.add_tool_call(
                                 tool_call.name, tool_call.args
                             )
-                
-                # Update reports and agent status based on chunk content
-                # Analyst Team Outputs
-                if chunk.get("process_requirements"):
-                    message_buffer.update_report_section("process_requirements", chunk["process_requirements"])
-                    message_buffer.update_agent_status("Process Requirement Analyst", "completed")
-                    message_buffer.update_agent_status("Innovative Researcher", "in_progress")
+            
+            # Update reports and agent status based on chunk content
+            # Analyst Team Outputs
+            if chunk.get("process_requirements"):
+                message_buffer.update_report_section("process_requirements", chunk["process_requirements"])
+                message_buffer.update_agent_status("Process Requirement Analyst", "completed")
+                message_buffer.update_agent_status("Innovative Researcher", "in_progress")
 
-                if chunk.get("design_basis"):
-                    message_buffer.update_report_section("design_basis", chunk["design_basis"])
-                    message_buffer.update_agent_status("Design Basis Analyst", "completed")
-                    message_buffer.update_agent_status("Basic PFD Designer", "in_progress")
+            # Research Team Outputs
+            if chunk.get("research_concepts"):
+                message_buffer.update_report_section("research_concepts", chunk["research_concepts"])
+                message_buffer.update_agent_status("Innovative Researcher", "completed")
+                message_buffer.update_agent_status("Conservative Researcher", "in_progress")
 
-                # Research Team Outputs
-                if chunk.get("research_concepts"):
-                    message_buffer.update_report_section("research_concepts", chunk["research_concepts"])
-                    if message_buffer.agents_status.get("Innovative Researcher") != "completed":
-                        message_buffer.update_agent_status("Innovative Researcher", "completed")
-                        message_buffer.update_agent_status("Conservative Researcher", "in_progress")
-                    else:
-                        message_buffer.update_agent_status("Conservative Researcher", "completed")
-                        if "Concept Detailer" in message_buffer.agents_status:
-                            message_buffer.update_agent_status("Concept Detailer", "in_progress")
+            if chunk.get("selected_concept_details"):
+                message_buffer.update_report_section(
+                    "selected_concept_details", chunk["selected_concept_details"]
+                )
+                message_buffer.update_agent_status("Conservative Researcher", "completed")
+                message_buffer.update_agent_status("Concept Detailer", "completed")
+                message_buffer.update_agent_status("Design Basis Analyst", "in_progress")
 
-                if chunk.get("selected_concept_details"):
-                    message_buffer.update_report_section(
-                        "selected_concept_details", chunk["selected_concept_details"]
-                    )
-                    if "Concept Detailer" in message_buffer.agents_status:
-                        message_buffer.update_agent_status("Concept Detailer", "completed")
-                    message_buffer.update_agent_status("Design Basis Analyst", "in_progress")
+            if chunk.get("design_basis"):
+                message_buffer.update_report_section("design_basis", chunk["design_basis"])
+                message_buffer.update_agent_status("Design Basis Analyst", "completed")
+                message_buffer.update_agent_status("Flowsheet Designer", "in_progress")
 
-        # Designer Team Outputs
-        if chunk.get("flowsheet_description"):
-            message_buffer.update_report_section("flowsheet_description", chunk["flowsheet_description"])
-            message_buffer.update_agent_status("Basic PFD Designer", "completed")
-            message_buffer.update_agent_status("Equipments & Streams List Builder", "in_progress")
+            # Designer Team Outputs
+            if chunk.get("flowsheet_description"):
+                message_buffer.update_report_section("flowsheet_description", chunk["flowsheet_description"])
+                message_buffer.update_agent_status("Flowsheet Designer", "completed")
+                message_buffer.update_agent_status("Equipments & Streams List Builder", "in_progress")
 
-        if chunk.get("stream_list_template"):
-            message_buffer.update_report_section("stream_list_template", chunk["stream_list_template"])
-            if message_buffer.agents_status.get("Equipments & Streams List Builder") != "completed":
+            if chunk.get("stream_list_template"):
+                message_buffer.update_report_section("stream_list_template", chunk["stream_list_template"])
                 message_buffer.update_agent_status("Equipments & Streams List Builder", "completed")
                 message_buffer.update_agent_status("Stream Data Estimator", "in_progress")
-            else:
+
+            if chunk.get("stream_list_results"):
+                message_buffer.update_report_section("stream_list_results", chunk["stream_list_results"])
                 message_buffer.update_agent_status("Stream Data Estimator", "completed")
-                message_buffer.update_agent_status("Equipment List Builder", "in_progress")
-
-        if chunk.get("stream_list_results"):
-            message_buffer.update_report_section("stream_list_results", chunk["stream_list_results"])
-            message_buffer.update_agent_status("Stream Data Estimator", "completed")
-            message_buffer.update_agent_status("Equipment List Builder", "in_progress")
-
-        if chunk.get("equipment_list_template"):
-            message_buffer.update_report_section(
-                "equipment_list_template", chunk["equipment_list_template"]
-            )
-            if message_buffer.agents_status.get("Equipment List Builder") != "completed":
-                message_buffer.update_agent_status("Equipment List Builder", "completed")
                 message_buffer.update_agent_status("Equipment Sizing Agent", "in_progress")
-            else:
+
+            if chunk.get("equipment_list_results"):
+                message_buffer.update_report_section(
+                    "equipment_list_results", chunk["equipment_list_results"]
+                )
                 message_buffer.update_agent_status("Equipment Sizing Agent", "completed")
                 message_buffer.update_agent_status("Safety Risk Analyst", "in_progress")
 
-        if chunk.get("equipment_list_results"):
-            message_buffer.update_report_section(
-                "equipment_list_results", chunk["equipment_list_results"]
-            )
-            message_buffer.update_agent_status("Equipment Sizing Agent", "completed")
-            message_buffer.update_agent_status("Safety Risk Analyst", "in_progress")
+            # Lead Team Outputs
+            if chunk.get("safety_risk_analyst_report"):
+                message_buffer.update_report_section(
+                    "safety_risk_analyst_report", chunk["safety_risk_analyst_report"]
+                )
+                message_buffer.update_agent_status("Safety Risk Analyst", "completed")
+                message_buffer.update_agent_status("Project Manager", "in_progress")
 
-                # Lead Team Outputs
-                if chunk.get("safety_risk_analyst_report"):
-                    message_buffer.update_report_section(
-                        "safety_risk_analyst_report", chunk["safety_risk_analyst_report"]
-                    )
-                    message_buffer.update_agent_status("Safety Risk Analyst", "completed")
-                    message_buffer.update_agent_status("Project Manager", "in_progress")
-
-                if chunk.get("project_manager_report"):
-                    message_buffer.update_report_section(
-                        "project_manager_report", chunk["project_manager_report"]
-                    )
-                    message_buffer.update_agent_status("Project Manager", "completed")
+            if chunk.get("project_manager_report"):
+                message_buffer.update_report_section(
+                    "project_manager_report", chunk["project_manager_report"]
+                )
+                message_buffer.update_agent_status("Project Manager", "completed")
                 
-                # Update display
-                update_display(layout)
+            # Update display
+            update_display(layout)
             
             trace.append(chunk)
 
