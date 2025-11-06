@@ -15,7 +15,7 @@ class DesignState(TypedDict):
     problem_statement: Annotated[str, "problem_statement"]
     process_requirements: Annotated[str, ""]
     research_concepts: Annotated[str, ""]
-    research_rateing_results: Annotated[str, ""]
+    research_rating_results: Annotated[str, ""]
     selected_concept_details: Annotated[str, ""]
     selected_concept_name: Annotated[str, ""]
     component_list: Annotated[str, ""]
@@ -39,7 +39,7 @@ def create_design_state(
     problem_statement: str = "",
     process_requirements: str = "",
     research_concepts: str = "",
-    research_rateing_results: str = "",
+    research_rating_results: str = "",
     selected_concept_details: str = "",
     selected_concept_name: str = "",
     component_list: str = "",
@@ -63,7 +63,7 @@ def create_design_state(
         "problem_statement": problem_statement,
         "process_requirements": process_requirements,
         "research_concepts": research_concepts,
-        "research_rateing_results": research_rateing_results,
+        "research_rating_results": research_rating_results,
         "selected_concept_details": selected_concept_details,
         "selected_concept_name": selected_concept_name,
         "component_list": component_list,

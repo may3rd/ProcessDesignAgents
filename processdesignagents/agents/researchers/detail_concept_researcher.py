@@ -22,7 +22,7 @@ def create_concept_detailer(llm, selection_provider_getter=None):
         print("\n# Concept Selection", flush=True)
         
         # Get the input data
-        evaluations_json_raw = state.get("research_rateing_results")
+        evaluations_json_raw = state.get("research_rating_results")
         requirements_markdown = state.get("process_requirements", "")
 
         try:

@@ -55,10 +55,90 @@ Set any required API keys for your LLM provider (e.g. `OPENROUTER_API_KEY`) in y
 ### CLI Visualization
 
 ```bash
-python -m cli.main -p "Design a small biodiesel process..."
+python -m cli.main
 ```
 
-Pass your problem statement with `-p/--prompt`. The CLI streams agent progress, tool invocations, and compiled reports using Rich panels.
+Launch the CLI, provide your problem statement when prompted, and follow the interactive workflow as it streams agent progress, tool invocations, and compiled reports using Rich panels.
+
+You will see a screen where you can select and input problem statements, LLMs, research depth, etc.
+
+<p align="center">
+  <img src="assets/cli/cli_init.png" width="100%" style="display: inline-block; margin: 0 2%;">
+</p>
+
+An interface will appear showing results as they load, letting you track the agent's progress as it runs.
+
+<p align="center">
+  <img src="assets/cli/cli_requirement.png" width="100%" style="display: inline-block; margin: 0 2%;">
+</p>
+
+<p align="center">
+  <img src="assets/cli/cli_concepts.png" width="100%" style="display: inline-block; margin: 0 2%;">
+</p>
+
+<p align="center">
+  <img src="assets/cli/cli_selected_concept.png" width="100%" style="display: inline-block; margin: 0 2%;">
+</p>
+
+<p align="center">
+  <img src="assets/cli/cli_design_basis.png" width="100%" style="display: inline-block; margin: 0 2%;">
+</p>
+
+<p align="center">
+  <img src="assets/cli/cli_flowsheet.png" width="100%" style="display: inline-block; margin: 0 2%;">
+</p>
+
+<p align="center">
+  <img src="assets/cli/cli_stream_template.png" width="100%" style="display: inline-block; margin: 0 2%;">
+</p>
+
+<p align="center">
+  <img src="assets/cli/cli_stream_results.png" width="100%" style="display: inline-block; margin: 0 2%;">
+</p>
+
+<p align="center">
+  <img src="assets/cli/cli_risks.png" width="100%" style="display: inline-block; margin: 0 2%;">
+</p>
+
+<p align="center">
+  <img src="assets/cli/cli_report.png" width="100%" style="display: inline-block; margin: 0 2%;">
+</p>
+
+### Python API
+
+Prefer running inside a Python session? The example below mirrors `main.py` and demonstrates the minimum wiring you need to configure the graph and execute a problem statement programmatically:
+
+```python
+from processdesignagents.graph.process_design_graph import ProcessDesignGraph
+from processdesignagents.default_config import DEFAULT_CONFIG
+
+def run_workflow() -> None:
+    config = DEFAULT_CONFIG.copy()
+    config["llm_provider"] = "openrouter"
+    config["quick_think_llm"] = "google/gemini-2.5-flash-lite-preview-09-2025"
+    config["deep_think_llm"] = "google/gemini-2.5-flash-preview-09-2025"
+
+    graph = ProcessDesignGraph(
+        config=config,
+        debug=False,
+        delay_time=0.1,
+        save_graph_image=True,
+        graph_image_filename="graph.png",
+    )
+
+    graph.propagate(
+        problem_statement="Design a generic compressed air unit for a refinery (300 Nm^3/h plant + instrument air).",
+        save_markdown="reports/latest_run.md",
+        save_word_doc="reports/latest_run.docx",
+        resume_from_last_run=True,
+        manual_concept_selection=False,
+    )
+
+if __name__ == "__main__":
+    run_workflow()
+```
+
+See `main.py` for a fully worked example with additional prompt variants and configuration presets.
 
 ### Report Exports
 
@@ -95,13 +175,7 @@ The graph wiring lives in `processdesignagents/graph/setup.py`. State fields are
 
 ## Tooling & Extensions
 
-The sizing tools live under `processdesignagents/agents/utils/` and are registered in `ProcessDesignGraph._create_tool_nodes()`. Out of the box the graph exposes `size_heat_exchanger_basic` and `size_pump_basic`; add new preliminary tools (e.g., compressor sizing) by importing them alongside these functions and extending the tool node mapping.
-
-## Development
-
--   **Tests**: Add unit tests under `tests/` (not yet provided) and run with `pytest`.
--   **Formatting**: Follow `black`/`isort` style conventions if you add CI.
--   **Docs**: Update `docs/` when the graph or agent prompts change.
+Sizing helpers live under `processdesignagents/sizing_tools/tools/` and are re-exported via `processdesignagents/agents/utils/agent_sizing_tools.py`. The equipment sizing agent assembles its `tools_list` from those exports, so adding a new callable (e.g., `size_cooling_tower_basic`) is as simple as defining it in the relevant module, exposing it through the aggregator, and including it in the list passed to `run_agent_with_tools`. See [Sizing Tool Architecture](docs/TOOLS.md) for a detailed walkthrough and code skeletons.
 
 ## Citation
 
@@ -114,4 +188,4 @@ TradingAgents. 2025. https://github.com/TauricResearch/TradingAgents.
 
 ## License
 
-MIT License (see `LICENSE`, if provided).
+MIT License (see [LICENSE](LICENSE) for details).

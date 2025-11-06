@@ -55,7 +55,7 @@ def create_conservative_researcher(llm):
             print(response_content)
             exit(-1)
         return {
-            "research_rateing_results": json.dumps(response_dict),
+            "research_rating_results": json.dumps(response_dict),
             "messages": [response],
         }
 

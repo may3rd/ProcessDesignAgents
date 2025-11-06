@@ -16,7 +16,7 @@ Safety & Risk Analyst → Project Manager
 | `problem_statement` | Original brief captured from the first human message. | Propagator |
 | `process_requirements` | Markdown summary of objectives, constraints, and feed/product details. | Process Requirements Analyst |
 | `research_concepts` | JSON list of candidate concepts with maturity tags. | Innovative Researcher |
-| `research_rateing_results` | JSON replay providing feasibility scores, risks, and recommendations. | Conservative Researcher |
+| `research_rating_results` | JSON replay providing feasibility scores, risks, and recommendations. | Conservative Researcher |
 | `selected_concept_name` | Identifier for the winning concept. | Concept Detailer |
 | `selected_concept_details` | Markdown brief describing the chosen concept. | Concept Detailer |
 | `selected_concept_evaluation` | JSON payload storing the evaluation data for the chosen concept. | Concept Detailer |
