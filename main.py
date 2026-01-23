@@ -18,11 +18,11 @@ config["llm_provider"] = "openrouter"
 # config["deep_think_llm"] = "anthropic/claude-sonnet-4.5"
 # config["deep_think_llm"] = "z-ai/glm-4.6"
 
-# config["quick_think_llm"] = "x-ai/grok-4-fast"
-# config["deep_think_llm"] = "x-ai/grok-4-fast"
+config["quick_think_llm"] = "x-ai/grok-4-fast"
+config["deep_think_llm"] = "x-ai/grok-4-fast"
 
-config["quick_think_llm"] = "google/gemini-2.5-flash-lite-preview-09-2025"
-config["deep_think_llm"] = "google/gemini-2.5-flash-preview-09-2025"
+config["quick_think_llm"] = "google/gemini-2.5-flash-lite"
+# config["deep_think_llm"] = "google/gemini-2.5-flash"
 
 delay_time = 0.1
 
@@ -34,8 +34,8 @@ delay_time = 0.1
 # config["quick_think_llm"] = "llama3.2"
 # config["deep_think_llm"] = "llama3.2"
 
-config["quick_think_temperature"] = 0.7
-config["deep_think_temperature"] = 0.7
+config["quick_think_temperature"] = 0.5
+config["deep_think_temperature"] = 0.5
 
 def main():
     graph = ProcessDesignGraph(debug=False, config=config, delay_time=delay_time, save_graph_image=True, graph_image_filename="graph.png")
@@ -51,7 +51,7 @@ def main():
         problem_statement=problem_statement, 
         save_markdown="reports/latest_run.md",
         save_word_doc="reports/latest_run.docx",
-        resume_from_last_run=True,
+        resume_from_last_run=False,
         manual_concept_selection=False
         )
 
